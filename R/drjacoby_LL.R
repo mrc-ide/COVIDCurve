@@ -27,11 +27,11 @@ tod_log_like <- function(params, obs_deaths){
   # expected deaths
   #..................
   integrand <- function(t, talpha = alpha, tbeta = beta, gr = r){ return(
-    I0 * exp(gr*t) * pgamma(t, talpha, tbeta)) }
+    I0 * exp(gr*t) * pgamma(curr_day - t, talpha, tbeta)) }
   integral <- integrate(integrand, lower = -Inf, curr_day)
 
   # total exp deaths
-  exp.deaths <- (ma/curr_day) * integral$value
+  exp.deaths <- 1/length(ma) * ma * integral$value
 
   #..................
   # poisson
@@ -53,7 +53,7 @@ t_log_prior <- function(params){
   ma8 <- params[9]
   ma9 <- params[10]
   ma <- c(ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9)
-
+  ma <- ma/sum(ma)
   ret <- dunif(I0, min = 0, max = 10, log = TRUE) +
     sum( sapply(ma, function(x){dunif(x, min = 0, max = 1, log = TRUE)}) )
   return(ret)
@@ -72,7 +72,7 @@ df_params <- data.frame(name = c("I0",
                                  "ma1", "ma2", "ma3", "ma4",
                                  "ma5", "ma6", "ma7", "ma8", "ma9"),
                         min = c(1, rep(0, 9)),
-                        max = c(Inf, rep(1, 9)),
+                        max = c(3, rep(1, 9)),
                         init = c(2, rep(0.5, 9)))
 
 #obs_deaths <- list(obs_deaths = unname(as.numeric(obs_deaths)))
@@ -91,8 +91,53 @@ r_mcmc_out <- run_mcmc(data = obs_deaths,
 
 
 
-library(ggplot2)
+library(tidyverse)
 library(patchwork)
+postdata <- r_mcmc_out$output
+cred_intervals <- postdata %>%
+  dplyr::select(c("chain", "iteration", "I0", dplyr::starts_with("ma"))) %>%
+  tidyr::gather(., key = "param", value = "est", 3:ncol(.)) %>%
+  dplyr::group_by(chain, param) %>%
+  dplyr::summarise(
+    min = min(est),
+    LCI = quantile(est, 0.025),
+    median = median(est),
+    mean = mean(est),
+    UCI = quantile(est, 0.975),
+    max = max(est)
+  ) %>%
+  dplyr::mutate_if(is.numeric, round, 2)
+
+truth <- data.frame(param = c("I0", paste0("ma", 1:9)),
+                    est = c(2, casefat$cfr))
+ggplot() +
+  geom_point(data = truth, aes(x = param, y = est)) +
+  geom_pointrange(data = cred_intervals, aes(x=param, y = mean, ymin = LCI, ymax = UCI,
+                                             color = factor(chain)),
+                  alpha = 0.3) +
+  theme_bw()
+
+
+truthnoI <- truth %>%
+  dplyr::filter(param != "I0")
+
+cred_intervalsnoI <- cred_intervals %>%
+  dplyr::filter(param != "I0")
+ggplot() +
+  geom_point(data = truthnoI, aes(x = param, y = est)) +
+  geom_pointrange(data = cred_intervalsnoI, aes(x=param, y = mean, ymin = LCI, ymax = UCI,
+                                                color = factor(chain)),
+                  alpha = 0.3) +
+  theme_bw()
+
+
+
+
+
+
+
+
+
 plot_par(r_mcmc_out, show = "I0", phase = "sampling")
 ma1 <- plot_par(r_mcmc_out, show = "ma1", phase = "sampling")
 ma1$Plot_ma1[[2]] <- ma1$Plot_ma1[[2]] + geom_vline(xintercept = casefat$cfr[1], color = "red")
@@ -127,48 +172,6 @@ drjacoby::plot_cor(x = r_mcmc_out, parameter1 = "ma6", parameter2 = "ma2")
 drjacoby::plot_cor(x = r_mcmc_out, parameter1 = "ma7", parameter2 = "ma2")
 drjacoby::plot_cor(x = r_mcmc_out, parameter1 = "ma8", parameter2 = "ma2")
 drjacoby::plot_cor(x = r_mcmc_out, parameter1 = "ma9", parameter2 = "ma2")
-
-library(tidyverse)
-postdata <- r_mcmc_out$output
-cred_intervals <- postdata %>%
-  dplyr::select(c("chain", "iteration", "I0", dplyr::starts_with("ma"))) %>%
-  tidyr::gather(., key = "param", value = "est", 3:ncol(.)) %>%
-  dplyr::group_by(chain, param) %>%
-  dplyr::summarise(
-    min = min(est),
-    LCI = quantile(est, 0.025),
-    median = median(est),
-    mean = mean(est),
-    UCI = quantile(est, 0.975),
-    max = max(est)
-  ) %>%
-  dplyr::mutate_if(is.numeric, round, 2)
-
-truth <- data.frame(param = c("I0", paste0("ma", 1:9)),
-                    est = c(2, casefat$cfr))
-ggplot() +
-  geom_point(data = truth, aes(x = param, y = est)) +
-  geom_pointrange(data = cred_intervals, aes(x=param, y = mean, ymin = LCI, ymax = UCI,
-                                             color = factor(chain)),
-                  alpha = 0.3) +
-  theme_bw()
-
-
-truthnoI <- truth %>%
-  dplyr::filter(param != "I0")
-
-cred_intervalsnoI <- cred_intervals %>%
-  dplyr::filter(param != "I0")
-ggplot() +
-  geom_point(data = truthnoI, aes(x = param, y = est)) +
-  geom_pointrange(data = cred_intervalsnoI, aes(x=param, y = mean, ymin = LCI, ymax = UCI,
-                                             color = factor(chain)),
-                  alpha = 0.3) +
-  theme_bw()
-
-
-
-
 
 
 

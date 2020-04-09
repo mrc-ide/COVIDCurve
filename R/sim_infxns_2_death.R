@@ -1,34 +1,3 @@
-#' @title Expected Deaths Likelihood
-#' @inheritParams sim_infxn_2_death
-#' @param obs_deaths numeric; total number of deaths from the population
-
-LL_infxn_2_death <- function(r, alpha, beta, curr_day, # fixed
-                             ma = list(), I0, # free params
-                             obs_deaths # data
-                             ){
-  #..................
-  # expected deaths
-  #..................
-  integrand <- function(t, talpha = alpha, tbeta = beta, gr = r){ return(
-    I0 * exp(gr*t) * pgamma(t, talpha, tbeta)) }
-  integral <- integrate(integrand, lower = -Inf, curr_day)
-
-  # total exp deaths
-  exp.deaths <- (ma/curr_day) * integral$value
-
-
-  # catch NA below
-  #..................
-  # poisson
-  #..................
-  ret <- sum(dpois(x = obs_deaths, lambda = exp.deaths, log = T))
-  cat("work")
-  return(ret)
-}
-
-
-
-
 #' @title Simualte Expected Deaths
 #' @param t0 integer; number of infected individuals at the beginning of the epidemic
 #' @param r double; the expontential growth rate of the epidemic
@@ -42,7 +11,7 @@ sim_infxn_2_death <- function(t0, r, # for exp growth
 
   # draw number of infections
   exp.integrand <- function(t, gr = r) { return(t0*exp(gr*t)) }
-  num_infxn <- integrate(exp.integrand, lower = -Inf, upper = curr_day)
+  num_infxn <- integrate(exp.integrand, lower = 0, upper = curr_day)
   num_infxn <- round(num_infxn$value) # round to nearest person
 
   # assume that the time infection is exp distrib
