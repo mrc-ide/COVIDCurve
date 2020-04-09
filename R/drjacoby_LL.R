@@ -1,7 +1,8 @@
-tod_log_like <- function(params, obs_deaths){
+#' @title Likelihood for Curve Aware
+r_tod_log_like <- function(params, param_i, data, misc) {
   # assume r is fixed
   r <- 0.14
-  curr_day <- 50
+  curr_day <- misc$curr_day
 
   # alpha and beta for time from infection to time to death
   # from lancet id paper
@@ -31,17 +32,18 @@ tod_log_like <- function(params, obs_deaths){
   integral <- integrate(integrand, lower = -Inf, curr_day)
 
   # total exp deaths
-  exp.deaths <- 1/length(ma) * ma * integral$value
+  exp.deaths <- misc$pa * ma * integral$value
 
   #..................
   # poisson
   #..................
-  ret <- sum(dpois(x = obs_deaths, lambda = exp.deaths, log = T))
+  ret <- sum(dpois(x = data$obs_deaths, lambda = exp.deaths, log = T))
   return(ret)
 
 }
 
-t_log_prior <- function(params){
+#' @title Prior for Curve Aware
+r_tod_log_prior <- function(params, param_i, misc) {
   I0 <- params[1]
   ma1 <- params[2]
   ma2 <- params[3]
@@ -53,7 +55,9 @@ t_log_prior <- function(params){
   ma8 <- params[9]
   ma9 <- params[10]
   ma <- c(ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9)
-  ma <- ma/sum(ma)
+  # pa * ma
+  ma <- ma * misc$pa
+  # flat prior
   ret <- dunif(I0, min = 0, max = 10, log = TRUE) +
     sum( sapply(ma, function(x){dunif(x, min = 0, max = 1, log = TRUE)}) )
   return(ret)
@@ -63,8 +67,8 @@ t_log_prior <- function(params){
 #..............................................................
 # Run Dr. Jacoby
 #..............................................................
-#devtools::install_github("mrc-ide/drjacoby", ref = "develop")
-devtools::install_github("mrc-ide/drjacoby")
+#devtools::install_github("mrc-ide/drjacoby")
+devtools::install_github("mrc-ide/drjacoby", ref = "develop")
 library(drjacoby)
 
 # define parameters dataframe
@@ -78,12 +82,13 @@ df_params <- data.frame(name = c("I0",
 #obs_deaths <- list(obs_deaths = unname(as.numeric(obs_deaths)))
 dat <- readRDS("~/Desktop/temp.rds")
 casefat <- dat$case_fatality_ratio_by_age
-obs_deaths <- as.vector(dat$observed_deaths)
+data_list <- list(obs_deaths =  as.numeric(dat$observed_deaths))
 
-r_mcmc_out <- run_mcmc(data = obs_deaths,
+r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
-                       loglike = tod_log_like,
-                       logprior = t_log_prior,
+                       misc = list(curr_day = 50, pa = 1/9),
+                       loglike = r_tod_log_like,
+                       logprior = r_tod_log_prior,
                        burnin = 1e3,
                        samples = 1e3,
                        chains = 3,
