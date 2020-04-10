@@ -15,7 +15,8 @@ sim_infxn_2_death <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45
   total_expected_death <- total_expected_inf * casefat$cfr
 
   # get actual number of deaths without censoring
-  total_death_uncensored <- rpois(2, lambda = total_expected_death)
+  total_death_uncensored <- rpois(length(total_expected_death),
+                                  lambda = total_expected_death)
 
   # distribute infections through time
   t_infection <- lapply(total_death_uncensored, function(x) { log(runif(x))/r + curr_day })

@@ -9,18 +9,19 @@ r_tod_log_like <- function(params, param_i, data, misc) {
   m_od <- 18.8
   s_od <- 0.45
   # free params
-  I0 <- params[1]
-  ma <- params[2]
-  #ma1 <- params[2]
-  #ma2 <- params[3]
-  # ma3 <- params[4]
-  # ma4 <- params[5]
-  # ma5 <- params[6]
-  # ma6 <- params[7]
-  # ma7 <- params[8]
-  # ma8 <- params[9]
-  # ma9 <- params[10]
-  # ma <- c(ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9)
+  ma9 <- params[1]
+  r1 <- params[2]
+  r2 <- params[3]
+  r3 <- params[4]
+  r4 <- params[5]
+  r5 <- params[6]
+  r6 <- params[7]
+  r7 <- params[8]
+  r8 <- params[9]
+  I0 <- params[10]
+  scalars <- c(r1, r2, r3, r4, r5, r6, r7, r8)
+  ma <- sapply(scalars, function(x){x * ma9})
+  ma <- c(ma, ma9)
 
   #..................
   # expected deaths
@@ -36,32 +37,31 @@ r_tod_log_like <- function(params, param_i, data, misc) {
   # poisson
   #..................
   ret <- sum(dpois(x = data$obs_deaths, lambda = exp.deaths, log = T))
+  ret <- ret + length(scalars) * log(ma9) # account for reparameterization
   return(ret)
 
 }
 
 #' @title Prior for Curve Aware
 r_tod_log_prior <- function(params, param_i, misc) {
-  I0 <- params[1]
-  ma <- params[2]
-  #I0 <- params[1]
-  #ma1 <- params[2]
-  #ma2 <- params[3]
-  # ma3 <- params[4]
-  # ma4 <- params[5]
-  # ma5 <- params[6]
-  # ma6 <- params[7]
-  # ma7 <- params[8]
-  # ma8 <- params[9]
-  # ma9 <- params[10]
-  # ma <- c(ma1, ma2, ma3, ma4, ma5, ma6, ma7, ma8, ma9)
-  #ma <- c(ma1, ma2)
+  ma9 <- params[1]
+  r1 <- params[2]
+  r2 <- params[3]
+  r3 <- params[4]
+  r4 <- params[5]
+  r5 <- params[6]
+  r6 <- params[7]
+  r7 <- params[8]
+  r8 <- params[9]
+  I0 <- params[10]
+  scalars <- c(r1, r2, r3, r4, r5, r6, r7, r8)
+  ma <- sapply(scalars, function(x){x * ma9})
+  ma <- c(ma, ma9)
 
   # flat prior
-  #ret <- dunif(I0, min = 0, max = 10, log = TRUE) +
-   # sum( sapply(ma, function(x){dunif(x, min = 0, max = 1, log = TRUE)}) )
-  ret <-  dunif(I0, min = 0, max = 10, log = TRUE) +
-    dunif(ma, min = 0, max = 1, log = TRUE)
+  ret <- dunif(ma9, min = 0, max = 1, log = TRUE) +
+    sum( sapply(scalars, function(x){dlnorm(x, meanlog = 0, sdlog = 5, log = TRUE)}) )
+    + dunif(I0, min = 0, max = 10, log = TRUE)
 
   return(ret)
 }
