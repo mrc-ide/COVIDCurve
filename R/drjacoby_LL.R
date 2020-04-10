@@ -89,7 +89,7 @@ r_mcmc_out <- run_mcmc(data = data_list,
                        misc = list(curr_day = 50, pa = 1/9),
                        loglike = r_tod_log_like,
                        logprior = r_tod_log_prior,
-                       burnin = 1e4,
+                       burnin = 1e3,
                        samples = 1e3,
                        chains = 3,
                        pb_markdown = TRUE)

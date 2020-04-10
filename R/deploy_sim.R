@@ -4,7 +4,7 @@ source("R/sim_infxns_2_death.R")
 #..............................................................
 # infxn rate
 I0 <- t0 <- 2 # number infected at time 0 (day 0)
-curr_day <- 20 # current day for the model
+curr_day <- 50 # current day for the model
 r <- 0.14
 # CFR from lancet id
 #casefat <- data.frame(age = paste0(seq(0, 80, by = 10), ":", seq(10, 90, 10)),
