@@ -76,11 +76,11 @@ df_params <- data.frame(name = c("I0",
                                  "ma1", "ma2", "ma3", "ma4",
                                  "ma5", "ma6", "ma7", "ma8", "ma9"),
                         min = c(1, rep(0, 9)),
-                        max = c(3, rep(1, 9)),
+                        max = c(10, rep(1, 9)),
                         init = c(2, rep(0.5, 9)))
 
 #obs_deaths <- list(obs_deaths = unname(as.numeric(obs_deaths)))
-dat <- readRDS("~/Desktop/temp.rds")
+dat <- readRDS("~/Desktop/sim_day50.rds")
 casefat <- dat$case_fatality_ratio_by_age
 data_list <- list(obs_deaths =  as.numeric(dat$observed_deaths))
 
@@ -89,7 +89,7 @@ r_mcmc_out <- run_mcmc(data = data_list,
                        misc = list(curr_day = 50, pa = 1/9),
                        loglike = r_tod_log_like,
                        logprior = r_tod_log_prior,
-                       burnin = 1e3,
+                       burnin = 1e4,
                        samples = 1e3,
                        chains = 3,
                        pb_markdown = TRUE)
@@ -139,17 +139,10 @@ ggplot() +
 
 
 
-
-
-
-
 plot_par(r_mcmc_out, show = "I0", phase = "sampling")
 ma1 <- plot_par(r_mcmc_out, show = "ma1", phase = "sampling")
 ma1$Plot_ma1[[2]] <- ma1$Plot_ma1[[2]] + geom_vline(xintercept = casefat$cfr[1], color = "red")
 (ma1$Plot_ma1[[1]]) / (ma1$Plot_ma1[[2]] | ma1$Plot_ma1[[3]])
-plot_credible(r_mcmc_out, show = paste0("ma", 1:9)) +
-  geom_point(data = casefat, aes(x = age, y = cfr), color = "red")
-
 plot_par(r_mcmc_out, show = "ma2", phase = "sampling")
 plot_par(r_mcmc_out, show = "ma3", phase = "sampling")
 plot_par(r_mcmc_out, show = "ma4", phase = "sampling")
