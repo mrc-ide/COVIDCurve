@@ -102,9 +102,17 @@ sapply(1:9, function(x){
   graphics.off()
 })
 
+plot_cor(r_mcmc_out, "ma9", "I0")
+plot_contour(r_mcmc_out, "ma1", "I0")
 
-
-
+jpeg("~/Desktop/I0.jpg", height = 11, width = 8, units = "in", res = 500)
+plotObj <- plot_par(r_mcmc_out, show = "I0",
+                    phase = "sampling", display = F)
+plotObj[[1]][[2]] <- plotObj[[1]][[2]] +
+  geom_vline(xintercept = 2, color = "red", size = 2)
+plotObj <- (plotObj[[1]][[1]]) / (plotObj[[1]][[2]] | plotObj[[1]][[3]])
+plotObj
+graphics.off()
 
 
 plot_par(r_mcmc_out, show = "r1", phase = "sampling")
