@@ -1,24 +1,34 @@
+library(tidyverse)
 #..............................................................
 # Run Sim and set up data for Dr. Jacoby
 #..............................................................
-source("R/sim_infxns_2_death.R")
+source("R/sim_infxns_2_death_timeseries.R")
 # make up casefat
-casefat <- data.frame(age = paste0(seq(0, 80, by = 10), ":", seq(10, 90, 10)),
-                      cfr = c(0.09, 0.025, 0.054, 0.047,
-                              0.051, 0.13, 0.097, 0.021, 0.15),
-                      pa = 1/9)
+# casefat <- data.frame(age = paste0(seq(0, 80, by = 10), ":", seq(10, 90, 10)),
+#                       cfr = c(0.09, 0.025, 0.054, 0.047,
+#                               0.051, 0.13, 0.097, 0.021, 0.15),
+#                       pa = 1/9)
+casefat <- data.frame(age = c("1:100"),
+                      cfr = c(0.5),
+                      pa = 1)
 
-dat <- sim_infxn_2_death(
+dat <- sim_infxn_2_death_timeseries(
   casefat = casefat,
   I0 = 2,
   r = 0.14,
   m_od = 18.8,
   s_od = 0.45,
+  min_day = 50,
   curr_day = 50
 )
 
+# split in to days
+dat <- split(dat, factor(dat$obs_day))
+dat <- purrr::map(dat, "obs_deaths")
+dat <- dat[1:(length(dat)-1)]
 
-data_list <- list(obs_deaths = unname(dat))
+# list for Dr. Jacoby
+data_list <- list(obs_deaths = dat)
 
 #..............................................................
 # Run Dr. Jacoby
@@ -26,34 +36,83 @@ data_list <- list(obs_deaths = unname(dat))
 #devtools::install_github("mrc-ide/drjacoby")
 devtools::install_github("mrc-ide/drjacoby", ref = "develop")
 library(drjacoby)
-source("R/drjacoby_LL.R")
+source("R/drjacoby_LL_timeseries.R")
 
-df_params <- data.frame(name = c("ma9", paste0("r", 1:8), "I0"),
-                        min = c(0, rep(0, 8), 1),
-                        max = c(1, rep(100, 8), 100),
-                        init = c(0.5, rep(2, 8), 5))
+# df_params <- data.frame(name = c("ma9", paste0("r", 1:8), "I0"),
+#                         min = c(0, rep(0, 8), 1),
+#                         max = c(1, rep(100, 8), 100),
+#                         init = c(0.5, rep(2, 8), 5))
+
+df_params <- data.frame(name = c("ma"),
+                        min = c(0),
+                        max = c(1),
+                        init = c(0.1))
 
 r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
-                       misc = list(curr_day = 50, pa = 1/9),
+                       misc = list(min_day = 1, curr_day = 50, pa = 1),
                        loglike = r_tod_log_like,
                        logprior = r_tod_log_prior,
                        burnin = 1e3,
                        samples = 1e3,
                        chains = 3,
-                       rungs = 1,
+                       #rungs = 10,
+                       #GTI_pow = 2,
                        pb_markdown = TRUE)
+
+plot_par(r_mcmc_out, "ma")
+
+
+jpeg("~/Desktop/I0.jpg", height = 11, width = 8, units = "in", res = 500)
+plot_par(r_mcmc_out, "I0")
+graphics.off()
+
+jpeg("~/Desktop/ma.jpg", height = 11, width = 8, units = "in", res = 500)
+plot_par(r_mcmc_out, "ma")
+graphics.off()
+
+jpeg("~/Desktop/corr.jpg", height = 11, width = 8, units = "in", res = 500)
+plot_cor(r_mcmc_out, "ma", "I0")
+graphics.off()
+
+jpeg("~/Desktop/mcaccept.jpg", height = 11, width = 8, units = "in", res = 500)
+plot_mc_acceptance(r_mcmc_out)
+graphics.off()
+
+jpeg("~/Desktop/contour.jpg", height = 11, width = 8, units = "in", res = 500)
+plot_contour(r_mcmc_out, "ma", "I0") +
+  geom_vline(xintercept = 0.5, color = "blue", linetype = "dashed", size = 1, alpha = 0.6) +
+  geom_hline(yintercept = 2, color = "blue", linetype = "dashed", size = 1, alpha = 0.6)
+graphics.off()
+
+
+
 
 #..............................................................
 # append Dr. Jacoby output with reparameterized posteriors
 #..............................................................
-reparcols <- grepl("r[0-9]", colnames(r_mcmc_out$output))
-params_repar <- r_mcmc_out$output[, c(reparcols | colnames(r_mcmc_out$output) == "ma9")]
-reparcols <- grepl("r[0-9]", colnames(params_repar))
-params_repar <- apply(params_repar[, reparcols], 2,
-                      function(x){params_repar$ma9 * x})
-colnames(params_repar) <- paste0("ma", 1:sum(reparcols))
-r_mcmc_out$output <- cbind.data.frame(r_mcmc_out$output, params_repar)
+#reparcols <- grepl("r[0-9]", colnames(r_mcmc_out$output))
+#params_repar <- r_mcmc_out$output[, c(reparcols | colnames(r_mcmc_out$output) == "ma9")]
+#reparcols <- grepl("r[0-9]", colnames(params_repar))
+#params_repar <- apply(params_repar[, reparcols], 2,
+#                      function(x){params_repar$ma9 * x})
+#colnames(params_repar) <- paste0("ma", 1:sum(reparcols))
+#r_mcmc_out$output <- cbind.data.frame(r_mcmc_out$output, params_repar)
+r_mcmc_out$output$ma1 <- r_mcmc_out$output$ma2 * r_mcmc_out$output$r1
+
+
+sapply(c(1,2), function(x){
+  plotObj <- plot_par(r_mcmc_out, show = paste0("ma", x),
+                      phase = "sampling", display = F)
+  plotObj[[1]][[2]] <- plotObj[[1]][[2]] +
+    geom_vline(xintercept = casefat$cfr[x], color = "red", size = 2)
+  plotObj <- (plotObj[[1]][[1]]) / (plotObj[[1]][[2]] | plotObj[[1]][[3]])
+
+  jpeg(paste0("~/Desktop/scalar_ma", x, "_.jpg"), height = 11, width = 8, units = "in", res = 500)
+  plot(plotObj)
+  graphics.off()
+})
+
 
 #..............................................................
 # now plot
@@ -75,7 +134,7 @@ cred_intervals <- postdata %>%
   ) %>%
   dplyr::mutate_if(is.numeric, round, 2)
 
-truth <- data.frame(param = c(paste0("ma", 1:9)),
+truth <- data.frame(param = c(paste0("ma", c(1,9))),
                     est = c(casefat$cfr))
 credintervals <- ggplot() +
   geom_point(data = truth, aes(x = param, y = est), size = 3) +
@@ -90,7 +149,7 @@ credintervals <- ggplot() +
         legend.position = "none")
 credintervals
 
-sapply(1:9, function(x){
+sapply(c(1,9), function(x){
   plotObj <- plot_par(r_mcmc_out, show = paste0("ma", x),
                       phase = "sampling", display = F)
   plotObj[[1]][[2]] <- plotObj[[1]][[2]] +
