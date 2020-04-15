@@ -6,7 +6,7 @@
 #' @param casefat dataframe; column names age, cfr, and pa that correspond to age-band, case-fatality ratio, and proportion of population in given age band, respectively
 #' @param curr_day numeric; current day of epidemic
 
-sim_infxn_2_death <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
+sim_infxn_2_death_cumulative <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
 
   # get expected number of infections up to today
   total_expected_inf <- casefat$pa * I0/r * exp(r*curr_day)
