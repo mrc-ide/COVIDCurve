@@ -29,7 +29,6 @@ sim_infxn_2_death_timeseries <- function(casefat, I0, r, min_day, curr_day, m_od
     return(t_d)
   }, d_u = total_death_uncensored, t_i = t_infection)
 
-
   # expand out the death grid
   casefat_adddeaths <- function(datrow, dths){
     n <- length(dths)
@@ -42,6 +41,7 @@ sim_infxn_2_death_timeseries <- function(casefat, I0, r, min_day, curr_day, m_od
                            dths = t_death, SIMPLIFY = F) %>%
     do.call("rbind.data.frame", .)
 
+  
   #..................
   # Tidy up so that we observe deaths on a daily time step
   #..................
