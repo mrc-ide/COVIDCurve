@@ -18,14 +18,20 @@ casefat <- data.frame(age = c("1:60", "60:100"),
                       cfr = c(0.1, 0.5),
                       pa = 1/2)
 
+# define key parameters
+I0 <- 2
+min_day <- 1
+curr_day <- 50
+
+# simulate data
 dat <- sim_infxn_2_death_timeseries(
   casefat = casefat,
-  I0 = 2,
+  I0 = I0,
   r = 0.14,
   m_od = 18.8,
   s_od = 0.45,
-  min_day = 1,
-  curr_day = 50
+  min_day = min_day,
+  curr_day = curr_day
 )
 
 # split in to days
@@ -41,16 +47,22 @@ data_list <- list(obs_deaths = dat)
 source("R/R_likelihood_timeseries.R")
 
 # params
-df_params2 <- rbind.data.frame(list("r1", 0, 100, 2),
-                               list("ma2", 0, 1, 0.1))
+df_params <- rbind.data.frame(list("r1", 0, 100, 2),
+                              list("ma2", 0, 1, 0.1))
 
-names(df_params2) <- c("name", "min", "max", "init")
+names(df_params) <- c("name", "min", "max", "init")
+
+# create list of misc elements to pass to MCMC
+misc_list <- list(I0 = I0,
+                  min_day = min_day,
+                  curr_day = curr_day,
+                  pa = casefat$pa)
 
 # MCMC
 # Note the misc list, where current day and pa must be consistent with your simulation
 r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
-                       misc = list(min_day = 1, curr_day = 50, pa = c(0.5, 0.5)),
+                       misc = misc_list,
                        loglike = r_tod_log_like_timeseries,
                        logprior = r_tod_log_prior_timeseries,
                        burnin = 1e3,
