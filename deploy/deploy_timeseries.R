@@ -5,7 +5,7 @@
 #
 # Date: April 15 2020
 #########################################################################
-devtools::install_github("mrc-ide/drjacoby", ref = "develop")
+#devtools::install_github("mrc-ide/drjacoby", ref = "develop")
 library(drjacoby)
 library(tidyverse)
 source("R/sim_expd_timeseries.R")
@@ -41,10 +41,11 @@ data_list <- list(obs_deaths = dat)
 source("R/R_likelihood_timeseries.R")
 
 # params
-df_params <- data.frame(name = c("r1", "ma2"),
-                        min = c(0, 0),
-                        max = c(100, 1),
-                        init = c(2, 0.1))
+df_params2 <- rbind.data.frame(list("r1", 0, 100, 2),
+                               list("ma2", 0, 1, 0.1))
+
+names(df_params2) <- c("name", "min", "max", "init")
+
 # MCMC
 # Note the misc list, where current day and pa must be consistent with your simulation
 r_mcmc_out <- run_mcmc(data = data_list,
