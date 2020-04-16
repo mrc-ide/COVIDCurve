@@ -7,10 +7,9 @@ r_tod_log_like_timeseries <- function(params, param_i, data, misc) {
   s_od <- 0.45
 
   # free params
-  ma2 <- params[2]
-  r1 <- params[1]
-  #I0 <- params[3]
-  I0 <- 2
+  I0 <- params["I0"]
+  r1 <- params["r1"]
+  ma2 <- params["ma2"]
 
   # LEGACY FOR FULL MODEL
   #ma9 <- params[1]
@@ -57,6 +56,8 @@ r_tod_log_like_timeseries <- function(params, param_i, data, misc) {
 #' @title Prior for Curve Aware
 r_tod_log_prior_timeseries <- function(params, param_i, misc) {
 
+  return(0)
+  
   ma2 <- params[2]
   r1 <- params[1]
   #I0 <- params[3]

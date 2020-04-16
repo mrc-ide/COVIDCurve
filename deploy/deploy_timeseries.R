@@ -47,35 +47,38 @@ data_list <- list(obs_deaths = dat)
 source("R/R_likelihood_timeseries.R")
 
 # params
-df_params <- rbind.data.frame(list("r1", 0, 100, 2),
+df_params <- rbind.data.frame(list("I0", I0, I0, I0),  # fixed parameter
+                              list("r1", 0, 100, 2),
                               list("ma2", 0, 1, 0.1))
 
 names(df_params) <- c("name", "min", "max", "init")
 
 # create list of misc elements to pass to MCMC
-misc_list <- list(I0 = I0,
-                  min_day = min_day,
+misc_list <- list(min_day = min_day,
                   curr_day = curr_day,
                   pa = casefat$pa)
 
+# define MCMC parameters
+burnin <- 1e2
+samples <- 1e2
+chains <- 1
+
 # MCMC
-# Note the misc list, where current day and pa must be consistent with your simulation
 r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
                        misc = misc_list,
                        loglike = r_tod_log_like_timeseries,
                        logprior = r_tod_log_prior_timeseries,
-                       burnin = 1e3,
-                       samples = 1e3,
-                       chains = 3,
-                       pb_markdown = TRUE)
-
+                       burnin = burnin,
+                       samples = samples,
+                       chains = chains,
+                       pb_markdown = FALSE)
 
 
 # append Dr. Jacoby output with reparameterized posteriors
 r_mcmc_out$output$ma1 <- r_mcmc_out$output$ma2 * r_mcmc_out$output$r1
 
-
+# parameter plots
 plot_par(r_mcmc_out, "ma1")
 plot_par(r_mcmc_out, "ma2")
 
