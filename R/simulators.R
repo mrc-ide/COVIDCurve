@@ -6,6 +6,8 @@
 #' @param casefat dataframe; column names age, cfr, and pa that correspond to age-band, case-fatality ratio, and the attack rate in given age band, respectively
 #' @param curr_day numeric; current day of epidemic
 #' @importFrom magrittr %>%
+#' @export
+
 sim_infxn_2_death_cumulative <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
 
   # get expected number of infections up to today
@@ -40,6 +42,7 @@ sim_infxn_2_death_cumulative <- function(casefat, I0, r, curr_day, m_od = 18.8, 
 #' @title Simulate Expected Deaths in a Time-Series
 #' @inheritParams sim_infxn_2_death_cumulative
 #' @importFrom magrittr %>%
+#' @export
 
 sim_infxn_2_death_timeseries <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
 
