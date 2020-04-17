@@ -26,31 +26,34 @@ set.seed(seed)
 # Time Series
 #..............................................................
 
-  time_dat <- sim_infxn_2_death_timeseries(
+  time_simdat <- sim_infxn_2_death_timeseries(
     casefat = casefat,
     I0 = 2,
     r = 0.14,
     m_od = 18.8,
     s_od = 0.45,
-    min_day = 1,
     curr_day = 50)
 
   # split in to days
-  time_dat <- split(time_dat, factor(time_dat$obs_day))
+  time_dat <- split(time_simdat, factor(time_simdat$obs_day))
   time_dat <- purrr::map(time_dat, "day_deaths")
   # list for Dr. Jacoby
   data_list <- list(obs_deaths = time_dat)
   #..................
   # Run Dr. Jacoby
   #..................
-  df_params <- data.frame(name = c("r1", "ma2"),
-                          min = c(0, 0),
-                          max = c(100, 1),
-                          init = c(2, 0.1))
+  df_params <- data.frame(name = c("r1", "ma2", "I0"),
+                          min = c(0, 0, 0),
+                          max = c(10, 1, 4),
+                          init = c(1, 0.1, 2))
+  # create list of misc elements to pass to MCMC
+  misc_list <- list(min_day = min(time_simdat$obs_day),
+                    curr_day = max(time_simdat$obs_day),
+                    pa = casefat$pa)
 
   r_mcmc_out_time <- run_mcmc(data = data_list,
                               df_params = df_params,
-                              misc = list(min_day = 1, curr_day = 50, pa = c(0.5, 0.5)),
+                              misc = misc_list,
                               loglike = r_tod_log_like_timeseries,
                               logprior = r_tod_log_prior_timeseries,
                               burnin = 1e3,
@@ -61,14 +64,15 @@ set.seed(seed)
   # LiftOver Dr. Jacoby
   #..................
   r_mcmc_out_time$output$ma1 <- r_mcmc_out_time$output$ma2 * r_mcmc_out_time$output$r1
+  
   #..................
   # out
   #..................
-  ageband <- data.frame(param = c("ma1", "ma2"), trueest = c(casefat$cfr))
+  ageband <- data.frame(param = c("ma1", "ma2", "I0"), trueest = c(casefat$cfr, 2))
 
   timeout <- r_mcmc_out_time$output %>%
     dplyr::filter(stage == "sampling") %>%
-    dplyr::select(c("chain", "ma1", "ma2")) %>%
+    dplyr::select(c("chain", "ma1", "ma2", "I0")) %>%
     tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
     dplyr::group_by(chain, param) %>%
     dplyr::summarise(
@@ -99,10 +103,10 @@ set.seed(seed)
   #..................
   # Run Dr. Jacoby
   #..................
-  df_params <- data.frame(name = c("r1", "ma2"),
-                          min = c(0, 0),
-                          max = c(100, 1),
-                          init = c(2, 0.1))
+  df_params <- data.frame(name = c("r1", "ma2", "I0"),
+                          min = c(0, 0, 0),
+                          max = c(10, 1, 4),
+                          init = c(1, 0.1, 2))
 
   r_mcmc_out_cumul <- run_mcmc(data = data_list,
                                df_params = df_params,
@@ -122,7 +126,7 @@ set.seed(seed)
   #..................
   cumulout <- r_mcmc_out_cumul$output %>%
     dplyr::filter(stage == "sampling") %>%
-    dplyr::select(c("chain", "ma1", "ma2")) %>%
+    dplyr::select(c("chain", "ma1", "ma2", "I0")) %>%
     tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
     dplyr::group_by(chain, param) %>%
     dplyr::summarise(
@@ -154,7 +158,7 @@ return(ret)
 
 seeds <- sort(round(runif(5, 1, 100)))
 
-ret <- lapply(seeds, run_sims)
+ret <- parallel::mclapply(seeds, run_sims)
 
 
 
@@ -176,7 +180,7 @@ plotObj <- compar_df  %>%
   geom_hline(aes(yintercept = true_est), color = "red", linetype = "dashed", size = 0.5, alpha = 0.5) +
   geom_vline(aes(xintercept = true_est), color = "red", linetype = "dashed", size = 0.5, alpha = 0.5) +
   facet_wrap(~param, scales = "free") +
-  xlab("Cumulative Median Est (Max CI)") + ylab("Time-Series Median Est (Min CI)") +
+  xlab("Cumulative Median Est (Min-Max CI)") + ylab("Time-Series Median Est (Min-Max CI)") +
   labs(caption = "Runs are using \"same\" data.") +
   theme_bw() +
   theme(plot.caption = element_text(hjust = 0),
@@ -185,7 +189,11 @@ plotObj <- compar_df  %>%
 plotObj
 
 
-jpeg("~/Desktop/pw.jpg", width = 11, height = 8, units = "in", res = 500)
+jpeg("~/Desktop/pw_nfb.jpg", width = 11, height = 8, units = "in", res = 500)
 plotObj
 graphics.off()
 
+for(i in 1:10){
+  Sys.sleep(3)
+  beepr::beep()
+}

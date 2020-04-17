@@ -5,7 +5,7 @@
 #
 # Date: April 15 2020
 #########################################################################
-devtools::install_github("mrc-ide/drjacoby", ref = "develop")
+#devtools::install_github("mrc-ide/drjacoby", ref = "develop")
 library(drjacoby)
 library(tidyverse)
 source("R/sim_expd_timeseries.R")
@@ -18,18 +18,22 @@ casefat <- data.frame(age = c("1:60", "60:100"),
                       cfr = c(0.1, 0.5),
                       pa = 1/2)
 
-dat <- sim_infxn_2_death_timeseries(
+# define key parameters
+I0 <- 2
+curr_day <- 100
+
+# simulate data
+simdat <- sim_infxn_2_death_timeseries(
   casefat = casefat,
-  I0 = 2,
+  I0 = I0,
   r = 0.14,
   m_od = 18.8,
   s_od = 0.45,
-  min_day = 1,
-  curr_day = 50
+  curr_day = curr_day
 )
 
 # split in to days
-dat <- split(dat, factor(dat$obs_day))
+dat <- split(simdat, factor(simdat$obs_day))
 dat <- purrr::map(dat, "day_deaths")
 
 # list for Dr. Jacoby
@@ -41,32 +45,54 @@ data_list <- list(obs_deaths = dat)
 source("R/R_likelihood_timeseries.R")
 
 # params
-df_params <- data.frame(name = c("r1", "ma2"),
-                        min = c(0, 0),
-                        max = c(100, 1),
-                        init = c(2, 0.1))
+df_params <- rbind.data.frame(list("I0", 0, 4, 2),  # fixed parameter
+                              list("r1", 0, 10, 2),
+                              list("ma2", 0, 1, 0.1))
+
+names(df_params) <- c("name", "min", "max", "init")
+
+# create list of misc elements to pass to MCMC
+misc_list <- list(min_day = min(simdat$obs_day),
+                  curr_day = curr_day,
+                  pa = casefat$pa)
+
+# define MCMC parameters
+burnin <- 1e3
+samples <- 1e3
+chains <- 3
+
 # MCMC
-# Note the misc list, where current day and pa must be consistent with your simulation
 r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
-                       misc = list(min_day = 1, curr_day = 50, pa = c(0.5, 0.5)),
+                       misc = misc_list,
                        loglike = r_tod_log_like_timeseries,
                        logprior = r_tod_log_prior_timeseries,
-                       burnin = 1e3,
-                       samples = 1e3,
-                       chains = 3,
-                       pb_markdown = TRUE)
-
+                       burnin = burnin,
+                       samples = samples,
+                       chains = chains,
+                       rungs = 20,
+                       pb_markdown = FALSE)
 
 
 # append Dr. Jacoby output with reparameterized posteriors
 r_mcmc_out$output$ma1 <- r_mcmc_out$output$ma2 * r_mcmc_out$output$r1
 
 
+
+# parameter plots
+drjacoby::plot_contour(r_mcmc_out, "ma1", "I0")
+drjacoby::plot_contour(r_mcmc_out, "ma2", "I0")
 plot_par(r_mcmc_out, "ma1")
 plot_par(r_mcmc_out, "ma2")
+plot_par(r_mcmc_out, "I0")
+plot_mc_acceptance(r_mcmc_out)
 
 
+
+for(i in 1:10){
+  Sys.sleep(3)
+  beepr::beep()
+}
 
 
 # plots
