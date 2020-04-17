@@ -1,4 +1,7 @@
 # configuration for alignment pipeline
-manifest: /proj/ideel/meshnick/users/NickB/Projects/CurveAware/ignore/deploy/cluster_deploy/paramset
-outdir: /pine/scr/n/f/nfb/Projects/Space_the_Final_Miptier/clust_inbd_results/
-paramdir: /proj/ideel/meshnick/users/NickB/Projects/Space_the_Final_Miptier/data/derived_data/clst_inbreeding_dat/paramset/
+#manifest: /proj/ideel/meshnick/users/NickB/Projects/CurveAware/ignore/deploy/cluster_deploy/paramset/snake_map.txt
+#outdir: /pine/scr/n/f/nfb/Projects/CurveAware/mcmc_results/
+#paramdir: /proj/ideel/meshnick/users/NickB/Projects/CurveAware/ignore/deploy/cluster_deploy/paramset/
+manifest: /Users/nickbrazeau/Documents/GitHub/CurveAware/ignore/deploy/cluster_deploy/paramset/snake_map.txt
+outdir: /Users/nickbrazeau/Documents/GitHub/CurveAware/mcmc_results/
+paramdir: /Users/nickbrazeau/Documents/GitHub/CurveAware/ignore/deploy/cluster_deploy/paramset/

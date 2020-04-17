@@ -12,7 +12,7 @@
 # Data files I'm generating
 data/
 sandbox/
-
+paramset/
 
 # RStudio files
 .Rproj.user/

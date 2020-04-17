@@ -1,7 +1,4 @@
 #! /usr/bin/env python3
-"""
-Master script for running MVN RF
-"""
 
 from __future__ import print_function
 
@@ -25,25 +22,25 @@ def load_run_metadata(f):
 
 ## read run manifest and neccessary supports
 parampath = load_run_metadata(config["manifest"])
-clst_inb_paramDIR = config["paramdir"]
-clst_inb_outDIR = config["outdir"]
+paramDIR = config["paramdir"]
+outDIR = config["outdir"]
 
 final_target = []
 for i in parampath:
-	final_target.append( os.path.join(clst_inb_outDIR, "{}.RDS".format(i)) )
+	final_target.append( os.path.join(outDIR, "{}.rds".format(i)) )
 
 
 rule all:
 	input: final_target
 
 rule params_out:
-	input: clst_inb_paramDIR + "{params}.RDS"
-	output: clst_inb_outDIR + "{params}.RDS",
-	log: clst_inb_outDIR + "{params}_log.Rout",
+	input: paramDIR + "{params}.rds"
+	output: outDIR + "{params}.rds",
+	log: outDIR + "{params}_log.Rout",
 	shell:
 		r"""
 		Rscript --max-ppsize=500000 --vanilla \
-			R/clst_inb_coeff_run.R \
+			wrap_mcmc_cluster_runs.R \
 			--mastermap {input} \
 			-O {output} \
 			>& {log}

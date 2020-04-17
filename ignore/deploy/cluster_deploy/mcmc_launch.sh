@@ -1,18 +1,17 @@
 #! /bin/bash
-
-ROOT=/proj/ideel/meshnick/users/NickB/Projects/Space_the_Final_Miptier/ # root directory for project (non-scratch)
-SNAKE=/proj/ideel/meshnick/users/NickB/Projects/Space_the_Final_Miptier/analysis/cluster_inbreeding
+#SNAKE=/proj/ideel/meshnick/users/NickB/Projects/CurveAware/ignore/deploy/cluster_deploy
+SNAKE=/Users/nickbrazeau/Documents/GitHub/CurveAware/ignore/deploy/cluster_deploy
 NODES=1028 # max number of cluster nodes
-WAIT=600 # lag for system
+WAIT=60 # lag for system
 
 snakemake \
-	--snakefile $SNAKE/run_snake_params.py \
+	--snakefile $SNAKE/run_snake_mcmc.py \
 	--configfile $SNAKE/config.yaml \
-	--directory $ROOT \
+	--directory $SNAKE \
 	--printshellcmds \
 	--rerun-incomplete \
 	--keep-going \
 	--latency-wait $WAIT \
 	--cluster $SNAKE/launch.py \
 	-j $NODES \
-#	--dryrun -p
+	--dryrun -p
