@@ -20,22 +20,20 @@ casefat <- data.frame(age = c("1:60", "60:100"),
 
 # define key parameters
 I0 <- 2
-min_day <- 1
-curr_day <- 50
+curr_day <- 100
 
 # simulate data
-dat <- sim_infxn_2_death_timeseries(
+simdat <- sim_infxn_2_death_timeseries(
   casefat = casefat,
   I0 = I0,
   r = 0.14,
   m_od = 18.8,
   s_od = 0.45,
-  min_day = min_day,
   curr_day = curr_day
 )
 
 # split in to days
-dat <- split(dat, factor(dat$obs_day))
+dat <- split(simdat, factor(simdat$obs_day))
 dat <- purrr::map(dat, "day_deaths")
 
 # list for Dr. Jacoby
@@ -47,21 +45,21 @@ data_list <- list(obs_deaths = dat)
 source("R/R_likelihood_timeseries.R")
 
 # params
-df_params <- rbind.data.frame(list("I0", I0, I0, I0),  # fixed parameter
-                              list("r1", 0, 100, 2),
+df_params <- rbind.data.frame(list("I0", 0, 4, 2),  # fixed parameter
+                              list("r1", 0, 10, 2),
                               list("ma2", 0, 1, 0.1))
 
 names(df_params) <- c("name", "min", "max", "init")
 
 # create list of misc elements to pass to MCMC
-misc_list <- list(min_day = min_day,
+misc_list <- list(min_day = min(simdat$obs_day),
                   curr_day = curr_day,
                   pa = casefat$pa)
 
 # define MCMC parameters
-burnin <- 1e2
-samples <- 1e2
-chains <- 1
+burnin <- 1e3
+samples <- 1e3
+chains <- 3
 
 # MCMC
 r_mcmc_out <- run_mcmc(data = data_list,
@@ -72,17 +70,29 @@ r_mcmc_out <- run_mcmc(data = data_list,
                        burnin = burnin,
                        samples = samples,
                        chains = chains,
+                       rungs = 20,
                        pb_markdown = FALSE)
 
 
 # append Dr. Jacoby output with reparameterized posteriors
 r_mcmc_out$output$ma1 <- r_mcmc_out$output$ma2 * r_mcmc_out$output$r1
 
+
+
 # parameter plots
+drjacoby::plot_contour(r_mcmc_out, "ma1", "I0")
+drjacoby::plot_contour(r_mcmc_out, "ma2", "I0")
 plot_par(r_mcmc_out, "ma1")
 plot_par(r_mcmc_out, "ma2")
+plot_par(r_mcmc_out, "I0")
+plot_mc_acceptance(r_mcmc_out)
 
 
+
+for(i in 1:10){
+  Sys.sleep(3)
+  beepr::beep()
+}
 
 
 # plots

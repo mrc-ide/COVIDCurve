@@ -26,14 +26,13 @@ r_tod_log_like_timeseries <- function(params, param_i, data, misc) {
   # ma <- sapply(scalars, function(x){x * ma9})
   # ma <- c(ma, ma9)
   
-  #ma <- c(r1*ma2, ma2)
-  ma <- c(r1, ma2)
+  ma <- c(r1*ma2, ma2)
 
   get_exp_deaths_by_day <- function(day){
     # integrate for expected incidence mapped onto onset-death time lag
     integrand <- function(t, gr = r){
-      I0 * exp(gr*t) * ( pgamma(day-t+1, shape = 1/s_od^2, scale = m_od*s_od^2) -
-                         pgamma(day-t, shape = 1/s_od^2, scale = m_od*s_od^2) )
+      I0 * exp(gr*t) * ( pgamma(day-t, shape = 1/s_od^2, scale = m_od*s_od^2) -
+                         pgamma(day-t-1, shape = 1/s_od^2, scale = m_od*s_od^2) )
     }
     integral <- integrate(integrand, lower = -Inf, upper = day)
 
@@ -46,7 +45,7 @@ r_tod_log_like_timeseries <- function(params, param_i, data, misc) {
 
   # poisson LL
   get_pois <- function(obs_death, exp_death){
-    ret <- sum(dpois(x = obs_death, lambda = exp_death, log = T))# + log(ma2)
+    ret <- sum(dpois(x = obs_death, lambda = exp_death, log = T)) 
     #ret <- ret + length(scalars) * log(ma9) # account for reparameterization -- LEGACY FULL MODEL
     return(ret)
   }
@@ -59,12 +58,9 @@ r_tod_log_like_timeseries <- function(params, param_i, data, misc) {
 #' @title Prior for Curve Aware
 r_tod_log_prior_timeseries <- function(params, param_i, misc) {
 
-  return(0)
-  
   I0 <- params["I0"]
   r1 <- params["r1"]
   ma2 <- params["ma2"]
-
 
   # LEGACY FOR FULL MODEL
   #ma9 <- params[1]
@@ -78,16 +74,22 @@ r_tod_log_prior_timeseries <- function(params, param_i, misc) {
   # r8 <- params[9]
   # I0 <- params[10]
 
-  # set up strong prior on "average" M_a*P_a
+  # # set up strong prior on "average" M_a*P_a
+  # ma1 <- r1 * ma2
+  # ma <- c(ma1, ma2)
+  # mapa <- mean( ma * misc$pa )
+  # 
+  # # priors
+  # ret <- dunif(ma2, min = 0, max = 1, log = TRUE) +
+  #        dlnorm(r1, meanlog = 0, sdlog = 5, log = TRUE) +
+  #        dunif(I0, min = 0, max = 10, log = TRUE) +
+  #        dbeta(mapa, shape1 = 425, shape2 = 1000, log = TRUE)
+  
   ma1 <- r1 * ma2
-  ma <- c(ma1, ma2)
-  mapa <- mean( ma * misc$pa )
+  ret <- dunif(I0, min = 1, max = 10, log = TRUE) +
+         dbeta(ma1, shape1 = 100, shape2 = 900, log = TRUE) +
+         dbeta(ma2, shape1 = 500, shape2 = 500, log = TRUE)
 
-  # priors
-  ret <- dunif(ma2, min = 0, max = 1, log = TRUE) +
-    dlnorm(r1, meanlog = 0, sdlog = 5, log = TRUE)
-
-#  + dlnorm(I0, meanlog = 0.69, sdlog = 0.05, log = TRUE)
 
   return(ret)
 }

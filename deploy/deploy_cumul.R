@@ -24,7 +24,7 @@ dat <- sim_infxn_2_death_cumulative(
   r = 0.14,
   m_od = 18.8,
   s_od = 0.45,
-  curr_day = 50
+  curr_day = 100
 )
 
 
@@ -37,20 +37,20 @@ data_list <- list(obs_deaths = unname(dat))
 source("R/R_likelihood_cumulative.R")
 
 # params
-df_params <- data.frame(name = c("r1", "ma2"),
-                        min = c(0, 0),
-                        max = c(100, 1),
-                        init = c(2, 0.1))
+df_params <- data.frame(name = c("r1", "ma2", "I0"),
+                        min = c(0, 0, 0),
+                        max = c(10, 1, 10),
+                        init = c(2, 0.1, 4))
 # MCMC
 # Note the misc list, where current day and pa must be consistent with your simulation
 r_mcmc_out <- run_mcmc(data = data_list,
                        df_params = df_params,
-                       misc = list(curr_day = 50, pa = c(0.5, 0.5)),
+                       misc = list(curr_day = 100, pa = c(0.5, 0.5)),
                        loglike = r_tod_log_like_cumulative,
                        logprior = r_tod_log_prior_cumulative,
                        burnin = 1e3,
                        samples = 1e3,
-                       chains = 3,
+                       GTI_pow = 2.0,
                        pb_markdown = TRUE)
 
 # append Dr. Jacoby output with reparameterized posteriors
