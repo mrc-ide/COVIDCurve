@@ -9,7 +9,8 @@ r_flat_prior <- function(params, param_i, misc) {
   # get prior
   ret <- dunif(I0, min = 1, max = 10, log = TRUE) +
          dlnorm(r1, meanlog = 0, sdlog = 5, log = TRUE) +
-         dunif(ma2, min = 0, max = 1, log = TRUE)
+         dunif(ma2, min = 0, max = 1, log = TRUE) +
+         log(ma2) # account for reparameterization
 
 
   return(ret)

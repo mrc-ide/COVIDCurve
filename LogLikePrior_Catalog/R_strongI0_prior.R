@@ -1,5 +1,5 @@
 #' @title Prior for Curve Aware
-R_strongMa_prior <- function(params, param_i, misc) {
+r_strongI0_prior <- function(params, param_i, misc) {
 
   I0 <- params["I0"]
   r1 <- params["r1"]
@@ -11,7 +11,8 @@ R_strongMa_prior <- function(params, param_i, misc) {
   # get prior
   ret <- dlnorm(I0, meanlog = 0.69, sdlog = 0.05, log = TRUE) +
     dlnorm(r1, meanlog = 0, sdlog = 5, log = TRUE) +
-    dunif(ma2, min = 0, max = 1, log = TRUE)
+    dunif(ma2, min = 0, max = 1, log = TRUE) +
+    log(ma2) # account for reparameterization
 
   return(ret)
 }

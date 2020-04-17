@@ -32,7 +32,6 @@ r_timeseries_likelihood <- function(params, param_i, data, misc) {
   # poisson LL
   get_pois <- function(obs_death, exp_death){
     ret <- sum(dpois(x = obs_death, lambda = exp_death, log = T))
-    #ret <- ret + length(scalars) * log(ma9) # account for reparameterization -- LEGACY FULL MODEL
     return(ret)
   }
 

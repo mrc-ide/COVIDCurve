@@ -27,7 +27,6 @@ r_cumulative_likelihood <- function(params, param_i, data, misc) {
 
   # poisson LL
   ret <- sum(dpois(x = data$obs_deaths, lambda = exp.deaths, log = T))
-         + log(ma2) # account for reparameterization
   return(ret)
 
 }
