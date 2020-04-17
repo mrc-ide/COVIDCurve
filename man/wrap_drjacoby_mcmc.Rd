@@ -2,7 +2,7 @@
 % Please edit documentation in R/main.R
 \name{wrap_drjacoby_mcmc}
 \alias{wrap_drjacoby_mcmc}
-\title{}
+\title{Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby}
 \usage{
 wrap_drjacoby_mcmc(
   data,
@@ -11,6 +11,7 @@ wrap_drjacoby_mcmc(
   LogLike,
   LogPrior,
   level,
+  reparameterization,
   burnin = 1000,
   samples = 1000,
   chains = 3,
@@ -73,5 +74,5 @@ being printed to markdown files.}
 \item{silent}{whether to suppress all console output.}
 }
 \description{
-
+Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby
 }

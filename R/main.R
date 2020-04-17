@@ -1,4 +1,4 @@
-#' @title
+#' @title Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby
 #' @inheritParams drjacoby::run_mcmc
 #' @param level character; Must be either Time-Series or Cumulative
 #' @param LogLike global function;
