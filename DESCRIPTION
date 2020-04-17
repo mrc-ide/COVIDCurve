@@ -1,0 +1,28 @@
+Package: CurveAware
+Type: Package
+Title: Inferring the Infection Fatality Ratio and Initial Number Infected from Aggregate Death Data
+Version: 0.0.5
+Authors@R: as.person(c(
+    "Nick Brazeau <nbrazeau@imperial.ac.uk> [aut, cre]", 
+    "Bob Verity <r.verity@imperial.ac.uk> [aut]"
+  ))
+Description: In many settings, individual-based (i.e. "line-list") data are often unavailable or unreliable. Here we use 
+             aggregated death counts to infer the infection fatality ratio or the number of individuals infected at
+            "time zero" in the epidemic and the current day of the epidemic. Models are fit within a Bayesian framework
+            and account for the epidemic growth rate. 
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    ggplot2,
+    dplyr,
+    magrittr
+Remotes:
+  mrc-ide/drjacoby
+Suggests: 
+    knitr,
+    rmarkdown,
+    covr
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.0.2

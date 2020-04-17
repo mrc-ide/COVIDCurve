@@ -1,0 +1,7 @@
+^CurveAware\.Rproj$
+^\.Rproj\.user$
+
+# my files
+sandbox/
+ignore/
+LogLikePrior_Catalog/

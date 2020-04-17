@@ -10,13 +10,10 @@
 .RData
 
 # Data files I'm generating
-datasets/
-db/
 data/
-rdhs.json
 sandbox/
 ignore/
-results/
+
 
 # RStudio files
 .Rproj.user/
