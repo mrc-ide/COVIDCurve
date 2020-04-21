@@ -16,7 +16,7 @@ wrap_drjacoby_mcmc(
   samples = 1000,
   chains = 3,
   rungs = 1,
-  GTI_power = 3,
+  GTI_pow = 3,
   coupling_on = T,
   pb_markdown = F,
   silent = T
@@ -53,6 +53,8 @@ elements:
 
 \item{level}{character; Must be either Time-Series or Cumulative}
 
+\item{reparameterization}{boolean; Whether or not you have included scalars in your age-specific mortality bands}
+
 \item{burnin}{the number of burn-in iterations.}
 
 \item{samples}{the number of sampling iterations.}
@@ -63,6 +65,9 @@ parallel, otherwise they are run in serial.}
 
 \item{rungs}{the number of temperature rungs used in Metropolis coupling (see
 \code{coupling_on}).}
+
+\item{GTI_pow}{the power used in the generalised thermodynamic integration 
+method.}
 
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}

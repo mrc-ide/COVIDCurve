@@ -14,12 +14,16 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
-    ggplot2,
     dplyr,
-    magrittr
+    magrittr,
+    tidyr,
+    drjacoby,
+    purrr
 Remotes:
   mrc-ide/drjacoby
 Suggests: 
+    ggplot2,
+    cowplot,
     knitr,
     rmarkdown,
     covr

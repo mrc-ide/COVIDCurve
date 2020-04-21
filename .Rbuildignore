@@ -5,3 +5,6 @@
 sandbox/
 ignore/
 LogLikePrior_Catalog/
+^\.travis\.yml$
+^codecov\.yml$
+^LICENSE\.md$

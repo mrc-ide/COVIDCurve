@@ -10,9 +10,8 @@
 .RData
 
 # Data files I'm generating
-data/
 sandbox/
-paramset/
+ignore/
 
 # RStudio files
 .Rproj.user/
@@ -33,3 +32,4 @@ paramset/
 
 # MAC files
 .DS_Store
+inst/doc
