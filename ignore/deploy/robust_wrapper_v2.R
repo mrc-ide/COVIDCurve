@@ -53,6 +53,8 @@ run_sims <- function(cfra, cfrb, seed){
     LogPrior = r_flat_prior,
     burnin = 1e3,
     samples = 1e3,
+    rungs = 10,
+    GTI_power = 2,
     pb_markdown = TRUE
   )
 
@@ -96,11 +98,23 @@ robustgrid$ret <- purrr::pmap(robustgrid, run_sims)
 dir.create("temp/results", recursive = T)
 saveRDS(robustgrid, file = "temp/results/ret.rds")
 
-# nick <- robustgrid %>%
-#   dplyr::select(c("cfra", "cfrb", "summ")) %>%
-#   tidyr::unnest(cols = "summ") %>%
-#   dplyr::select(-c("trueest"))
 #
+# robustgrid <- readRDS("~/Desktop/grid_mcmc_jacoby/ret.rds")
+# mod <- robustgrid$ret[[1]]
+# robustgrid$summarydf <- purrr::map(robustgrid$ret, "summarydf")
+#
+# robustgrid.summary <- robustgrid %>%
+#   dplyr::select(-c("seed", "ret")) %>%
+#   tidyr::unnest(cols = summarydf) %>%
+#   dplyr::mutate(
+#     trueest = ifelse(param == "ma1", cfra, ifelse(param == "ma2", cfrb, NA)),
+#     CI_cont_truth = ifelse(min <= trueest & trueest <= max, T, F),
+#     est_prec = ifelse(CI_cont_truth, max - min, NA)
+#     )
+#
+#
+# robustgrid <- robustgrid %>%
+#   tidyr::unnest(cols = ret)
 #
 #
 # plotObj <- compar_df  %>%
@@ -126,4 +140,4 @@ saveRDS(robustgrid, file = "temp/results/ret.rds")
 # jpeg("~/Desktop/pw.jpg", width = 11, height = 8, units = "in", res = 500)
 # plotObj
 # graphics.off()
-
+#
