@@ -8,3 +8,6 @@ LogLikePrior_Catalog/
 ^\.travis\.yml$
 ^codecov\.yml$
 ^LICENSE\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
