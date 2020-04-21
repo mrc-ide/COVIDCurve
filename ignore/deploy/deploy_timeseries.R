@@ -49,6 +49,8 @@ r_mcmc_out <- CurveAware::wrap_drjacoby_mcmc(
   LogPrior = r_strongI0_prior,
   burnin = 1e3,
   samples = 1e3,
+  rungs = 25,
+  GTI_power = 2.0,
   chains = 3,
   pb_markdown = TRUE
 )

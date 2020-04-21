@@ -68,9 +68,9 @@ switch(params["lvl"],
 
 
 switch(params["prior"],
-       "flat"={
-         source("LogLikePrior_Catalog/R_flat_prior.R")
-         lp <- r_flat_prior
+       "stronger"={
+         source("LogLikePrior_Catalog/R_strongerI0_prior.R")
+         lp <- r_strongerI0_prior
        },
        "intermed"={
          source("LogLikePrior_Catalog/R_intermedI0_prior.R")
@@ -99,9 +99,9 @@ switch(params["lvl"],
          )
          # dr jacoby
          df_params <- data.frame(name = c("r1", "ma2", "I0"),
-                                 min = c(0, 0, 2),
+                                 min = c(0, 0, 0),
                                  init = c(2, 0.1, 2),
-                                 max = c(10, 1, 2))
+                                 max = c(10, 1, 10))
          misclist <- list(curr_day = unname(as.numeric(params["curr_day"])), pa = c(0.5, 0.5))
 
          r_mcmc_out <- CurveAware::wrap_drjacoby_mcmc(
