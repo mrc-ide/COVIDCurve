@@ -3,7 +3,7 @@
 
 # my files
 sandbox/
-ignore/
+R_ignore/
 LogLikePrior_Catalog/
 ^\.travis\.yml$
 ^codecov\.yml$
@@ -11,3 +11,5 @@ LogLikePrior_Catalog/
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^doc$
+^Meta$

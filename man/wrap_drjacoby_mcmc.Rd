@@ -11,7 +11,6 @@ wrap_drjacoby_mcmc(
   LogLike,
   LogPrior,
   level,
-  reparameterization,
   burnin = 1000,
   samples = 1000,
   chains = 3,
@@ -52,8 +51,6 @@ elements:
 \item{LogPrior}{global function;}
 
 \item{level}{character; Must be either Time-Series or Cumulative}
-
-\item{reparameterization}{boolean; Whether or not you have included scalars in your age-specific mortality bands}
 
 \item{burnin}{the number of burn-in iterations.}
 

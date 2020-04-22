@@ -11,7 +11,7 @@
 
 # Data files I'm generating
 sandbox/
-ignore/
+
 
 # RStudio files
 .Rproj.user/
@@ -33,3 +33,5 @@ ignore/
 # MAC files
 .DS_Store
 inst/doc
+doc
+Meta

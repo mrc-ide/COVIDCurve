@@ -1,0 +1,19 @@
+---
+title: "Updating the Likelihood and Prior for Your Project"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Updating the Likelihood and Prior for Your Project}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(CurveAware)
+```

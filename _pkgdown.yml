@@ -1,1 +1,27 @@
-destination: docs
+title: CurveAware
+template:
+  params:
+    bootswatch: flatly
+
+navbar:
+  title: "CurveAware"
+  left:
+    - text: "Vignettes"
+      menu:
+        - text: "Installation"
+          href: articles/installation.html
+        - text: "Inferring I0"
+          href: articles/inferringI0.html
+        - text: "Inferring Age-Specific IFRs"
+          href: articles/inferringma.html
+        - text: "Reparameterization of Age-Specific IFRs"
+          href: articles/reparam_ma.html
+        - text: "Updating the Likelihood and Prior for Your Project"
+          href: articles/updateLL.html
+        - text: "Time-Series Extension"
+          href: articles/timeseries.html
+    - text: "Functions"
+      href: reference/index.html
+  right:
+   - icon: fa-github
+     href: https://github.com/nickbrazeau/CurveAware

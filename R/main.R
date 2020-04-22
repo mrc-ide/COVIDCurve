@@ -1,5 +1,4 @@
 #' @title Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby
-#' @inheritParams drjacoby::run_mcmc
 #' @param level character; Must be either Time-Series or Cumulative
 #' @param LogLike global function;
 #' @param LogPrior global function;
@@ -10,12 +9,12 @@
 #'     \item \code{curr_day} - the presumed minimum day of the epidemic.
 #'     \item \code{pa} - A vector of the attack rates for the given age bands
 #'   }
-#' @param reparameterization boolean; Whether or not you have included scalars in your age-specific mortality bands
+#' @inheritParams drjacoby::run_mcmc
+#'
 #' @export
 
 
-wrap_drjacoby_mcmc <- function(data, df_params, misc, LogLike, LogPrior,
-                               level, reparameterization,
+wrap_drjacoby_mcmc <- function(data, df_params, misc, LogLike, LogPrior, level,
                                burnin = 1e3, samples = 1e3, chains = 3,
                                rungs = 1, GTI_pow = 3, coupling_on = T,
                                pb_markdown = F, silent = T) {
@@ -58,14 +57,6 @@ wrap_drjacoby_mcmc <- function(data, df_params, misc, LogLike, LogPrior,
                                 pb_markdown = pb_markdown,
                                 silent = silent
                                 )
-
-  #..............................................................
-  # Lift over reparameterization
-  #..............................................................
-  if (reparameterization) {
-    #TODO this needs to do a grep and figure out which are reparam and which aren't
-    mcmcout$output$ma1 <- mcmcout$output$r1 * mcmcout$output$ma2
-  }
 
   return(mcmcout)
 }

@@ -11,11 +11,11 @@ r_cumulative_likelihood <- function(params, param_i, data, misc) {
 
   # free params
   I0 <- params["I0"]
-  r1 <- params["r1"]
+  ma1 <- params["ma1"]
   ma2 <- params["ma2"]
 
   # get age specific mortality
-  ma <- c(r1*ma2, ma2)
+  ma <- c(ma1, ma2)
 
   # integrate for expected incidence mapped onto onset-death time lag
   integrand <- function(t, gr = r){ return(
