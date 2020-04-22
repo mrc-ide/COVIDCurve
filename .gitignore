@@ -1,37 +1,16 @@
-#snakemake
-.snakemake/
+# MAC files
+.DS_Store
 
 # History files
 .Rhistory
 .Rapp.history
 .Rproj.user
-
-# Session Data files
 .RData
 
 # Data files I'm generating
 sandbox/
 
-
-# RStudio files
-.Rproj.user/
-
-# knitr and R markdown default cache directories
-/*_cache/
-/cache/
-*png
-
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
-
-# knitr outputs
-*.pdf
-*.html
-*.docx
-
-# MAC files
-.DS_Store
+# pkg
 inst/doc
 doc
 Meta
