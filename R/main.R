@@ -2,7 +2,7 @@
 #' @param level character; Must be either Time-Series or Cumulative
 #' @param LogLike global function;
 #' @param LogPrior global function;
-#' @param misc list; Required list object that must contain the following items:
+#' @param misclist list; Required list object that must contain the following items:
 #'   elements:
 #'   \itemize{
 #'     \item \code{min_day} - the presumed minimum day of the epidemic (required only for time-series likelihoods)
@@ -14,7 +14,7 @@
 #' @export
 
 
-wrap_drjacoby_mcmc <- function(data, df_params, misc, LogLike, LogPrior, level,
+wrap_drjacoby_mcmc <- function(data, df_params, misclist, LogLike, LogPrior, level,
                                burnin = 1e3, samples = 1e3, chains = 3,
                                rungs = 1, GTI_pow = 3, coupling_on = T,
                                pb_markdown = F, silent = T) {
@@ -45,7 +45,7 @@ wrap_drjacoby_mcmc <- function(data, df_params, misc, LogLike, LogPrior, level,
 
   mcmcout <- drjacoby::run_mcmc(data = data_list,
                                 df_params = df_params,
-                                misc = misc,
+                                misc = misclist,
                                 loglike = LogLike,
                                 logprior = LogPrior,
                                 burnin = burnin,

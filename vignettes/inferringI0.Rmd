@@ -129,7 +129,7 @@ r_mcmc_out <- CurveAware::wrap_drjacoby_mcmc(
                                     data = simdat,
                                     level = "Cumulative",
                                     df_params = df_params,
-                                    misc = misclist,
+                                    misclist = misclist,
                                     LogLike = r_cumulative_likelihood,
                                     LogPrior = r_strongMa_prior,
                                     burnin = 1e3,

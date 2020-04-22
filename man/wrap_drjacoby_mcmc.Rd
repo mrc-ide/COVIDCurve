@@ -7,7 +7,7 @@
 wrap_drjacoby_mcmc(
   data,
   df_params,
-  misc,
+  misclist,
   LogLike,
   LogPrior,
   level,
@@ -38,7 +38,7 @@ elements:
   \item \code{init} - the initial value of the parameter.
 }}
 
-\item{misc}{list; Required list object that must contain the following items:
+\item{misclist}{list; Required list object that must contain the following items:
 elements:
 \itemize{
 \item \code{min_day} - the presumed minimum day of the epidemic (required only for time-series likelihoods)
