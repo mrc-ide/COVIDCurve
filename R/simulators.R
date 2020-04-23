@@ -1,4 +1,4 @@
-#' @title Simulate Cumulative Expected Deaths for a Given Day
+#' @title Simulate Cumulative Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
 #' @param I0 integer; number of infected individuals at the beginning of the epidemic
 #' @param r double; the expontential growth rate of the epidemic
 #' @param m_od double; the mean of the onset of infection to death (gamma distribution)
@@ -8,7 +8,7 @@
 #' @importFrom magrittr %>%
 #' @export
 
-sim_infxn_2_death_cumulative <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
+ExpGrowth_CumulativeDeath_sim <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
 
   # get expected number of infections up to today
   total_expected_inf <- casefat$pa * I0/r * exp(r*curr_day)
@@ -39,12 +39,12 @@ sim_infxn_2_death_cumulative <- function(casefat, I0, r, curr_day, m_od = 18.8, 
 }
 
 
-#' @title Simulate Expected Deaths in a Time-Series
-#' @inheritParams sim_infxn_2_death_cumulative
+#' @title Simulate Expected Deaths in a Time-Series Assuming Exponential Growth of the Incidence Curve
+#' @inheritParams ExpGrowth_CumulativeDeath_sim
 #' @importFrom magrittr %>%
 #' @export
 
-sim_infxn_2_death_timeseries <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
+ExpGrowth_TimeSeriesDeath_sim <- function(casefat, I0, r, curr_day, m_od = 18.8, s_od = 0.45){
 
   # get expected number of infections up to today
   total_expected_inf <- casefat$pa * I0/r * exp(r*curr_day)

@@ -1,6 +1,6 @@
-Package: CurveAware
+Package: COVIDCurve
 Type: Package
-Title: Inferring the Infection Fatality Ratio and Initial Number Infected from Aggregate Death Data
+Title: Inferring the Infection Fatality Ratio and Initial Number Infected from COVID Aggregate Death Data
 Version: 0.0.5
 Authors@R: as.person(c(
     "Nick Brazeau <nbrazeau@imperial.ac.uk> [aut, cre]", 

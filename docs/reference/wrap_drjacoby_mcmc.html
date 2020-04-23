@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby — wrap_drjacoby_mcmc • CurveAware</title>
+<title>Wrap the Metropolic-Coupled MCMC Framework from Dr. Jacoby — wrap_drjacoby_mcmc • COVIDCurve</title>
 
 
 <!-- jquery -->
@@ -68,7 +68,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="../index.html">CurveAware</a>
+        <a class="navbar-link" href="../index.html">COVIDCurve</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.5</span>
       </span>
     </div>
@@ -86,19 +86,10 @@
       <a href="../articles/installation.html">Installation</a>
     </li>
     <li>
-      <a href="../articles/inferringI0.html">Inferring I0</a>
+      <a href="../articles/ExpGrowth_CumulativeDeath.html">Exponential Growth, Cumulative Death Inference</a>
     </li>
     <li>
-      <a href="../articles/inferringma.html">Inferring Age-Specific IFRs</a>
-    </li>
-    <li>
-      <a href="../articles/reparam_ma.html">Reparameterization of Age-Specific IFRs</a>
-    </li>
-    <li>
-      <a href="../articles/updateLL.html">Updating the Likelihood and Prior for Your Project</a>
-    </li>
-    <li>
-      <a href="../articles/timeseries.html">Time-Series Extension</a>
+      <a href="../articles/ExpGrowth_TimeSeriesDeath.html">Exponential Growth, Time-Series Death Inference</a>
     </li>
   </ul>
 </li>
@@ -108,7 +99,7 @@
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/nickbrazeau/CurveAware">
+  <a href="https://github.com/nickbrazeau/COVIDCurve">
     <span class="fa fa-github"></span>
      
   </a>
@@ -138,7 +129,7 @@
     <pre class="usage"><span class='fu'>wrap_drjacoby_mcmc</span>(
   <span class='no'>data</span>,
   <span class='no'>df_params</span>,
-  <span class='no'>misc</span>,
+  <span class='no'>misclist</span>,
   <span class='no'>LogLike</span>,
   <span class='no'>LogPrior</span>,
   <span class='no'>level</span>,
@@ -175,7 +166,7 @@ elements:</p><ul>
 </ul></td>
     </tr>
     <tr>
-      <th>misc</th>
+      <th>misclist</th>
       <td><p>list; Required list object that must contain the following items:
 elements:</p><ul>
 <li><p><code>min_day</code> - the presumed minimum day of the epidemic (required only for time-series likelihoods)</p></li>

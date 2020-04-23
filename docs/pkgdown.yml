@@ -1,11 +1,5 @@
 pandoc: 2.9.2.1
 pkgdown: 1.4.1
 pkgdown_sha: ~
-articles:
-  inferringI0: inferringI0.html
-  inferringma: inferringma.html
-  installation: installation.html
-  reparam_ma: reparam_ma.html
-  timeseries: timeseries.html
-  updateLL: updateLL.html
+articles: []
 

@@ -1,27 +1,21 @@
-title: CurveAware
+title: COVIDCurve
 template:
   params:
     bootswatch: flatly
 
 navbar:
-  title: "CurveAware"
+  title: "COVIDCurve"
   left:
     - text: "Vignettes"
       menu:
         - text: "Installation"
           href: articles/installation.html
-        - text: "Inferring I0"
-          href: articles/inferringI0.html
-        - text: "Inferring Age-Specific IFRs"
-          href: articles/inferringma.html
-        - text: "Reparameterization of Age-Specific IFRs"
-          href: articles/reparam_ma.html
-        - text: "Updating the Likelihood and Prior for Your Project"
-          href: articles/updateLL.html
-        - text: "Time-Series Extension"
-          href: articles/timeseries.html
+        - text: "Exponential Growth, Cumulative Death Inference"
+          href: articles/ExpGrowth_CumulativeDeath.html
+        - text: "Exponential Growth, Time-Series Death Inference"
+          href: articles/ExpGrowth_TimeSeriesDeath.html
     - text: "Functions"
       href: reference/index.html
   right:
    - icon: fa-github
-     href: https://github.com/nickbrazeau/CurveAware
+     href: https://github.com/nickbrazeau/COVIDCurve

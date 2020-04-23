@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Inferring the Infection Fatality Ratio and Initial Number Infected from Aggregate Death Data • CurveAware</title>
+<title>Inferring the Infection Fatality Ratio and Initial Number Infected from COVID Aggregate Death Data • COVIDCurve</title>
 <!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script><!-- Bootstrap --><link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/3.3.7/flatly/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha256-U5ZEeKfGNOja007MMD3YBI0A3OSZOQbeG6z2f2Y0hu8=" crossorigin="anonymous"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.7.1/css/all.min.css" integrity="sha256-nAmazAk6vS34Xqo0BSrTb+abbtFlgsFK7NKSi6o7Y78=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.7.1/css/v4-shims.min.css" integrity="sha256-6qHlizsOWFskGlwVOKuns+D1nB6ssZrHQrNj1wGplHc=" crossorigin="anonymous">
 <!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js" integrity="sha256-FiZwavyI2V6+EXO1U+xzLG3IKldpiTFf3153ea9zikQ=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.9.4/headroom.min.js" integrity="sha256-DJFC1kqIhelURkuza0AvYal5RxMtpzLjFhsnVIeuk+U=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.9.4/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
-<script src="pkgdown.js"></script><meta property="og:title" content="Inferring the Infection Fatality Ratio and Initial Number Infected from Aggregate Death Data">
+<script src="pkgdown.js"></script><meta property="og:title" content="Inferring the Infection Fatality Ratio and Initial Number Infected from COVID Aggregate Death Data">
 <meta property="og:description" content='In many settings, individual-based (i.e. "line-list") data are often unavailable or unreliable. Here we use 
              aggregated death counts to infer the infection fatality ratio or the number of individuals infected at
             "time zero" in the epidemic and the current day of the epidemic. Models are fit within a Bayesian framework
@@ -33,7 +33,7 @@
         <span class="icon-bar"></span>
       </button>
       <span class="navbar-brand">
-        <a class="navbar-link" href="index.html">CurveAware</a>
+        <a class="navbar-link" href="index.html">COVIDCurve</a>
         <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.5</span>
       </span>
     </div>
@@ -51,19 +51,10 @@
       <a href="articles/installation.html">Installation</a>
     </li>
     <li>
-      <a href="articles/inferringI0.html">Inferring I0</a>
+      <a href="articles/ExpGrowth_CumulativeDeath.html">Exponential Growth, Cumulative Death Inference</a>
     </li>
     <li>
-      <a href="articles/inferringma.html">Inferring Age-Specific IFRs</a>
-    </li>
-    <li>
-      <a href="articles/reparam_ma.html">Reparameterization of Age-Specific IFRs</a>
-    </li>
-    <li>
-      <a href="articles/updateLL.html">Updating the Likelihood and Prior for Your Project</a>
-    </li>
-    <li>
-      <a href="articles/timeseries.html">Time-Series Extension</a>
+      <a href="articles/ExpGrowth_TimeSeriesDeath.html">Exponential Growth, Time-Series Death Inference</a>
     </li>
   </ul>
 </li>
@@ -73,7 +64,7 @@
       </ul>
 <ul class="nav navbar-nav navbar-right">
 <li>
-  <a href="https://github.com/nickbrazeau/CurveAware">
+  <a href="https://github.com/nickbrazeau/COVIDCurve">
     <span class="fa fa-github"></span>
      
   </a>
@@ -90,19 +81,19 @@
 
       </header><div class="row">
   <div class="contents col-md-9">
-<div id="curve-aware" class="section level1">
+<div id="covidcurve" class="section level1">
 <div class="page-header"><h1 class="hasAnchor">
-<a href="#curve-aware" class="anchor"></a>Curve Aware</h1></div>
-<p><!-- badges: start --> <a href="https://travis-ci.org/nickbrazeau/CurveAware"><img src="https://travis-ci.org/nickbrazeau/CurveAware.svg?branch=master" alt="Travis build status"></a> <a href="https://codecov.io/gh/nickbrazeau/CurveAware?branch=master"><img src="https://codecov.io/gh/nickbrazeau/CurveAware/branch/master/graph/badge.svg" alt="Codecov test coverage"></a><br><!-- badges: end --><br></p>
+<a href="#covidcurve" class="anchor"></a>COVIDCurve</h1></div>
+<p><!-- badges: start --> <a href="https://travis-ci.org/nickbrazeau/COVIDCurve"><img src="https://travis-ci.org/nickbrazeau/COVIDCurve.svg?branch=master" alt="Travis build status"></a> <a href="https://codecov.io/gh/nickbrazeau/COVIDCurve?branch=master"><img src="https://codecov.io/gh/nickbrazeau/COVIDCurve/branch/master/graph/badge.svg" alt="Codecov test coverage"></a><br><!-- badges: end --><br></p>
 <div id="introduction" class="section level2">
 <h2 class="hasAnchor">
 <a href="#introduction" class="anchor"></a>Introduction</h2>
 <p>The purpose of this “package” is to provide a framework to fit age-specific infection fatality rates (IFRs) or the initial number of individuals infected (<em>I0</em>) in an epidemic under several key assumptions (see below). We fit our model using Metropolis-Coupled MCMC with the <a href="https://mrc-ide.github.io/drjacoby/"><code>drjacoby</code></a> package (so much so that this “package” is more appropriately called a wrapper of <code>drjacoby</code>).</p>
-<div id="overview-of-the-curveaware-model" class="section level3">
+<div id="overview-of-the-covidcurve-model" class="section level3">
 <h3 class="hasAnchor">
-<a href="#overview-of-the-curveaware-model" class="anchor"></a>Overview of the <code>CurveAware</code> Model</h3>
+<a href="#overview-of-the-covidcurve-model" class="anchor"></a>Overview of the <code>COVIDCurve</code> Model</h3>
 <p>We assume that the only data avaialble is the cumulative number of deaths on a given day during an epidemic. In addition, we assume that the epidemic is growing exponentially (<em>i.e.</em> saturation of the fraction susceptible has not been reached). We then “cast” our incidence curve on to delay of disease-onset to death curve that we assume is gamma distributed.</p>
-<p><br><img src="https://raw.githubusercontent.com/nickbrazeau/CurveAware/master/R_ignore/images/curve_example.png" height="200px" width="300px" align="center"><br></p>
+<p><br><img src="https://raw.githubusercontent.com/nickbrazeau/COVIDCurve/master/R_ignore/images/curve_example.png" height="200px" width="300px" align="center"><br></p>
 <p>As a result, the expected number of deaths on a given day is a function of the total number of individuals infected on that day accounting for the offset of time infection to (potential) death.</p>
 <p>Given that there are two (joint) features to this function, one can either put a strong prior on the: (1) IFR and infer the <em>I0</em> (and the “exponential curve” of the epidemic); or (2) <em>I0</em> and infer the IFR.</p>
 </div>
