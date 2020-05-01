@@ -9,6 +9,7 @@
 
 # Data files I'm generating
 sandbox/
+old/
 
 # pkg
 inst/doc

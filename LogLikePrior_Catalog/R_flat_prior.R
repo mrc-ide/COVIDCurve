@@ -1,21 +1,26 @@
-#' @title Prior for Curve Aware
-r_flat_prior <- function(params, param_i, misc) {
+# define cpp logprior function
+flat_prior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) {
 
-  # free params
-  I0 <- params["I0"]
-  ma1 <- params["ma1"]
-  ma2 <- params["ma2"]
+  // extract parameters
+  double ma2 = params[\"ma2\"];
+  double r1 = params[\"r1\"];
+  double y1 = params[\"y1\"];
+  double y2 = params[\"y2\"];
+  double y3 = params[\"y3\"];
 
-  # get prior
-  ret <- dunif(I0, min = 1, max = 10, log = TRUE) +
-         dunif(ma1, min = 0, max = 1, log = TRUE) +
-         dunif(ma2, min = 0, max = 1, log = TRUE)
+  double ret = R::dunif(ma2, 0.0, 1.0, true ) +
+               R::dunif(r1, 0.0, 1.0, true ) +
+               R::dunif(y1, 0.0, 25.0, true ) +
+               R::dunif(y2, 0.0, 25.0, true ) +
+               R::dunif(y3, 0.0, 5.0, true );
 
+  // catch underflow
+  if (!std::isfinite(ret)) {
+    const double OVERFLO_DOUBLE = DBL_MAX/100.0;
+    ret = -OVERFLO_DOUBLE;
+  }
 
-  return(ret)
-}
-
-
-
-
+  // return as SEXP
+  return Rcpp::wrap(ret);
+}"
 
