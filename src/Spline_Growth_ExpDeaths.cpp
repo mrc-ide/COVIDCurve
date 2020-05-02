@@ -27,10 +27,14 @@ Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double y1 = params["y1"];
   double y2 = params["y2"];
   double y3 = params["y3"];
+  double y4 = params["y4"];
+  double y5 = params["y5"];
   std::vector<double> node_y(node_x.size());
   node_y[0] = y1;
   node_y[1] = y2;
   node_y[2] = y3;
+  node_y[3] = y4;
+  node_y[4] = y5;
 
   // spline curve of infections
   int n_node = node_y.size();
@@ -62,7 +66,7 @@ Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   for (int i = 0; i < infxn_spline.size(); i++) {
     for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
       int delta = j - i - 1;
-      auc[i] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
+      auc[j-1] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
     }
   }
 

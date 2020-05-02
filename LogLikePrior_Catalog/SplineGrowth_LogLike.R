@@ -1,6 +1,6 @@
 SplineGrowth_LogLik <- "SEXP loglike_cumul(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
-  // extract inputs
+    // extract inputs
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]);
   bool level = misc[\"level\"];
@@ -21,10 +21,16 @@ SplineGrowth_LogLik <- "SEXP loglike_cumul(Rcpp::NumericVector params, int param
   double y1 = params[\"y1\"];
   double y2 = params[\"y2\"];
   double y3 = params[\"y3\"];
+  double y4 = params[\"y4\"];
+  double y5 = params[\"y5\"];
+  double y6 = params[\"y6\"];
   std::vector<double> node_y(node_x.size());
   node_y[0] = y1;
   node_y[1] = y2;
   node_y[2] = y3;
+  node_y[3] = y4;
+  node_y[4] = y5;
+  node_y[5] = y6;
 
   // spline curve of infections
   int n_node = node_y.size();
@@ -53,10 +59,10 @@ SplineGrowth_LogLik <- "SEXP loglike_cumul(Rcpp::NumericVector params, int param
 
   // loop through days and TOD integral
   std::vector<double>auc(infxn_spline.size());
-  for (int i = 0; i < infxn_spline.size(); i++) {
-    for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
+  for (int i = 0; i < infxn_spline.size(); i++) { // NB i is little t
+    for (int j = i+1; j < (infxn_spline.size() + 1); j++) { // NB is big T
       int delta = j - i - 1;
-      auc[i] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
+      auc[j-1] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
     }
   }
 
