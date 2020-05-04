@@ -5,9 +5,9 @@
 
 using namespace Rcpp;
 
-// SplineGrowth_loglike
-Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
-RcppExport SEXP _COVIDCurve_SplineGrowth_loglike(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
+// Linear_SplineGrowth_loglike
+Rcpp::List Linear_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
+RcppExport SEXP _COVIDCurve_Linear_SplineGrowth_loglike(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -15,13 +15,28 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type param_i(param_iSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type misc(miscSEXP);
-    rcpp_result_gen = Rcpp::wrap(SplineGrowth_loglike(params, param_i, data, misc));
+    rcpp_result_gen = Rcpp::wrap(Linear_SplineGrowth_loglike(params, param_i, data, misc));
+    return rcpp_result_gen;
+END_RCPP
+}
+// NatCubic_SplineGrowth_loglike
+Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
+RcppExport SEXP _COVIDCurve_NatCubic_SplineGrowth_loglike(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type params(paramsSEXP);
+    Rcpp::traits::input_parameter< int >::type param_i(param_iSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type misc(miscSEXP);
+    rcpp_result_gen = Rcpp::wrap(NatCubic_SplineGrowth_loglike(params, param_i, data, misc));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_COVIDCurve_SplineGrowth_loglike", (DL_FUNC) &_COVIDCurve_SplineGrowth_loglike, 4},
+    {"_COVIDCurve_Linear_SplineGrowth_loglike", (DL_FUNC) &_COVIDCurve_Linear_SplineGrowth_loglike, 4},
+    {"_COVIDCurve_NatCubic_SplineGrowth_loglike", (DL_FUNC) &_COVIDCurve_NatCubic_SplineGrowth_loglike, 4},
     {NULL, NULL, 0}
 };
 

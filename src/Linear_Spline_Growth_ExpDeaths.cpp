@@ -2,9 +2,9 @@
 using namespace Rcpp;
 
 //------------------------------------------------
-// Log-Likelihood for the Cumulative Exponential Growth
+// Log-Likelihood for Expected Deaths with a Linear Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List Linear_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract inputs
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
@@ -75,7 +75,7 @@ Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   if (level) { // Cumulative Calculation
 
     // extract data
-    std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
+    std::vector<double> obsd = Rcpp::as< std::vector<double> >(data["obs_deaths"]);
 
     // sum up to current day
     double aucsum = 0;
@@ -95,8 +95,8 @@ Rcpp::List SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   } else { // Time-Series Caluclation
 
     // get data in right format
-    std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-    std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(agelen));
+    std::vector<double> raw = Rcpp::as< std::vector<double> >(data["obs_deaths"]);
+    std::vector<std::vector<double>> obsd(infxn_spline.size(), std::vector<double>(agelen));
     int iter = 0;
     for (int i = 0; i < infxn_spline.size(); i++) {
       for (int j = 0; j < agelen; j++) {
