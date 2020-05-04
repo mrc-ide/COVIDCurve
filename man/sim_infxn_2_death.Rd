@@ -20,7 +20,7 @@ sim_infxn_2_death(
 \arguments{
 \item{casefat}{dataframe; column names age, cfr, and pa that correspond to age-band, case-fatality ratio, and the attack rate in given age band, respectively}
 
-\item{I0}{integer; number of infected individuals at the beginning of the epidemic}
+\item{I0}{integer; number of infected individuals at the beginning of the epidemic for exponential growth}
 
 \item{r}{double; the expontential growth rate of the epidemic}
 

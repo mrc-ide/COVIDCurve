@@ -68,7 +68,6 @@ sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
 
   casefat_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$deathcount), ]
-    datrow
     return(datrow)
   }
   death_line_list <- split(t_death.df, 1:nrow(t_death.df))
@@ -93,23 +92,12 @@ sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
 
   # out
   if (level == "Cumulative") {
-    death_line_list <- death_line_list %>%
+    death_line_list %>%
       dplyr::group_by(age) %>%
       dplyr::summarise(deaths = sum(day_deaths))
-    ret <- list(
-      death_line_list = death_line_list,
-      infxns = expected_inf.day
-    )
-    return(ret)
-
   } else {
-    death_line_list <- death_line_list %>%
+    death_line_list %>%
       dplyr::ungroup(age)
-    ret <- list(
-      death_line_list = death_line_list,
-      infxns = expected_inf.day
-    )
-    return(ret)
   }
 }
 

@@ -10,10 +10,6 @@ navbar:
       menu:
         - text: "Installation"
           href: articles/installation.html
-        - text: "Exponential Growth, Cumulative Death Inference"
-          href: articles/ExpGrowth_CumulativeDeath.html
-        - text: "Exponential Growth, Time-Series Death Inference"
-          href: articles/ExpGrowth_TimeSeriesDeath.html
     - text: "Functions"
       href: reference/index.html
   right:
