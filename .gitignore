@@ -1,0 +1,17 @@
+# MAC files
+.DS_Store
+
+# History files
+.Rhistory
+.Rapp.history
+.Rproj.user
+.RData
+
+# Data files I'm generating
+sandbox/
+old/
+
+# pkg
+inst/doc
+doc
+Meta
