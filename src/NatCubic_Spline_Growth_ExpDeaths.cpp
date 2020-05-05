@@ -6,12 +6,19 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
-  // extract inputs
+  // extract misc items
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
+  std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
 
   // extract free parameters
+  double y1 = params["y1"];
+  double y2 = params["y2"];
+  double y3 = params["y3"];
+  double y4 = params["y4"];
+  double y5 = params["y5"];
+  double y6 = params["y6"];
   double ma2 = params["ma2"];
   double r1 = params["r1"];
   double ma1 = ma2 * r1;
@@ -19,18 +26,10 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // storage items
   int agelen = pa.size();
   std::vector<double>ma(agelen);
+  std::vector<double> node_y(node_x.size());
+  // fill storage
   ma[0] = ma1;
   ma[1] = ma2;
-
-  // for spline -- note, time now controlled by knots
-  std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
-  double y1 = params["y1"];
-  double y2 = params["y2"];
-  double y3 = params["y3"];
-  double y4 = params["y4"];
-  double y5 = params["y5"];
-  double y6 = params["y6"];
-  std::vector<double> node_y(node_x.size());
   node_y[0] = y1;
   node_y[1] = y2;
   node_y[2] = y3;
@@ -38,6 +37,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   node_y[4] = y5;
   node_y[5] = y6;
 
+
+  // end liftover
   //.............................
   // natural cubic spline
   //.............................
@@ -109,10 +110,11 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // Expectation
   double loglik = 0.0;
-  if (level) { // Cumulative Calculation
+  // True is for Cumulative Calculation
+  if (level) {
 
     // extract data
-    std::vector<double> obsd = Rcpp::as< std::vector<double> >(data["obs_deaths"]);
+    std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
 
     // sum up to current day
     double aucsum = 0;
@@ -129,11 +131,11 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
       loglik += R::dpois(obsd[a], expd[a], true);
     }
 
-  } else { // Time-Series Caluclation
-
+  } else {
+  // False is for Time-Series Calculation
     // get data in right format
-    std::vector<double> raw = Rcpp::as< std::vector<double> >(data["obs_deaths"]);
-    std::vector<std::vector<double>> obsd(infxn_spline.size(), std::vector<double>(agelen));
+    std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
+    std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(agelen));
     int iter = 0;
     for (int i = 0; i < infxn_spline.size(); i++) {
       for (int j = 0; j < agelen; j++) {

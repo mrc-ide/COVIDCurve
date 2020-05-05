@@ -94,10 +94,19 @@ sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
   if (level == "Cumulative") {
     death_line_list %>%
       dplyr::group_by(age) %>%
-      dplyr::summarise(deaths = sum(day_deaths))
+      dplyr::summarise(deaths = sum(day_deaths)) %>%
+      dplyr::rename(
+        ObsDay = obs_day,
+        AgeGroup = age,
+        Deaths = deaths)
   } else {
     death_line_list %>%
-      dplyr::ungroup(age)
+      dplyr::ungroup(age) %>%
+      dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
+      dplyr::rename(
+        ObsDay = obs_day,
+        AgeGroup = age,
+        Deaths = day_deaths)
   }
 }
 
