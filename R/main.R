@@ -40,12 +40,16 @@ run_modinf <- function(modinf, reparamIFR = T,
   # Get loglike and logprior
   #..................
   if (reparamIFR) {
-    logpriorfunc <- COVIDCurve:::make_user_logprior(modinf)
-    loglikfunc <- COVIDCurve:::make_user_loglike(modinf)
+    assert_same_length(max(modinf$paramdf$init[modinf$paramdf$name %in% modinf$IFRparams]), 1,
+                       message = "One IFR-Param must be considered the max
+                                  (i.e. in your paramdf, one IFR must have highest init value
+                                  for other IFRs to be scaled towards)")
+
+    logpriorfunc <- COVIDCurve:::make_user_logprior_reparam(modinf)
+    loglikfunc <- COVIDCurve:::make_user_loglike_reparam(modinf)
 
   } else {
     logpriorfunc <- COVIDCurve:::make_user_logprior_noreparam(modinf)
-    #loglikfunc <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = 0.0; return Rcpp::wrap(ret);}"
     loglikfunc <- COVIDCurve:::make_user_loglike_noreparam(modinf)
 
   }
@@ -96,9 +100,17 @@ run_modinf <- function(modinf, reparamIFR = T,
   )
 
   if (reparamIFR) {
+    #..................
+    # account for reparam
+    #..................
+    IFRparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$IFRparams, ]
+    maxMa <- IFRparams$name[which(IFRparams$init == max(IFRparams$init))]
+    scalars <- IFRparams$name[IFRparams$name != maxMa]
 
-    # TODO scalar cols
-
+    liftovercols <- colnames(mcmcout$output) %in% scalars
+    liftovercols.list <- mcmcout$output[, liftovercols]
+    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, maxMa]})
   }
 
   return(mcmcout)
