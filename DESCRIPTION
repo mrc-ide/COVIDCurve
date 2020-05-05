@@ -19,7 +19,8 @@ Imports:
     tidyr,
     drjacoby,
     purrr,
-    Rcpp
+    Rcpp,
+    R6
 Remotes:
   mrc-ide/drjacoby
 Suggests: 

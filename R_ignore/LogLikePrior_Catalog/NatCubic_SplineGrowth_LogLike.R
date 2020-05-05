@@ -4,8 +4,15 @@ NatCubic_SplineGrowth_LogLik <- "SEXP loglike_natcub(Rcpp::NumericVector params,
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]);
   bool level = misc[\"level\"];
+  std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc[\"knots\"]);
 
   // extract free parameters
+  double y1 = params[\"y1\"];
+  double y2 = params[\"y2\"];
+  double y3 = params[\"y3\"];
+  double y4 = params[\"y4\"];
+  double y5 = params[\"y5\"];
+  double y6 = params[\"y6\"];
   double ma2 = params[\"ma2\"];
   double r1 = params[\"r1\"];
   double ma1 = ma2 * r1;
@@ -17,13 +24,6 @@ NatCubic_SplineGrowth_LogLik <- "SEXP loglike_natcub(Rcpp::NumericVector params,
   ma[1] = ma2;
 
   // for spline -- note, time now controlled by knots
-  std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc[\"knots\"]);
-  double y1 = params[\"y1\"];
-  double y2 = params[\"y2\"];
-  double y3 = params[\"y3\"];
-  double y4 = params[\"y4\"];
-  double y5 = params[\"y5\"];
-  double y6 = params[\"y6\"];
   std::vector<double> node_y(node_x.size());
   node_y[0] = y1;
   node_y[1] = y2;
