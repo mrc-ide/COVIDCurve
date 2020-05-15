@@ -176,14 +176,10 @@ make_user_LineList_loglike_reparam <- function(modinf) {
   extractparams <- c(extractIFRparams, extractmod, extractsod, extractmor, extractsor)
   ret <- c("SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {",
            datainput,
-          # "Rcout << \"The data is in \" << std::endl;",
            extractparams,
-          # "Rcout << \"The params are extracted \" << std::endl;",
            mastore,
            mavec,
-         #  "Rcout << \"The mavev is in \" << std::endl;",
            loglike,
-          # "Rcout << \"The LL is \" << loglik << std::endl;",
            "return Rcpp::wrap(loglik);",
            "}"
   )
