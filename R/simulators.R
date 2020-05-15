@@ -1,9 +1,9 @@
-#' @title Simulate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
+#' @title Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
 #' @param I0 integer; number of infected individuals at the beginning of the epidemic for exponential growth
 #' @param r double; the expontential growth rate of the epidemic
 #' @param m_od double; the mean of the onset of infection to death (gamma distribution)
 #' @param s_od double; the coefficient of variation of the onset of infection to death (gamma distribution)
-#' @param casefat dataframe; column names age, cfr, and pa that correspond to age-band, case-fatality ratio, and the attack rate in given age band, respectively
+#' @param casefat dataframe; column names age, ifr, and pa that correspond to age-band, infection-fatality ratio, and the attack rate in given age band, respectively
 #' @param min_day numeric; first day epidemic was observed
 #' @param curr_day numeric; current day of epidemic, considered up to but not including this day
 #' @param level character; Either "Cumulative" or "Time-Series" if expected deaths should be returned as a total or for each day, respectively
@@ -12,7 +12,7 @@
 #' @importFrom magrittr %>%
 #' @export
 
-sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
+Aggsim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
                               min_day = 1, curr_day, level, expgrowth, infections){
 
   #..............................................................
@@ -56,7 +56,7 @@ sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
   t_death <- matrix(NA, nrow = nrow(expected_inf.age.day), ncol = ncol(expected_inf.age.day))
   for (i in 1:nrow(expected_inf.age.day)) {
     for(j in 1:ncol(expected_inf.age.day)) {
-      t_death[i,j] <- rbinom(n = 1, size = expected_inf.age.day[i,j], prob = casefat$cfr[i])
+      t_death[i,j] <- rbinom(n = 1, size = expected_inf.age.day[i,j], prob = casefat$ifr[i])
     }
   }
 
@@ -66,12 +66,12 @@ sim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
   t_death.df <- t_death.df %>%
     tidyr::gather(., key = "day", value = "deathcount", 2:ncol(.))
 
-  casefat_expand <- function(datrow){
+  df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$deathcount), ]
     return(datrow)
   }
   death_line_list <- split(t_death.df, 1:nrow(t_death.df))
-  death_line_list <- lapply(death_line_list, casefat_expand) %>%
+  death_line_list <- lapply(death_line_list, df_expand) %>%
     do.call("rbind.data.frame", .) %>%
     dplyr::select(-c("deathcount"))
   # note, we have a discrete day + a continuous time
