@@ -7,6 +7,11 @@
   
 <description>
 
+## IMPORTANT NOTES
+
+:warning: This model is in active development and so parameter name and
+behaviours, and output file formats will change without notice.
+
 ## Installation
 <WIP>
 
