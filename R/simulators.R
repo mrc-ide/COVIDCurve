@@ -1,50 +1,244 @@
-#' @title Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
-#' @param I0 integer; number of infected individuals at the beginning of the epidemic for exponential growth
-#' @param r double; the expontential growth rate of the epidemic
-#' @param m_od double; the mean of the onset of infection to death (gamma distribution)
-#' @param s_od double; the coefficient of variation of the onset of infection to death (gamma distribution)
-#' @param casefat dataframe; column names age, ifr, and pa that correspond to age-band, infection-fatality ratio, and the attack rate in given age band, respectively
-#' @param min_day numeric; first day epidemic was observed
-#' @param curr_day numeric; current day of epidemic, considered up to but not including this day
-#' @param level character; Either "Cumulative" or "Time-Series" if expected deaths should be returned as a total or for each day, respectively
-#' @param expgrowth logical; Simulate exponential growth or not
-#' @param infections integer vector; The infections for each day
+#' @title Simulate Seroprevalence Study
+#' @inheritParams LineListsim_infxn_2_death
+#' @param sero_spec double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param sero_sens double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
+#' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
+#' internal function, not exported
+
+sim_seroprev <- function(infxns,
+                         day,
+                         sero_spec,
+                         sero_sens,
+                         popN,
+                         sero_delay_rate,
+                         casefat,
+                         min_day,
+                         curr_day) {
+
+  # recast infections for seroprev
+  sero.df <- cbind.data.frame(age = casefat$age, infxns)
+  colnames(sero.df)[2:ncol(sero.df)] <- min_day:(curr_day - 1)
+  sero.df <- sero.df %>%
+    tidyr::gather(., key = "day", value = "infxncount", 2:ncol(.)) %>%
+    dplyr::filter(infxncount != 0) # can't observe if not infxn
+
+  df_expand <- function(datrow){
+    datrow <- datrow[rep(1, times = datrow$infxncount), ]
+    return(datrow)
+  }
+
+  sero_line_list <- split(sero.df, 1:nrow(sero.df))
+  sero_line_list <- lapply(sero_line_list, df_expand) %>%
+    dplyr::bind_rows(.) %>%
+    tibble::as_tibble(.) %>%
+    dplyr::select(-c("infxncount"))
+
+  # draw time to seroconversion
+  draw_tosc <- function(day, sero_delay_rate){
+    as.numeric(day) + rexp(n = 1, rate = sero_delay_rate)
+  }
+  sero_line_list$tosc <- sapply(sero_line_list$day, draw_tosc, sero_delay_rate = sero_delay_rate)
+
+  # Tidy up so that we observe deaths on a daily time step
+  agelvls <- unique(as.character(casefat$age)) # protect against data.frame, string as factor = F
+  sero_line_list.agg <- sero_line_list %>%
+    dplyr::mutate(age = factor(age, levels = agelvls)) %>%  # need this for later summarize
+    dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:(curr_day-1)),
+                                      labels = min_day:(curr_day-1))) %>%
+    dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
+    dplyr::group_by(event_obs_day) %>% # prob of test positive given dz -- is a function of prevalence on the day of the test
+    dplyr::mutate(nInfxns = dplyr::n(),
+                  pInfxns = nInfxns/popN,
+                  ppos = sero_sens * pInfxns,
+                  TestposDzpos = purrr::map_dbl(ppos, function(x) rbinom(1, 1, x))
+    ) %>%
+    dplyr::group_by(event_obs_day, age, .drop = F) %>% # seroprev will be given in agg counts, unlikely to have line list here
+    dplyr::summarise(
+      day_seros = dplyr::n()) %>%
+    dplyr::ungroup(event_obs_day, age)
+
+  # prob of test positive given no dz -- function of prevalence
+  FPRD <- (1-sero_spec) * (1 - colSums(infxns)/popN)
+  # assume poisson distributed FP and spread them out over all age groups randomly
+  FP <- mapply(function(x, y){sum(rpois(n = x, lambda = y))}, x = popN - colSums(infxns), y = FPRD, SIMPLIFY = T)
+  sero_line_list.agg$day_seros_FP = sero_line_list.agg$day_seros +
+    c(sapply(FP, function(x){
+      rmultinom(n = 1, size = x, prob = rep(1/length(unique(sero_line_list.agg$age)), length(unique(sero_line_list.agg$age))))
+    }))
+  #..................
+  # out
+  #..................
+  sero_line_list.agg %>%
+    dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day))) %>% # protect against factor and min_day > 1
+    dplyr::rename(
+      ObsDay = event_obs_day,
+      AgeGroup = age,
+      SeroCount = day_seros,
+      SeroCountFP = day_seros_FP) %>%
+    dplyr::mutate(
+      SeroRate = SeroCount/popN,
+      SeroRateFP = SeroCountFP/popN)
+
+}
+
+
+
+#' @title Simulate Line-List Outcomes
+#' @param infections integer vector; The infections for each day up to the current day (must be supplied if \param{expgrowth} is false).
+#' @param m_od double; The mean of the onset of infection to death (gamma distribution).
+#' @param s_od double; The coefficient of variation of the onset of infection to death (gamma distribution).
+#' @param m_or double; The mean of the onset of infection to recovery (gamma distribution).
+#' @param s_or double; The coefficient of variation of the onset of infection to recovery (gamma distribution).
+#' @param casefat dataframe; The column names: age, ifr, and pa correspond to age-band, infection-fatality ratio, and the attack rate, respectively.
+#' @param hospprob numeric; Probability of hospitalization given infection.
+#' @param min_day numeric; First day epidemic was observed.
+#' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
+#' @param simulate_seroprevalence logical; Boolean indicating whether or not the seroprevalence should also be simulated
+#' @inheritParams sim_seroprev
 #' @importFrom magrittr %>%
 #' @export
 
-Aggsim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
-                              min_day = 1, curr_day, level, expgrowth, infections){
+LineListsim_infxn_2_death <- function(casefat, infections,
+                                      m_od = 18.8, s_od = 0.45,
+                                      m_or = 24.7, s_or = 0.45,
+                                      hospprob,
+                                      min_day = 1, curr_day,
+                                      simulate_seroprevalence = FALSE) {
 
-  #..............................................................
+  #..................
   # Assertions that are specific to this project
-  #..............................................................
+  #..................
+  assert_single_numeric(m_od)
+  assert_single_numeric(s_od)
+  assert_single_numeric(m_or)
+  assert_single_numeric(s_or)
+  assert_single_numeric(hospprob)
+  assert_dataframe(casefat)
+  assert_single_int(min_day)
+  assert_single_int(curr_day)
+  assert_vector(infections)
+  assert_same_length(infections, min_day:(curr_day - 1))
+  assert_logical(simulate_seroprevalence)
+
+  #..................
+  # Run Line List Infection to Deaths
+  #..................
+  # get  number of infections for each day
+  expected_inf.day <- rpois(length(infections), lambda = infections)
+
+  # Split infxns by the Age Prop.
+  expected_inf.age.day <- matrix(NA, nrow = length(casefat$pa), ncol = length(expected_inf.day))
+  for (i in 1:length(expected_inf.day)) {
+    expected_inf.age.day[,i] <- rmultinom(n = 1, size = expected_inf.day[i], prob = casefat$pa)
+  }
+
+  # recast infections
+  infxn.df <- cbind.data.frame(age = casefat$age, expected_inf.age.day)
+  colnames(infxn.df)[2:ncol(infxn.df)] <- min_day:(curr_day - 1)
+  infxn.df <- infxn.df %>%
+    tidyr::gather(., key = "day", value = "infxncount", 2:ncol(.)) %>%
+    dplyr::filter(infxncount != 0) # can't observe if not infxn
+
+  df_expand <- function(datrow){
+    datrow <- datrow[rep(1, times = datrow$infxncount), ]
+    return(datrow)
+  }
+
+  infxn_line_list <- split(infxn.df, 1:nrow(infxn.df))
+  infxn_line_list <- lapply(infxn_line_list, df_expand) %>%
+    dplyr::bind_rows(.) %>%
+    tibble::as_tibble(.) %>%
+    dplyr::select(-c("infxncount"))
+
+  # draw time of outcome among Infected
+  draw_out <- function(infxn_line, casefat, m_od = m_od, s_od = s_od, m_or = m_or, s_or = s_or){
+    if (rbinom(n = 1, size = 1, prob = casefat$ifr[infxn_line$age == casefat$age])) {
+      ret <- list(
+        outcome = "Death",
+        todr = as.numeric(infxn_line$day) + rgamma(1, shape = 1/s_od^2, scale = m_od*s_od^2)
+      )
+    } else {
+      ret <- list(
+        outcome = "Recovery",
+        todr = as.numeric(infxn_line$day) + rgamma(1, shape = 1/s_or^2, scale = m_or*s_or^2)
+      )
+    }
+    return(ret)
+  }
+  infxn_line_list$out <- lapply(split(infxn_line_list, 1:nrow(infxn_line_list)),
+                                draw_out, casefat = casefat,
+                                m_od = m_od, s_od = s_od,
+                                m_or = m_or, s_or = s_or)
+  infxn_line_list$outcome <- purrr::map_chr(infxn_line_list$out, "outcome")
+  infxn_line_list$todr <- purrr::map_dbl(infxn_line_list$out, "todr")
+
+  # draw hospitilization
+  infxn_line_list$hosp <- rbinom(n = nrow(infxn_line_list), size = 1, prob = hospprob)
+
+  # Tidy up so that we observe deaths on a daily time step
+  agelvls <- unique(as.character(casefat$age)) # protect against data.frame, string as factor = F
+  infxn_line_list <- infxn_line_list %>%
+    dplyr::mutate(age = factor(age, levels = agelvls)) %>%  # need this for later summarize
+    dplyr::mutate(event_obs_day = cut(todr, breaks = c((min_day-1), min_day:(curr_day-1)),
+                                      labels = min_day:(curr_day-1))) %>%
+    dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
+    dplyr::select(c("age", "hosp", "day", "outcome", "event_obs_day")) %>%
+    dplyr::mutate(day = as.numeric(as.character(day)),
+                  event_obs_day = as.numeric(as.character(event_obs_day))) %>%  # protect against factor but out numeric
+    dplyr::rename(AgeGroup = age,
+                  OnsetDay = day,
+                  Outcome = outcome,
+                  EventDay = event_obs_day)
+
+  #..................
+  # run seroprev
+  #..................
+  #TODO -- update me
+  if (simulate_seroprevalence) {
+    seroprev <- sim_seroprev(infxns = expected_inf.age.day, spec = spec, sens = sens)
+  }
+  #..................
+  # out
+  #..................
+  if (simulate_seroprevalence) {
+    ret <- list(
+      linelist = infxn_line_list,
+      seroprev = seroprev)
+    return(ret)
+  } else {
+    return(infxn_line_list)
+  }
+}
+
+#' @title Simulate Aggregate Expected Deaths
+#' @inheritParams LineListsim_infxn_2_death
+#' @inheritParams sim_seroprev
+#' @importFrom magrittr %>%
+#' @export
+
+Aggsim_infxn_2_death <- function(casefat, infections, m_od = 18.8, s_od = 0.45,
+                                 min_day = 1, curr_day, level,
+                                 simulate_seroprevalence = FALSE){
+
+  #..................
+  # Assertions that are specific to this project
+  #..................
   assert_single_numeric(m_od)
   assert_single_numeric(s_od)
   assert_dataframe(casefat)
   assert_single_int(min_day)
   assert_single_int(curr_day)
   assert_single_string(level)
-  assert_single_logical(expgrowth)
   assert_in(x = level, y = c("Time-Series", "Cumulative"))
-  if (!expgrowth) {
-    assert_vector(infections)
-    assert_same_length(infections, min_day:(curr_day - 1))
-  }
-  if (expgrowth) {
-    assert_single_int(I0)
-    assert_single_numeric(r)
-  }
-  #..............................................................
-  # Run
-  #..............................................................
+  assert_vector(infections)
+  assert_same_length(infections, min_day:(curr_day - 1))
+  assert_logical(simulate_seroprevalence)
+  #..................
+  # Run Infxns and Deaths
+  #..................
   # get  number of infections for each day
-  if (expgrowth){
-    It <- sapply(min_day:(curr_day-1), function(t){I0*exp(r*t)})
-  } else {
-    It <- infections
-  }
-
-  expected_inf.day <- rpois(length(It), lambda = It)
+  expected_inf.day <- rpois(length(infections), lambda = infections)
 
   # Split infxns by the Age Prop.
   expected_inf.age.day <- matrix(NA, nrow = length(casefat$pa), ncol = length(expected_inf.day))
@@ -90,9 +284,19 @@ Aggsim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
       day_deaths = dplyr::n()) %>%
     dplyr::ungroup(obs_day, age)
 
+  #..................
+  # run seroprev
+  #..................
+  #TODO -- update me
+  if (simulate_seroprevalence) {
+    seroprev <- sim_seroprev(infxns = expected_inf.age.day, spec = spec, sens = sens)
+  }
+
+  #..................
   # out
+  #..................
   if (level == "Cumulative") {
-    death_line_list %>%
+    death_line_list <- death_line_list %>%
       dplyr::group_by(age) %>%
       dplyr::summarise(deaths = sum(day_deaths)) %>%
       dplyr::rename(
@@ -100,7 +304,7 @@ Aggsim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
         AgeGroup = age,
         Deaths = deaths)
   } else {
-    death_line_list %>%
+    death_line_list <- death_line_list %>%
       dplyr::ungroup(age) %>%
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
       dplyr::rename(
@@ -108,5 +312,16 @@ Aggsim_infxn_2_death <- function(casefat, I0, r, m_od = 18.8, s_od = 0.45,
         AgeGroup = age,
         Deaths = day_deaths)
   }
+
+  if (simulate_seroprevalence) {
+    ret <- list(
+      AggDat = death_line_list,
+      seroprev = seroprev)
+    return(ret)
+  } else {
+    return(death_line_list)
+  }
 }
+
+
 

@@ -32,8 +32,7 @@ dat <- COVIDCurve::LineListsim_infxn_2_death(
   s_or = 0.35,
   hospprob = 0.005,
   curr_day = 150,
-  infections = infxns$infxns,
-  expgrowth = F) %>%
+  infections = infxns$infxns) %>%
   dplyr::filter(hosp == 1) %>%
   dplyr::select(-c("hosp"))
 

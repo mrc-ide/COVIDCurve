@@ -2,42 +2,34 @@
 % Please edit documentation in R/simulators.R
 \name{Aggsim_infxn_2_death}
 \alias{Aggsim_infxn_2_death}
-\title{Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve}
+\title{Simulate Aggregate Expected Deaths}
 \usage{
 Aggsim_infxn_2_death(
   casefat,
-  I0,
-  r,
+  infections,
   m_od = 18.8,
   s_od = 0.45,
   min_day = 1,
   curr_day,
   level,
-  expgrowth,
-  infections
+  simulate_seroprevalence = FALSE
 )
 }
 \arguments{
-\item{casefat}{dataframe; column names age, ifr, and pa that correspond to age-band, infection-fatality ratio, and the attack rate in given age band, respectively}
+\item{casefat}{dataframe; The column names: age, ifr, and pa correspond to age-band, infection-fatality ratio, and the attack rate, respectively.}
 
-\item{I0}{integer; number of infected individuals at the beginning of the epidemic for exponential growth}
+\item{infections}{integer vector; The infections for each day up to the current day (must be supplied if \param{expgrowth} is false).}
 
-\item{r}{double; the expontential growth rate of the epidemic}
+\item{m_od}{double; The mean of the onset of infection to death (gamma distribution).}
 
-\item{m_od}{double; the mean of the onset of infection to death (gamma distribution)}
+\item{s_od}{double; The coefficient of variation of the onset of infection to death (gamma distribution).}
 
-\item{s_od}{double; the coefficient of variation of the onset of infection to death (gamma distribution)}
+\item{min_day}{numeric; First day epidemic was observed.}
 
-\item{min_day}{numeric; first day epidemic was observed}
+\item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
 
-\item{curr_day}{numeric; current day of epidemic, considered up to but not including this day}
-
-\item{level}{character; Either "Cumulative" or "Time-Series" if expected deaths should be returned as a total or for each day, respectively}
-
-\item{expgrowth}{logical; Simulate exponential growth or not}
-
-\item{infections}{integer vector; The infections for each day}
+\item{simulate_seroprevalence}{logical; Boolean indicating whether or not the seroprevalence should also be simulated}
 }
 \description{
-Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
+Simulate Aggregate Expected Deaths
 }
