@@ -230,7 +230,7 @@ make_user_Agg_loglike_reparam <- function(modinf) {
     }
   }
 
-  if (!isfinite(loglik)) {
+  if (!std::isfinite(loglik)) {
     const double OVERFLO_DOUBLE = DBL_MAX/100.0;
     loglik = -OVERFLO_DOUBLE;
   }

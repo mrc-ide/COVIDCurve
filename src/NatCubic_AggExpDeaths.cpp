@@ -161,7 +161,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   }
 
   // catch underflow
-  if (!isfinite(loglik)) {
+  if (!std::isfinite(loglik)) {
     const double OVERFLO_DOUBLE = DBL_MAX/100.0;
     loglik = -OVERFLO_DOUBLE;
   }

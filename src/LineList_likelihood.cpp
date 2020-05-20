@@ -56,7 +56,7 @@ Rcpp::List LineList_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List 
   }
 
   // catch underflow
-  if (!isfinite(loglik)) {
+  if (!std::isfinite(loglik)) {
     const double OVERFLO_DOUBLE = DBL_MAX/100.0;
     loglik = -OVERFLO_DOUBLE;
   }
