@@ -56,20 +56,7 @@ mod1$set_paramdf(df_params)
 #..................
 # run model
 #..................
-set.seed(44046)
 r_mcmc_out <- COVIDCurve::run_modinf_linelist(modinf = mod1, reparamIFR = T, rungs = 1)
-beepr::beep()
-
-testcovid <- function(x){
-  set.seed(x)
-  cat(c(x, "\n"))
-  ret <- COVIDCurve::run_modinf_linelist(modinf = mod1, reparamIFR = T, rungs = 1)
-  return(ret)
-}
-testcovid(44)
-
-COVIDCurve::run_modinf_linelist(modinf = mod1, reparamIFR = T, rungs = 1)
-
 r_mcmc_out
 plot_par(r_mcmc_out, "ma1")
 plot_par(r_mcmc_out, "ma2")
@@ -92,8 +79,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   s_od = 0.45,
   curr_day = 150,
   level = "Time-Series",
-  infections = infxns$infxns,
-  expgrowth = F
+  infections = infxns$infxns
 )
 
 #..................
@@ -120,10 +106,35 @@ mod1$set_knots(c(1, 30, 60, 90, 120, 150))
 #..................
 # run model
 #..................
-set.seed(11347)
-r_mcmc_out <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = T, rungs = 1)
+r_mcmc_out.ts <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = T, rungs = 10)
 r_mcmc_out
-plot_par(r_mcmc_out, "r1")
+plot_par(r_mcmc_out.ts, "y1")
+
+
+short
+dat <- COVIDCurve::Aggsim_infxn_2_death(
+  casefat = casefat,
+  m_od = 18.8,
+  s_od = 0.45,
+  curr_day = 150,
+  level = "Cumulative",
+  infections = infxns$infxns
+)
+
+mod1 <- make_modinf_agg$new()
+mod1$set_level("Cumulative")
+mod1$set_data(dat)
+mod1$set_IFRparams(c("r1", "r2", "ma3"))
+mod1$set_Infxnparams(c("y1", "y2", "y3", "y4", "y5", "y6"))
+mod1$set_paramdf(df_params)
+mod1$set_pa(c(1/3, 1/3, 1/3))
+mod1$set_MeanOnset(18.8)
+mod1$set_CoefVarOnset(0.45)
+mod1$set_knots(c(1, 30, 60, 90, 120, 150))
+r_mcmc_out.cumm <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = T, rungs = 10)
+plot_par(r_mcmc_out.cumm, "y1")
+
+
 
 
 

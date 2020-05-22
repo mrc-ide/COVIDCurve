@@ -31,6 +31,26 @@ run_modinf_linelist <- function(modinf, reparamIFR = T,
   assert_non_null(modinf$paramdf)
 
 
+  #............................................................
+  # "Warm-Up" MCMC
+  #...........................................................
+  warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
+  names(warmdf_params) <- c("name", "min", "max", "init")
+  warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
+  warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
+  warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)),
+                               df_params = warmdf_params,
+                               misc = list(),
+                               loglike = warmloglike,
+                               logprior = warmlogprior,
+                               burnin = 1,
+                               samples = 1,
+                               chains = 1,
+                               rungs = 1,
+                               silent = T)
+
+
+
   #..............................................................
   # unpack object
   #..............................................................
@@ -182,6 +202,24 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
   assert_non_null(modinf$paramdf)
   assert_non_null(modinf$knots)
   assert_non_null(modinf$pa)
+
+  #............................................................
+  # "Warm-Up" MCMC
+  #...........................................................
+  warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
+  names(warmdf_params) <- c("name", "min", "max", "init")
+  warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
+  warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
+  warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)),
+                               df_params = warmdf_params,
+                               misc = list(),
+                               loglike = warmloglike,
+                               logprior = warmlogprior,
+                               burnin = 1,
+                               samples = 1,
+                               chains = 1,
+                               rungs = 1,
+                               silent = T)
 
 
   #..............................................................

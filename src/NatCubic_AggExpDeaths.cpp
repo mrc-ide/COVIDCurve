@@ -11,6 +11,11 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
   std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
+  popN = misc["popN"];
+  // extract serology items
+  double sero_max =  params["sero_max"];
+  double sero_rate =  params["sero_rate"];
+  double spec =  params["spec"];
 
   // extract free parameters
   double y1 = params["y1"];
@@ -81,14 +86,14 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     d[i] = (c[i+1] - c[i])/(3*h[i]);
   }
 
-  // create infection spline
-  std::vector<double> infxn_spline(n3);
-  infxn_spline[0] = node_y[0];
+  // create CUMULATIVE infection spline
+  std::vector<double> cumm_infxn_spline(n3);
+  cumm_infxn_spline[0] = node_y[0];
   int node_j = 0;
   for (int i = 1; i < n3; ++i) {
 
     // update curve
-    infxn_spline[i] = node_y[node_j] +
+    cumm_infxn_spline[i] = node_y[node_j] +
       b[node_j] * (i - node_x[node_j]) +
       c[node_j] * pow((i - node_x[node_j]), 2) +
       d[node_j] * pow((i - node_x[node_j]), 3);
@@ -99,8 +104,15 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     }
   }
 
+  // convert cumulative infection spline into daily infection spline
+  std::vector<double> infxn_spline(cumm_infxn_spline.size());
+  infxn_spline[0] = cumm_infxn_spline[0];
+  for (int i = 1; i < cumm_infxn_spline.size(); i++) {
+    infxn_spline[i] = cumm_infxn_spline[i] - cumm_infxn_spline[i-1];
+  }
+
   // loop through days and TOD integral
-  std::vector<double>auc(infxn_spline.size());
+  std::vector<double> auc(infxn_spline.size());
   for (int i = 0; i < infxn_spline.size(); i++) {
     for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
       int delta = j - i - 1;
@@ -109,7 +121,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   }
 
   // Expectation
-  double loglik = 0.0;
+  double death_loglik = 0.0;
   // True is for Cumulative Calculation
   if (level) {
 
@@ -128,7 +140,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     }
     // get log-likelihood over all days
     for (int a = 0; a < agelen; a++) {
-      loglik += R::dpois(obsd[a], expd[a], true);
+      death_loglik += R::dpois(obsd[a], expd[a], true);
     }
 
   } else {
@@ -155,10 +167,37 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     // get log-likelihood over all days
     for (int  i = 0; i < infxn_spline.size(); i++) {
       for (int a = 0; a < agelen; a++) {
-        loglik += R::dpois(obsd[i][a], expd[i][a], true);
+        death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
       }
     }
   }
+  // account for false positives
+  std::vector<double> fpr(cumm_infxn_spline.size());
+  double fprsum = 0.0;
+  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
+    fpr[i] = (1-spec) * (1 - cumm_infxn_spline[i]/popN);
+    fprsum += fpr[i];
+  }
+  // now standardize fpr
+  for (int i = 0; i < fpr.size(); i++) {
+    fpr[i] = fpr[i]/fprsum;
+  }
+
+  // account for serology delay
+  double sero_loglik = 0.0;
+  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
+    // loop through all infected individuals
+    for (int j = 1; j < cumm_infxn_spline[i]; j++) {
+      // i+1 to go from 0-based to one-based discrete time
+      double pt = sero_max * exp(1 - (-(i+1))/(sero_rate));
+      // prob of seroconverting plus prob of FP is our overall TP
+      pt = pt + fpr[i];
+      sero_loglik += R::dbinom(x = cumm_infxn_spline[i], size = popN, prob = pt, log = true);
+    }
+  }
+
+  // bring together
+  double loglik = death_loglik + sero_loglik;
 
   // catch underflow
   if (!std::isfinite(loglik)) {
