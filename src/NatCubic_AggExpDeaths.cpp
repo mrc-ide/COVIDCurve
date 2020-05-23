@@ -53,55 +53,58 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // natural cubic spline
   //.............................
   int n_knots = node_x.size();
-  int n3 = node_x[n_knots - 1] - node_x[0];
-
-  // need alpha and h for second deriv
-  std::vector<double> h(n_knots-1);
-  for (int i = 0; i < h.size(); i++) {
-    h[i] = node_x[i+1] - node_x[i];
-  }
-  std::vector<double> alpha(n_knots-1);
-  for (int i = 1; i < h.size(); i++) {
-    alpha[i] = (3/h[i])*(node_y[i+1] - node_y[i]) - (3/h[i-1])*(node_y[i] - node_y[i-1]);
+  int n_dat = node_x[n_knots - 1] - node_x[0];
+  // NB, we want N spline functions (interpolants) and so we have n+1 knots
+  // as part of simplifying the linear spline, function we write this denom: x_{i+1} - x_i
+  std::vector<double> denom(n_knots-1);
+  for (int i = 0; i < denom.size(); i++) {
+    denom[i] = node_x[i+1] - node_x[i];
   }
 
-  // need items for first deriv and constraints
-  std::vector<double> l(n_knots);
-  l[0] = 1;
-  l[(l.size()-1)] = 1;
-  std::vector<double> u(n_knots-1);
-  u[0] = 0;
+  // initialize our three "slopes"
+  std::vector<double> sp1(n_knots-1);
+  std::vector<double> sp3(n_knots-1);
+  std::vector<double> sp2(n_knots);
+  sp2[(sp2.size()-1)] = 0;
+
+  // NB, our intercepts are the y_coordinates of the n+1 knots -- ends of knots will serve as boundaries
+  // initialize our knot 2nd derive/linear slope
   std::vector<double> z(n_knots);
   z[0] = 0;
-  z[(z.size()-1)] = 0;
-  std::vector<double> c(n_knots);
-  c[(c.size()-1)] = 0;
-
-  for (int i = 1; i < h.size(); i++) {
-    l[i] = 2 * (node_x[i+1] - node_x[i-1]) - h[i-1]*u[i-1];
-    u[i] = h[i]/l[i];
-    z[i] = (alpha[i] - h[i-1]*z[i-1])/l[i];
+  z[z.size()] = 0;
+  // now store piecewise slopes of second deriv so we can calculate zi's later and make sure we are smoothing through knot
+  std::vector<double> m(n_knots-2); // -2 b/c first knot and last knot set to 0
+  for (int i = 1; i < (m.size()+1); i++) {
+    m[i-1] = (3/denom[i])*(node_y[i+1] - node_y[i]) - (3/denom[i-1])*(node_y[i] - node_y[i-1]);
   }
-  // other coeffs now
-  std::vector<double> b(n_knots-1);
-  std::vector<double> d(n_knots-1);
-  for (int i = ((n_knots-1)-1); i >= 0; i--) {
-    c[i] = z[i] - u[i]*c[i+1];
-    b[i] = (node_y[i+1] - node_y[i])/(h[i]) - (h[i] * (c[i+1] + 2*c[i]))/3;
-    d[i] = (c[i+1] - c[i])/(3*h[i]);
+
+  // need g and k for first deriv calc of our knots, z
+  std::vector<double> g(n_knots-1);
+  std::vector<double> k(n_knots-1);
+  g[0] = 1;
+  k[0] = 0;
+  for (int i = 1; i < (n_knots - 1); i++) {
+    // now we can get our zs and sp2s
+    g[i] = 2*(node_x[i+1] - node_x[i-1]) - (denom[i-1])*(k[i-1]);
+    k[i] = denom[i]/g[i];
+    z[i] = (m[i-1] - denom[i-1]*z[i-1])/g[i];
+  }
+  // finally loop through and get our "slopes" for our interpolants
+  for (int i = (n_knots-1); i >= 0; i--) {
+    sp2[i] = z[i] - k[i]*sp2[i+1];
+    sp1[i] = (node_y[i+1] - node_y[i])/(denom[i]) - (denom[i]*(sp2[i+1] + 2*sp2[i]))/3 ;
+    sp3[i] = (sp2[i+1] - sp2[i])/(3*denom[i]);
   }
 
   // create CUMULATIVE infection spline
-  std::vector<double> cumm_infxn_spline(n3);
-  cumm_infxn_spline[0] = node_y[0];
+  std::vector<double> cumm_infxn_spline(n_dat);
   int node_j = 0;
-  for (int i = 1; i < n3; ++i) {
-
+  for (int i = 0; i < n_dat; ++i) {
     // update curve
     cumm_infxn_spline[i] = node_y[node_j] +
-      b[node_j] * (i - node_x[node_j]) +
-      c[node_j] * pow((i - node_x[node_j]), 2) +
-      d[node_j] * pow((i - node_x[node_j]), 3);
+      sp1[node_j] * (i - node_x[node_j]) +
+      sp2[node_j] * pow((i - node_x[node_j]), 2) +
+      sp3[node_j] * pow((i - node_x[node_j]), 3);
 
     // update node_j
     if ((node_x[0] + i) >= node_x[node_j+1]) {
@@ -189,18 +192,16 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // account for serology delay
   std::vector<double> sero_con(infxn_spline.size());
-  std::vector<double> sero_folks(infxn_spline.size()); //TEMP
   for (int i = 0; i < infxn_spline.size(); i++) {
     for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
       double delta = j - i - 1;
       sero_con[j-1] += sens*(exp(1/sero_rate)-1)*exp((-delta+1)/sero_rate);
-      sero_folks[j-1] += infxn_spline[i] * sens*(exp(1/sero_rate)-1)*exp((-delta+1)/sero_rate);
     }
   }
   double datpos = data["obs_serologyrate"];
   double pos = sero_con[sero_day] + fpr[sero_day]*popN;
-  pos = round(pos);
-  double sero_loglik = R::dbinom(pos, popN, datpos, true);
+  int posint = round(pos);
+  double sero_loglik = R::dbinom(posint, popN, datpos, true);
   // bring together
   double loglik = death_loglik + sero_loglik;
 
@@ -214,13 +215,15 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("auc") = auc,
                                       Rcpp::Named("pos") = pos,
                                       Rcpp::Named("sero_con") = sero_con,
-                                      Rcpp::Named("sero_folks") = sero_folks,
                                       Rcpp::Named("death_loglik") = death_loglik,
                                       Rcpp::Named("sero_loglik") = sero_loglik,
                                       Rcpp::Named("LogLik") = loglik,
                                       Rcpp::Named("agefat") = ma,
                                       Rcpp::Named("infxn_spline") = infxn_spline,
-                                      Rcpp::Named("cumm_infxn_spline") = cumm_infxn_spline);
+                                      Rcpp::Named("cumm_infxn_spline") = cumm_infxn_spline,
+                                      Rcpp::Named("sp1") = sp1,
+                                      Rcpp::Named("sp2") = sp2,
+                                      Rcpp::Named("sp3") = sp3);
   return ret;
 }
 
