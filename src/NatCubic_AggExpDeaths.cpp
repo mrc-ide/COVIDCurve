@@ -11,11 +11,13 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
   std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
-  popN = misc["popN"];
+
   // extract serology items
-  double sero_max =  params["sero_max"];
-  double sero_rate =  params["sero_rate"];
-  double spec =  params["spec"];
+  int popN = misc["popN"];
+  double sens =  misc["sens"];
+  double sero_rate =  misc["sero_rate"];
+  int sero_day =  misc["sero_day"];
+  double spec =  misc["spec"];
 
   // extract free parameters
   double y1 = params["y1"];
@@ -44,6 +46,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
 
   // end liftover
+  //........................................................
+  // Deaths Section
+  //........................................................
   //.............................
   // natural cubic spline
   //.............................
@@ -106,9 +111,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // convert cumulative infection spline into daily infection spline
   std::vector<double> infxn_spline(cumm_infxn_spline.size());
-  infxn_spline[0] = cumm_infxn_spline[0];
+  infxn_spline[0] = exp(cumm_infxn_spline[0]);
   for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-    infxn_spline[i] = cumm_infxn_spline[i] - cumm_infxn_spline[i-1];
+    infxn_spline[i] = exp(cumm_infxn_spline[i]) - exp(cumm_infxn_spline[i-1]);
   }
 
   // loop through days and TOD integral
@@ -116,7 +121,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   for (int i = 0; i < infxn_spline.size(); i++) {
     for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
       int delta = j - i - 1;
-      auc[j-1] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
+      auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
     }
   }
 
@@ -171,31 +176,31 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
       }
     }
   }
+
+  //........................................................
+  // Serology Section
+  //........................................................
   // account for false positives
   std::vector<double> fpr(cumm_infxn_spline.size());
-  double fprsum = 0.0;
   for (int i = 0; i < cumm_infxn_spline.size(); i++) {
     fpr[i] = (1-spec) * (1 - cumm_infxn_spline[i]/popN);
-    fprsum += fpr[i];
   }
-  // now standardize fpr
-  for (int i = 0; i < fpr.size(); i++) {
-    fpr[i] = fpr[i]/fprsum;
-  }
+
 
   // account for serology delay
-  double sero_loglik = 0.0;
-  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
-    // loop through all infected individuals
-    for (int j = 1; j < cumm_infxn_spline[i]; j++) {
-      // i+1 to go from 0-based to one-based discrete time
-      double pt = sero_max * exp(1 - (-(i+1))/(sero_rate));
-      // prob of seroconverting plus prob of FP is our overall TP
-      pt = pt + fpr[i];
-      sero_loglik += R::dbinom(x = cumm_infxn_spline[i], size = popN, prob = pt, log = true);
+  std::vector<double> sero_con(infxn_spline.size());
+  std::vector<double> sero_folks(infxn_spline.size()); //TEMP
+  for (int i = 0; i < infxn_spline.size(); i++) {
+    for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
+      double delta = j - i - 1;
+      sero_con[j-1] += sens*(exp(1/sero_rate)-1)*exp((-delta+1)/sero_rate);
+      sero_folks[j-1] += infxn_spline[i] * sens*(exp(1/sero_rate)-1)*exp((-delta+1)/sero_rate);
     }
   }
-
+  double datpos = data["obs_serologyrate"];
+  double pos = sero_con[sero_day] + fpr[sero_day]*popN;
+  pos = round(pos);
+  double sero_loglik = R::dbinom(pos, popN, datpos, true);
   // bring together
   double loglik = death_loglik + sero_loglik;
 
@@ -207,9 +212,15 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("auc") = auc,
+                                      Rcpp::Named("pos") = pos,
+                                      Rcpp::Named("sero_con") = sero_con,
+                                      Rcpp::Named("sero_folks") = sero_folks,
+                                      Rcpp::Named("death_loglik") = death_loglik,
+                                      Rcpp::Named("sero_loglik") = sero_loglik,
                                       Rcpp::Named("LogLik") = loglik,
                                       Rcpp::Named("agefat") = ma,
-                                      Rcpp::Named("infxn_spline") = infxn_spline);
+                                      Rcpp::Named("infxn_spline") = infxn_spline,
+                                      Rcpp::Named("cumm_infxn_spline") = cumm_infxn_spline);
   return ret;
 }
 

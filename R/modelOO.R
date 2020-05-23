@@ -176,50 +176,59 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  mod = NULL,
                                  sod = NULL,
                                  gamma_lookup = NULL,
+                                 # sero items
+                                 sero_sens = NULL,
+                                 sero_spec = NULL,
+                                 sero_day = NULL,
+                                 sero_rate = NULL,
 
                                  initialize = function(data = NULL, level = NULL, IFRparams = NULL, Infxnparams = NULL,
-                                                       paramdf = NULL, knots = NULL, pa = NULL, mod = NULL, sod = NULL, gamma_lookup = NULL) {
-                                   items <- c(data, level, IFRparams, Infxnparams, paramdf, knots, pa, mod, sod)
-                                   if ( !all(sapply(items, is.null)) ) { # if use tries to input things, assert otherwise initialize empty
+                                                       paramdf = NULL, knots = NULL, pa = NULL, mod = NULL, sod = NULL, gamma_lookup = NULL,
+                                                       sero_sens = NULL,  sero_spec = NULL, sero_day = NULL, sero_rate = NULL) {
+                                   #......................
+                                   # assertions and checks
+                                   #......................
+                                   items <- c(data, level, IFRparams, Infxnparams, paramdf, knots, pa, mod, sod,
+                                              sero_sens, sero_spec, sero_day, sero_rate)
+                                   if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                      #assert level
                                      assert_in(x = level, y = c("Time-Series", "Cumulative"))
                                      # assert data
                                      assert_dataframe(data)
                                      assert_in(x = colnames(data), y = c("ObsDay", "AgeGroup", "Deaths"))
-                                     sapply(data$ObsDay, assert_numeric)
+                                     assert_numeric(data$ObsDay)
                                      assert_increasing(data$ObsDay)
-                                     sapply(data$AgeGroup, assert_factor)
-                                     sapply(data$Deaths, assert_numeric)
+                                     assert_factor(data$AgeGroup)
+                                     assert_numeric(data$Deaths)
                                      #assert params
-                                     sapply(IFRparams, assert_string)
-                                     sapply(Infxnparams, assert_string)
+                                     assert_string(IFRparams)
+                                     assert_string(Infxnparams)
                                      # assert paramdf
                                      assert_dataframe(paramdf)
                                      assert_in(x = colnames(paramdf), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
-                                     sapply(paramdf$name, assert_string)
+                                     assert_string(paramdf$name)
                                      assert_in(paramdf$name, c(self$IFRparams, self$Infxnparams))
                                      assert_in(paramdf$name, c(self$IFRparams, self$Infxnparams))
 
                                      assert_in(self$IFRparams, paramdf$name)
                                      assert_in(self$Infxnparams, paramdf$name)
 
-                                     sapply(paramdf$init, assert_numeric)
-                                     sapply(paramdf$min, assert_numeric)
-                                     sapply(paramdf$max, assert_numeric)
-                                     sapply(paramdf$dsc1, assert_numeric)
-                                     sapply(paramdf$dsc2, assert_numeric)
+                                     assert_numeric(paramdf$init)
+                                     assert_numeric(paramdf$min)
+                                     assert_numeric(paramdf$max)
+                                     assert_numeric(paramdf$dsc1)
+                                     assert_numeric(paramdf$dsc2)
                                      # OTD
                                      assert_numeric(mod)
                                      assert_numeric(sod)
                                      # knots
-                                     sapply(knots, assert_numeric)
+                                     assert_numeric(knots)
                                      assert_same_length(knots, Infxnparams)
                                      # pa
-                                     sapply(pa, assert_numeric)
+                                     assert_numeric(pa)
                                      assert_same_length(pa, IFRparams)
                                      assert_eq(sum(pa), 1)
                                    }
-
 
                                    # fill in
                                    self$data <- data
@@ -252,10 +261,10 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                    }
                                    assert_dataframe(val)
                                    assert_in(x = colnames(val), y = c("ObsDay", "AgeGroup", "Deaths"))
-                                   sapply(val$ObsDay, assert_numeric)
+                                   assert_numeric(val$ObsDay)
                                    assert_increasing(val$ObsDay)
-                                   sapply(val$AgeGroup, assert_factor)
-                                   sapply(val$Deaths, assert_numeric)
+                                   assert_factor(val$AgeGroup)
+                                   assert_numeric(val$Deaths)
 
                                    if (self$level == "Time-Series") {
                                      if (unique(length(val$ObsDay)) == 1) {
@@ -266,12 +275,12 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  },
 
                                  set_IFRparams = function(val) {
-                                   sapply(val, assert_string)
+                                   assert_string(val)
                                    self$IFRparams <- val
                                  },
 
                                  set_Infxnparams = function(val) {
-                                   sapply(val, assert_string)
+                                   assert_string(val)
                                    self$Infxnparams <- val
                                  },
 
@@ -281,13 +290,13 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                    }
                                    assert_dataframe(val)
                                    assert_in(x = colnames(val), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
-                                   sapply(val$name, assert_string)
+                                   assert_string(val$name)
                                    assert_in(val$name, c(self$IFRparams, self$Infxnparams))
-                                   sapply(val$init, assert_numeric)
-                                   sapply(val$min, assert_numeric)
-                                   sapply(val$max, assert_numeric)
-                                   sapply(val$dsc1, assert_numeric)
-                                   sapply(val$dsc2, assert_numeric)
+                                   assert_numeric(val$init)
+                                   assert_numeric(val$min)
+                                   assert_numeric(val$max)
+                                   assert_numeric(val$dsc1)
+                                   assert_numeric(val$dsc2)
                                    self$paramdf <- val
                                  },
 
@@ -304,7 +313,7 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                    if (is.null(self$mod) | is.null(self$sod)) {
                                      stop("Must specificy the mean and coefficient of variation for the onset-to-death distribution prior to specifying knots")
                                    }
-                                   sapply(val, assert_numeric)
+                                   assert_numeric(val)
                                    assert_same_length(val, self$Infxnparams)
                                    self$knots <- val
 
@@ -314,10 +323,41 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  },
 
                                  set_pa = function(val) {
-                                   sapply(val, assert_numeric)
+                                   assert_numeric(val)
                                    assert_same_length(val, self$IFRparams)
                                    assert_eq(sum(val), 1)
                                    self$pa <- val
+                                 },
+
+                                 set_sero_sens = function(val) {
+                                   assert_numeric(val)
+                                   assert_bounded(x = val, left = 0, right = 1)
+                                   self$sero_sens <- val
+                                 },
+
+                                 set_sero_spec = function(val) {
+                                   assert_numeric(val)
+                                   assert_bounded(x = val, left = 0, right = 1)
+                                   self$sero_spec <- val
+                                 },
+
+                                 set_sero_rate = function(val) {
+                                   assert_pos(val)
+                                   self$sero_rate <- val
+                                 },
+
+                                 set_sero_day = function(val) {
+                                   if (is.null(self$knots)) {
+                                     stop("Must specificy the knots prior to specifying the day serology data was collected")
+                                   }
+                                   assert_pos_int(val)
+                                   assert_bounded(val, min(self$knots), max(self$knots))
+                                   self$sero_day <- val
+                                 },
+
+                                 set_popN = function(val) {
+                                   assert_pos_int(val)
+                                   self$popN <- val
                                  }
                                )
 )

@@ -1,4 +1,5 @@
-test_that("cpp likelihood works", {
+context("aggregate fits for cpp")
+test_that("natcub cpp likelihood works", {
   set.seed(48)
   #..................
   # sim data
@@ -20,7 +21,6 @@ test_that("cpp likelihood works", {
     s_od = 0.45,
     curr_day = 50,
     level = "Time-Series",
-    expgrowth = F,
     infections = infxns$infxns
   )
   #..................
@@ -37,12 +37,20 @@ test_that("cpp likelihood works", {
   misc_list = list(pa = pa,
                    pgmms = gamma_lookup,
                    knots = knots,
-                   level = FALSE)
+                   level = FALSE,
+                   popN = 1e4,
+                   sens = 0.8,
+                   spec = 0.9,
+                   sero_rate = 10,
+                   sero_day = 25)
 
   # liftover to Rcpp list
 
-  morelikely.paramsin <- c("r1" = 0.2, "ma2" = 0.5, "y1" = 3.95, "y2" = 5.60, "y3" = 7.54, "y4" = 8.41, "y5" = 8.51, "y6" = 8.52)
-  datin <- list("obs_deaths" = dat$Deaths)
+  morelikely.paramsin <- c("r1" = 0.2, "ma2" = 0.5, "y1" = 3.95,
+                           "y2" = 7.17, "y3" = 9.5, "y4" = 10.81,
+                           "y5" = 11.49, "y6" = 11.87)
+  datin <- list("obs_deaths" = dat$Deaths,
+                "obs_serologyrate" = 0.37)
   morelikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike(params = morelikely.paramsin,
                                                            param_i = 1,
                                                            data = datin,
