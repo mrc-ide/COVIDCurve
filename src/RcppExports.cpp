@@ -33,10 +33,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// NatCubic_SplineGrowth_logprior
+Rcpp::List NatCubic_SplineGrowth_logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc);
+RcppExport SEXP _COVIDCurve_NatCubic_SplineGrowth_logprior(SEXP paramsSEXP, SEXP param_iSEXP, SEXP miscSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type params(paramsSEXP);
+    Rcpp::traits::input_parameter< int >::type param_i(param_iSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type misc(miscSEXP);
+    rcpp_result_gen = Rcpp::wrap(NatCubic_SplineGrowth_logprior(params, param_i, misc));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_COVIDCurve_LineList_loglike", (DL_FUNC) &_COVIDCurve_LineList_loglike, 4},
     {"_COVIDCurve_NatCubic_SplineGrowth_loglike", (DL_FUNC) &_COVIDCurve_NatCubic_SplineGrowth_loglike, 4},
+    {"_COVIDCurve_NatCubic_SplineGrowth_logprior", (DL_FUNC) &_COVIDCurve_NatCubic_SplineGrowth_logprior, 3},
     {NULL, NULL, 0}
 };
 
