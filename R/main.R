@@ -58,10 +58,7 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
   # Get loglike and logprior
   #..................
   if (reparamIFR) {
-    assert_same_length(max(modinf$paramdf$init[modinf$paramdf$name %in% modinf$IFRparams]), 1,
-                       message = "One IFR-Param must be considered the max
-                                  (i.e. in your paramdf, one IFR must have highest init value
-                                  for other IFRs to be scaled towards)")
+    assert_non_null(modinf$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
   }
 
 
@@ -122,7 +119,7 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
     # account for reparam
     #..................
     IFRparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$IFRparams, ]
-    maxMa <- IFRparams$name[which(IFRparams$init == max(IFRparams$init))]
+    maxMa <- modinf$maxMa
     scalars <- IFRparams$name[IFRparams$name != maxMa]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars

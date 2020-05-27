@@ -6,7 +6,7 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
-    // extract misc items
+  // extract misc items
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
@@ -147,11 +147,13 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     }
     // get log-likelihood over all days
     for (int a = 0; a < agelen; a++) {
-      death_loglik += R::dpois(obsd[a], expd[a], true);
+      if (obsd[a] != -1) {
+        death_loglik += R::dpois(obsd[a], expd[a], true);
+      }
     }
 
   } else {
-  // False is for Time-Series Calculation
+    // False is for Time-Series Calculation
     // get data in right format
     std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
     std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(agelen));
@@ -174,7 +176,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     // get log-likelihood over all days
     for (int  i = 0; i < infxn_spline.size(); i++) {
       for (int a = 0; a < agelen; a++) {
-        death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+        if (obsd[i][a] != -1) {
+          death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+        }
       }
     }
   }

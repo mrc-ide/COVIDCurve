@@ -33,7 +33,7 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
     #..................
     # account for reparam
     #..................
-    maxMa <- IFRparams$name[which(IFRparams$init == max(IFRparams$init))]
+    maxMa <- modinf$maxMa
     scalars <- IFRparams$name[IFRparams$name != maxMa]
 
   }
@@ -68,9 +68,10 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
   extractparams <- c(Infxnextractparams, IFRextractparams, Seroextractparams)
   if (reparamIFR) {
     priors <- c("double ret =", makenormpriors, makebetapriors, makeSerobetapriors, serodateprior,
-                paste0(length(scalars), "* log(", maxMa, ");"))
+                paste0(length(scalars), "*log(", maxMa, ");"))
   } else {
     priors <- c("double ret =", makenormpriors, makebetapriors, makeSerobetapriors, serodateprior)
+    priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
   }
 
   ret <- c("SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) {",
@@ -222,7 +223,9 @@ make_user_Agg_loglike <- function(modinf, reparamIFR) {
       expd[a] = aucsum * pa[a] * ma[a];
     }
     for (int a = 0; a < agelen; a++) {
-      death_loglik += R::dpois(obsd[a], expd[a], true);
+      if (obsd[a] != -1){
+        death_loglik += R::dpois(obsd[a], expd[a], true);
+      }
     }
   } else {
     std::vector<int> raw = Rcpp::as< std::vector<int> >(data[\"obs_deaths\"]);
@@ -242,7 +245,9 @@ make_user_Agg_loglike <- function(modinf, reparamIFR) {
     }
     for (int  i = 0; i < infxn_spline.size(); i++) {
       for (int a = 0; a < agelen; a++) {
-        death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+       if (obsd[i][a] != -1) {
+         death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+       }
       }
     }
   }

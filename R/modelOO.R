@@ -24,6 +24,7 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  data = NULL,
                                  level = NULL,
                                  IFRparams = NULL,
+                                 maxMa = NULL,
                                  Infxnparams = NULL,
                                  paramdf = NULL,
                                  knots = NULL,
@@ -35,7 +36,7 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  Seroparams = NULL,
                                  popN = NULL,
 
-                                 initialize = function(data = NULL, level = NULL, IFRparams = NULL, Infxnparams = NULL,
+                                 initialize = function(data = NULL, level = NULL, IFRparams = NULL, maxMa = NULL, Infxnparams = NULL,
                                                        paramdf = NULL, knots = NULL, pa = NULL, mod = NULL, sod = NULL, gamma_lookup = NULL,
                                                        Seroparams = NULL, popN = NULL) {
                                    #......................
@@ -50,10 +51,9 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                      assert_list(data)
                                      assert_in(names(data), c("obs_deaths", "obs_serologyrate"))
                                      assert_dataframe(data$obs_deaths)
-                                     assert_in(x = colnames(data$obs_deaths), y = c("ObsDay", "AgeGroup", "Deaths"))
+                                     assert_in(x = colnames(data$obs_deaths), y = c("ObsDay", "Deaths"))
                                      assert_numeric(data$obs_deaths$ObsDay)
                                      assert_increasing(data$obs_deaths$ObsDay)
-                                     assert_factor(data$obs_deaths$AgeGroup)
                                      assert_numeric(data$obs_deaths$Deaths)
                                      assert_numeric(data$obs_serologyrate)
                                      assert_bounded(data$obs_serologyrate, left = 0, right = 1)
@@ -90,6 +90,9 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                    self$data <- data
                                    self$level <- level
                                    self$IFRparams <- IFRparams
+                                   if (!is.null(maxMa)) {
+                                     self$maxMA <- maxMa
+                                   }
                                    self$Infxnparams <- Infxnparams
                                    self$Seroparams <- Seroparams
                                    self$popN <- popN
@@ -119,10 +122,9 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                    assert_list(val)
                                    assert_in(names(val), c("obs_deaths", "obs_serologyrate"))
                                    assert_dataframe(val$obs_deaths)
-                                   assert_in(x = colnames(val$obs_deaths), y = c("ObsDay", "AgeGroup", "Deaths"))
+                                   assert_in(x = c("ObsDay", "Deaths"), y = colnames(val$obs_deaths))
                                    assert_numeric(val$obs_deaths$ObsDay)
                                    assert_increasing(val$obs_deaths$ObsDay)
-                                   assert_factor(val$obs_deaths$AgeGroup)
                                    assert_numeric(val$obs_deaths$Deaths)
                                    assert_numeric(val$obs_serologyrate)
                                    assert_bounded(val$obs_serologyrate, left = 0, right = 1)
@@ -138,6 +140,15 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                  set_IFRparams = function(val) {
                                    assert_string(val)
                                    self$IFRparams <- val
+                                 },
+
+                                 set_maxMa = function(val) {
+                                   if (length(self$IFRparams) == 0) {
+                                     stop("Must specify IFRparams before specifying the maximum mortality strata (maxMa)")
+                                   }
+                                   assert_string(val)
+                                   assert_in(val, self$IFRparams)
+                                   self$maxMa <- val
                                  },
 
                                  set_Infxnparams = function(val) {
