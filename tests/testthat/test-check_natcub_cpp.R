@@ -5,7 +5,7 @@ test_that("natcub cpp likelihood works", {
   # sim data
   #..................
   # sigmoidal function
-  infxns <- data.frame(time = 1:49)
+  infxns <- data.frame(time = 1:199)
   sig <- function(x){1 / (1 +  exp(-x))}
   timevec <- seq(from = -5, to = 7, length.out = nrow(infxns))
   infxns$infxns <- sig(timevec) * 5e3 + runif(n = nrow(infxns),
@@ -19,7 +19,7 @@ test_that("natcub cpp likelihood works", {
     casefat = casefat,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 50,
+    curr_day = 200,
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
@@ -34,7 +34,7 @@ test_that("natcub cpp likelihood works", {
   #..................
   # params in
   # misc list
-  knots <- c(1, 10, 20, 30, 40, 50)
+  knots <- c(1, 40, 80, 120, 160, 200)
   day <- knots[1]:knots[length(knots)]
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
@@ -51,9 +51,9 @@ test_that("natcub cpp likelihood works", {
                            "y2" = 5.73, "y3" = 7.70, "y4" = 8.42,
                            "y5" = 8.51, "y6" = 8.52,
                            "sens" = 0.8, "spec" = 0.95, "sero_rate" = 10, "sero_day" = 35.1)
-
+  sero_day <- 35
   datin <- list("obs_deaths" = dat$AggDat$Deaths,
-                "obs_serologyrate" = dat$seroprev$SeroRateFP[35])
+                "obs_serologyrate" = dat$seroprev$SeroRateFP[sero_day])
   morelikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike(params = morelikely.paramsin,
                                                            param_i = 1,
                                                            data = datin,

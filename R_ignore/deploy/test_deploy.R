@@ -57,11 +57,11 @@ deathdf_params <- tibble::tibble(name = c("r1", "r2", "ma3", "y1", "y2", "y3", "
                                  dsc2 = c(1,    1,    1,      12,   12,   12,   12,   12,   12))
 
 serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_date"),
-                                 min =  c(0.75,    0.95,   0.1,        65),
-                                 max =  c(0.85,    0.95,   0.1,        85),
-                                 init = c(0.8,     0.95,   0.1,        75),
-                                 dsc1 = c(800,     950,    100,        65),
-                                 dsc2 = c(200,     50,     900,        85))
+                                 min =  c(0.75,    0.95,   10,        65),
+                                 max =  c(0.85,    0.95,   10,        85),
+                                 init = c(0.8,     0.95,   10,        75),
+                                 dsc1 = c(800,     950,    10,        65),
+                                 dsc2 = c(200,     50,     10,        85))
 
 df_params <- rbind.data.frame(deathdf_params, serodf_params)
 
@@ -101,6 +101,28 @@ plot_mc_acceptance(r_mcmc_out.ts)
 plot_rung_loglike(r_mcmc_out.ts)
 plot_rung_loglike(r_mcmc_out.ts, y_axis_type = 2)
 plot_rung_loglike(r_mcmc_out.ts, y_axis_type = 3)
+
+
+#......................
+# get cred intervals
+#......................
+cred_ints <- r_mcmc_out.ts$output %>%
+  dplyr::select(c("chain", "iteration", params)) %>%
+  tidyr::gather(., key = "param", value = "est", 3:ncol(.)) %>%
+  dplyr::group_by(param) %>%
+  dplyr::summarise(
+    min = min(est),
+    LCI = quantile(est, 0.025),
+    median = median(est),
+    mean = mean(est),
+    UCI = quantile(est, 0.975),
+    max = max(est),
+    ESS = coda::effectiveSize(coda::as.mcmc(est))
+  )
+
+
+
+
 
 
 
