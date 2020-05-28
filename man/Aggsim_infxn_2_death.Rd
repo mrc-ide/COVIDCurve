@@ -12,7 +12,11 @@ Aggsim_infxn_2_death(
   min_day = 1,
   curr_day,
   level,
-  simulate_seroprevalence = FALSE
+  simulate_seroprevalence = TRUE,
+  sero_spec,
+  sero_sens,
+  popN,
+  sero_delay_rate
 )
 }
 \arguments{
@@ -29,6 +33,15 @@ Aggsim_infxn_2_death(
 \item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
 
 \item{simulate_seroprevalence}{logical; Boolean indicating whether or not the seroprevalence should also be simulated}
+
+\item{sero_spec}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{sero_sens}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
+internal function, not exported}
 }
 \description{
 Simulate Aggregate Expected Deaths

@@ -50,18 +50,18 @@ dat <- list(obs_deaths = dat$AggDat,
 # make model
 #..................
 deathdf_params <- tibble::tibble(name = c("r1", "r2", "ma3", "y1", "y2", "y3", "y4", "y5", "y6"),
-                                 min =  c(0,    0,    0,      1e-5, 6,    7,    9,    10,   10),
-                                 max =  c(1,    1,    1,      5,    11,   13,   15,   15,   15),
-                                 init = c(0.15, 0.2,  0.4,    2,    8.5,  10,   12,   12.5, 12.5),
-                                 dsc1 = c(200,  400,  500,    2.5,  8.5,  10,   12,   12.5, 13),
-                                 dsc2 = c(800,  600,  500,    5,    5,    5,    5,    5,    5))
+                                 min =  c(0,    0,    0,      0,    0,    0,    0,    0,    0),
+                                 max =  c(1,    1,    1,      12,   12,   12,   12,   12,   12),
+                                 init = c(0.5,  0.5,  0.5,    5,    5,    5,    5,    5,    5),
+                                 dsc1 = c(0,    0,    0,      0,    0,    0,    0,    0,    0),
+                                 dsc2 = c(1,    1,    1,      12,   12,   12,   12,   12,   12))
 
 serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_date"),
-                                 min =  c(0.75,    0.90,   0.1,        65),
-                                 max =  c(0.85,    0.99,   0.1,        85),
+                                 min =  c(0.75,    0.95,   0.1,        65),
+                                 max =  c(0.85,    0.95,   0.1,        85),
                                  init = c(0.8,     0.95,   0.1,        75),
-                                 dsc1 = c(800,     950,    100,        75),
-                                 dsc2 = c(200,     50,     900,        3))
+                                 dsc1 = c(800,     950,    100,        65),
+                                 dsc2 = c(200,     50,     900,        85))
 
 df_params <- rbind.data.frame(deathdf_params, serodf_params)
 
@@ -69,6 +69,7 @@ mod1 <- make_modinf_agg$new()
 mod1$set_level("Time-Series")
 mod1$set_data(dat)
 mod1$set_IFRparams(c("r1", "r2", "ma3"))
+mod1$set_maxMa("ma3")
 mod1$set_Infxnparams(c("y1", "y2", "y3", "y4", "y5", "y6"))
 mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_date"))
 mod1$set_popN(5e6)
@@ -81,7 +82,7 @@ mod1$set_knots(c(1, 30, 60, 90, 120, 150))
 #..................
 # run model
 #..................
-r_mcmc_out.ts <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = T, rungs = 10)
+r_mcmc_out.ts <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = TRUE, rungs = 25, chains = 5)
 r_mcmc_out.ts
 plot_par(r_mcmc_out.ts, "r1")
 plot_par(r_mcmc_out.ts, "r2")
@@ -92,8 +93,14 @@ plot_par(r_mcmc_out.ts, "y3")
 plot_par(r_mcmc_out.ts, "y4")
 plot_par(r_mcmc_out.ts, "y5")
 plot_par(r_mcmc_out.ts, "y6")
+plot_par(r_mcmc_out.ts, "sens")
+plot_par(r_mcmc_out.ts, "spec")
 plot_par(r_mcmc_out.ts, "sero_date")
 
+plot_mc_acceptance(r_mcmc_out.ts)
+plot_rung_loglike(r_mcmc_out.ts)
+plot_rung_loglike(r_mcmc_out.ts, y_axis_type = 2)
+plot_rung_loglike(r_mcmc_out.ts, y_axis_type = 3)
 
 
 

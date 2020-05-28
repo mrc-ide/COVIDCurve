@@ -14,8 +14,12 @@ sim_seroprev <- function(infxns,
                          casefat,
                          min_day,
                          curr_day) {
+  # store prevalence which is function of infections before delay to seroconversion
+  dz_pos <- cumsum(colSums(infxns))
+  dz_neg <- popN - dz_pos
+  fps <- dz_neg - (dz_neg * sero_spec)
 
-  # recast infections for seroprev
+  # recast infections for seroprev delay
   sero.df <- as.data.frame(infxns)
   colnames(sero.df)[1:ncol(sero.df)] <- min_day:(curr_day - 1)
   sero.df <- sero.df %>%
@@ -40,32 +44,20 @@ sim_seroprev <- function(infxns,
   sero_line_list$tosc <- sapply(sero_line_list$day, draw_tosc, sero_delay_rate = sero_delay_rate)
 
   # Tidy up so that we observe deaths on a daily time step
-  fpr <- data.frame(
-    event_obs_day = 1:ncol(infxns),
-    fpr = (1-sero_spec) * (1 - cumsum(colSums(infxns))/popN)) %>%
-    dplyr::mutate(event_obs_day = factor(event_obs_day, labels = min_day:(curr_day-1)))
 
   sero_line_list.agg <- sero_line_list %>%
     dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:(curr_day-1)),
                                       labels = min_day:(curr_day-1))) %>%
     dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
-    dplyr::left_join(x = ., y = fpr, by = "event_obs_day") %>%
     dplyr::group_by(event_obs_day) %>%
     dplyr::mutate(
       pInfxns = sero_sens,
-      pInfxnsfpr = sero_sens + fpr,
-      TestposDzpos = purrr::map_dbl(pInfxns, function(x) rbinom(1, 1, x)),
-      TestposDzpos_fp = purrr::map_dbl(pInfxnsfpr, function(x) rbinom(1, 1, x))
-    ) %>%
+      TestposDzpos = purrr::map_dbl(pInfxns, function(x) rbinom(1, 1, x)) ) %>%
     dplyr::group_by(event_obs_day, .drop = F) %>%
-    dplyr::summarise(
-      nInfxns = dplyr::n(),
-      day_seros = sum(TestposDzpos),
-      day_seros_fp = sum(TestposDzpos_fp)) %>%
-    dplyr::ungroup(event_obs_day) %>%
-    dplyr::mutate(
-      day_seros = cumsum(day_seros),
-      day_seros_fp = cumsum(day_seros_fp))
+    dplyr::summarise(nInfxns = dplyr::n(),
+                     day_seros = sum(TestposDzpos)) %>%
+    dplyr::mutate(day_seros = cumsum(day_seros),
+                  day_seros_fp = day_seros + fps)
 
   #..................
   # out
@@ -325,9 +317,7 @@ LineListsim_infxn_2_death <- function(casefat, infections,
   # run seroprev
   #..................
   #TODO -- update me
-  if (simulate_seroprevalence) {
-    seroprev <- sim_seroprev(infxns = expected_inf.age.day, spec = spec, sens = sens)
-  }
+
   #..................
   # out
   #..................

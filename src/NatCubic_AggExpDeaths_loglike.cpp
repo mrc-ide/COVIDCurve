@@ -115,7 +115,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   std::vector<double> cumm_infxn_spline(infxn_spline.size());
   cumm_infxn_spline[0] = exp(infxn_spline[0]);
   for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-    cumm_infxn_spline[i] = exp(infxn_spline[i]) + exp(infxn_spline[i-1]);
+    cumm_infxn_spline[i] = exp(infxn_spline[i]) + cumm_infxn_spline[i-1];
   }
 
   // loop through days and TOD integral
@@ -187,23 +187,25 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // Serology Section
   //........................................................
   // account for false positives
-  std::vector<double> fpr(cumm_infxn_spline.size());
+  std::vector<double> fps(cumm_infxn_spline.size());
   for (int i = 0; i < cumm_infxn_spline.size(); i++) {
-    fpr[i] = (1-spec) * (1 - cumm_infxn_spline[i]/popN);
+    // dz negative minus dz_negative times those that are true negatives
+    fps[i] = (popN - cumm_infxn_spline[i]) - (popN - cumm_infxn_spline[i])*spec;
   }
 
-  // account for serology delay
-  std::vector<double> sero_con(infxn_spline.size());
-  for (int i = 0; i < infxn_spline.size(); i++) {
-    for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
-      double delta = j - i - 1;
-      sero_con[j-1] += sens*(1-exp(((-delta+1)/sero_rate)));
+  // account for serology delay -- average hazard of seroconversion on given day plus fpr
+  std::vector<double> sero_con_num(cumm_infxn_spline.size());
+  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
+    for (int j = i+1; j < (cumm_infxn_spline.size() + 1); j++) {
+      sero_con_num[j-1] += exp(infxn_spline[i]) *
+        (sens - (exp(1/sero_rate) - 1)*sens*sero_rate*exp(-(i+1)/sero_rate));
     }
   }
+
   double datpos = data["obs_serologyrate"];
   // -1 for day to being 1-based to a 0-based call
-  double pos = sero_con[sero_day - 1] + fpr[sero_day - 1]*popN;
-  int posint = std::round(pos);
+  double pos = sero_con_num[sero_day-1] + fps[sero_day-1];
+  int posint = round(pos);
   double sero_loglik = R::dbinom(posint, popN, datpos, true);
   // bring together
   double loglik = death_loglik + sero_loglik;
@@ -216,8 +218,10 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("auc") = auc,
+                                      Rcpp::Named("fps") = fps,
+                                      //Rcpp::Named("sero_con_prob") = sero_con_prob,
+                                      Rcpp::Named("sero_con_num") = sero_con_num,
                                       Rcpp::Named("pos") = pos,
-                                      Rcpp::Named("sero_con") = sero_con,
                                       Rcpp::Named("death_loglik") = death_loglik,
                                       Rcpp::Named("sero_loglik") = sero_loglik,
                                       Rcpp::Named("LogLik") = loglik,

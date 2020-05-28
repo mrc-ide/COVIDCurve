@@ -25,14 +25,15 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
 
-  makenormpriors <- mapply(function(param, d1, d2){
-    paste0("R::dnorm(", param, ",", d1, ",", d2, ",", "true) +")
+  makeinfxnpriors <- mapply(function(param, d1, d2){
+    paste0("R::dunif(", param, ",", d1, ",", d2, ",", "true) +")
   }, param = Infxnparams$name, d1 = Infxnparams$dsc1, d2 = Infxnparams$dsc2)
 
   if (reparamIFR) {
     #..................
     # account for reparam
     #..................
+    assert_non_null(modinf$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
     maxMa <- modinf$maxMa
     scalars <- IFRparams$name[IFRparams$name != maxMa]
 
@@ -45,8 +46,8 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
 
-  makebetapriors <- mapply(function(param, d1, d2){
-    paste0("R::dbeta(",param, ",", d1, ",", d2, ",", "true) +")
+  makeifrpriors <- mapply(function(param, d1, d2){
+    paste0("R::dunif(",param, ",", d1, ",", d2, ",", "true) +")
   }, param = IFRparams$name, d1 = IFRparams$dsc1, d2 = IFRparams$dsc2)
 
   #......................
@@ -60,17 +61,17 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
   }, param = Seroparams$name[Seroparams$name != "sero_date"],
   d1 = Seroparams$dsc1[Seroparams$name != "sero_date"],
   d2 = Seroparams$dsc2[Seroparams$name != "sero_date"])
-  serodateprior <- paste0("R::dnorm(sero_date,", Seroparams$dsc1[Seroparams$name == "sero_date"], ",", Seroparams$dsc2[Seroparams$name == "sero_date"], ",true) +")
+  serodateprior <- paste0("R::dunif(sero_date,", Seroparams$dsc1[Seroparams$name == "sero_date"], ",", Seroparams$dsc2[Seroparams$name == "sero_date"], ",true) +")
 
   #..................
   # bring together
   #..................
   extractparams <- c(Infxnextractparams, IFRextractparams, Seroextractparams)
   if (reparamIFR) {
-    priors <- c("double ret =", makenormpriors, makebetapriors, makeSerobetapriors, serodateprior,
+    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serodateprior,
                 paste0(length(scalars), "*log(", maxMa, ");"))
   } else {
-    priors <- c("double ret =", makenormpriors, makebetapriors, makeSerobetapriors, serodateprior)
+    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serodateprior)
     priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
   }
 
@@ -131,8 +132,9 @@ make_user_Agg_loglike <- function(modinf, reparamIFR) {
   # liftover reparam vars to Mas
   #.................
   if (reparamIFR) {
+    assert_non_null(modinf$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
     infxnparamdf <- paramdf[paramdf$name %in% IFRparams, ]
-    maxMa <- infxnparamdf$name[which(infxnparamdf$init == max(infxnparamdf$init))]
+    maxMa <- modinf$maxMa
     scalars <- infxnparamdf$name[infxnparamdf$name != maxMa]
     mavec <- rep(NA, (length(scalars)+1))
     for (i in 1:length(scalars)) {
@@ -202,7 +204,7 @@ make_user_Agg_loglike <- function(modinf, reparamIFR) {
   std::vector<double> cumm_infxn_spline(infxn_spline.size());
   cumm_infxn_spline[0] = exp(infxn_spline[0]);
   for (int i = 1; i < infxn_spline.size(); i++) {
-    cumm_infxn_spline[i] = exp(infxn_spline[i]) + exp(infxn_spline[i-1]);
+    cumm_infxn_spline[i] = exp(infxn_spline[i]) + cumm_infxn_spline[i-1];
   }
   std::vector<double> auc(infxn_spline.size());
   for (int i = 0; i < infxn_spline.size(); i++) {
@@ -251,20 +253,20 @@ make_user_Agg_loglike <- function(modinf, reparamIFR) {
       }
     }
   }
-  std::vector<double> fpr(cumm_infxn_spline.size());
+  std::vector<double> fps(cumm_infxn_spline.size());
   for (int i = 0; i < cumm_infxn_spline.size(); i++) {
-    fpr[i] = (1-spec) * (1 - cumm_infxn_spline[i]/popN);
+    fps[i] = (popN - cumm_infxn_spline[i]) - (popN - cumm_infxn_spline[i])*spec;
   }
-  std::vector<double> sero_con(infxn_spline.size());
-  for (int i = 0; i < infxn_spline.size(); i++) {
-    for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
-      double delta = j - i - 1;
-      sero_con[j-1] += sens*(1-exp(((-delta+1)/sero_rate)));
+  std::vector<double> sero_con_num(cumm_infxn_spline.size());
+  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
+    for (int j = i+1; j < (cumm_infxn_spline.size() + 1); j++) {
+      sero_con_num[j-1] += exp(infxn_spline[i]) *
+        (sens - (exp(1/sero_rate) - 1)*sens*sero_rate*exp(-(i+1)/sero_rate));
     }
   }
   double datpos = data[\"obs_serologyrate\"];
-  double pos = sero_con[sero_day - 1] + fpr[sero_day - 1]*popN;
-  int posint = std::round(pos);
+  double pos = sero_con_num[sero_day-1] + fps[sero_day-1];
+  int posint = round(pos);
   double sero_loglik = R::dbinom(posint, popN, datpos, true);
   double loglik = death_loglik + sero_loglik;
   if (!std::isfinite(loglik)) {

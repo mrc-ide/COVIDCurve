@@ -26,7 +26,7 @@ test_that("natcub cpp likelihood works", {
     sero_spec = 0.95,
     sero_sens = 0.8,
     sero_delay_rate = 10,
-    popN = 5e6
+    popN = 5e5
   )
 
   #..................
@@ -43,13 +43,13 @@ test_that("natcub cpp likelihood works", {
                    pgmms = gamma_lookup,
                    knots = knots,
                    level = FALSE,
-                   popN = 1e4)
+                   popN = 5e5)
 
   # liftover to Rcpp list
 
   morelikely.paramsin <- c("r1" = 0.2, "ma2" = 0.5, "y1" = 3.95,
-                           "y2" = 7.17, "y3" = 9.5, "y4" = 10.81,
-                           "y5" = 11.49, "y6" = 11.87,
+                           "y2" = 5.73, "y3" = 7.70, "y4" = 8.42,
+                           "y5" = 8.51, "y6" = 8.52,
                            "sens" = 0.8, "spec" = 0.95, "sero_rate" = 10, "sero_day" = 35.1)
 
   datin <- list("obs_deaths" = dat$AggDat$Deaths,
@@ -60,7 +60,7 @@ test_that("natcub cpp likelihood works", {
                                                            misc = misc_list)
 
   lesslikely.paramsin <- c("r1" = 0.1, "ma2" = 0.5, "y1" = 4, "y2" = 4, "y3" = 4, "y4" = 4, "y5" = 4, "y6" = 4,
-                           "sens" = 0.95, "spec" = 0.95, "sero_rate" = 0.95, "sero_day" = 35.1)
+                           "sens" = 0.95, "spec" = 0.95, "sero_rate" = 0.95, "sero_day" = 45.6)
   lesslikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike(params = lesslikely.paramsin,
                                                            param_i = 1,
                                                            data = datin,
