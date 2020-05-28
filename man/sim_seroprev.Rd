@@ -20,12 +20,11 @@ sim_seroprev(
 
 \item{sero_sens}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
-internal function, not exported}
+\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
 
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{casefat}{dataframe; The column names: age, ifr, and pa correspond to age-band, infection-fatality ratio, and the attack rate, respectively.}
+\item{casefat}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
 
 \item{min_day}{numeric; First day epidemic was observed.}
 

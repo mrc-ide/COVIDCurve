@@ -1,5 +1,7 @@
-#' @title Liftover User Param Df to Prior Function for Dr. Jacoby
-# TODO -- can't inherit params from R6 class so copy and paste
+#' @title Create the logprior from the ModInf R6 Class for DrJacoby Inference
+#' @param modinf R6 class; Internal model object for COVIDCurve
+#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
+#' @noRd
 
 make_user_Agg_logprior <- function(modinf, reparamIFR) {
   #..................
@@ -58,9 +60,10 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
   })
   makeSerobetapriors <- mapply(function(param, d1, d2){
     paste0("R::dbeta(",param, ",", d1, ",", d2, ",", "true) +")
-  }, param = Seroparams$name[Seroparams$name != "sero_date"],
-  d1 = Seroparams$dsc1[Seroparams$name != "sero_date"],
-  d2 = Seroparams$dsc2[Seroparams$name != "sero_date"])
+  }, param = Seroparams$name[!Seroparams$name %in% c("sero_rate", "sero_date")],
+  d1 = Seroparams$dsc1[!Seroparams$name %in% c("sero_rate", "sero_date")],
+  d2 = Seroparams$dsc2[!Seroparams$name %in% c("sero_rate", "sero_date")])
+  serorateprior <- paste0("R::dunif(sero_rate,", Seroparams$dsc1[Seroparams$name == "sero_rate"], ",", Seroparams$dsc2[Seroparams$name == "sero_rate"], ",true) +")
   serodateprior <- paste0("R::dunif(sero_date,", Seroparams$dsc1[Seroparams$name == "sero_date"], ",", Seroparams$dsc2[Seroparams$name == "sero_date"], ",true) +")
 
   #..................
@@ -68,10 +71,10 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
   #..................
   extractparams <- c(Infxnextractparams, IFRextractparams, Seroextractparams)
   if (reparamIFR) {
-    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serodateprior,
+    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
                 paste0(length(scalars), "*log(", maxMa, ");"))
   } else {
-    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serodateprior)
+    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior)
     priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
   }
 
@@ -89,10 +92,10 @@ make_user_Agg_logprior <- function(modinf, reparamIFR) {
 
 
 
-#---------------------------------------------------------------------------------------------------------------------
-
-#' @title Liftover User Param Df to Likelihood Function for Dr. Jacoby
-# TODO -- can't inherit params from R6 class so copy and paste
+#' @title Create the loglikelihood from the ModInf R6 Class for DrJacoby Inference
+#' @param modinf R6 class; Internal model object for COVIDCurve
+#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
+#' @noRd
 
 make_user_Agg_loglike <- function(modinf, reparamIFR) {
   #..................

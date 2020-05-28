@@ -1,9 +1,6 @@
 #' @title Simulate Seroprevalence Study
-#' @inheritParams LineListsim_infxn_2_death
-#' @param sero_spec double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param sero_sens double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
-#' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
+#' @inheritParams Aggsim_infxn_2_death
+#' @noRd
 #' internal function, not exported
 
 sim_seroprev <- function(infxns,
@@ -76,8 +73,20 @@ sim_seroprev <- function(infxns,
 
 
 #' @title Simulate Aggregate Expected Deaths
-#' @inheritParams LineListsim_infxn_2_death
-#' @inheritParams sim_seroprev
+#' @param infections integer vector; The infections for each day up to the current day.
+#' @param m_od double; The mean of the onset of infection to death (gamma distribution).
+#' @param s_od double; The coefficient of variation of the onset of infection to death (gamma distribution).
+#' @param m_or double; The mean of the onset of infection to recovery (gamma distribution).
+#' @param s_or double; The coefficient of variation of the onset of infection to recovery (gamma distribution).
+#' @param casefat dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.
+#' @param min_day numeric; First day epidemic was observed.
+#' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
+#' @param level character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.
+#' @param simulate_seroprevalence logical; Whether or not seroprevalence data should also be simulated
+#' @param sero_spec double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param sero_sens double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
+#' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @importFrom magrittr %>%
 #' @export
 

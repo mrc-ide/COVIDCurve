@@ -2,23 +2,24 @@
 % Please edit documentation in R/modelOO.R
 \name{make_modinf_agg}
 \alias{make_modinf_agg}
-\title{Object-Oriented Class for Model Inference with Aggregate}
+\title{Make Model Inference Object-Oriented Class}
 \description{
-A simple R6 class with only public features.
+A simple R6 class with only public features. Purpose is to provide a model framework
+for inference of IFRs and the incidence curve from Aggregate Death Data.
 }
+\section{Public Variables}{
+
+\tabular{ll}{
+\strong{Variable} \tab \strong{Return} \cr
+\code{data} \tab  Input data for inference \cr
+}
+}
+
 \section{Constructor Arguments}{
 
 \tabular{lll}{
 \strong{Argument} \tab \strong{Type} \tab \strong{Details} \cr
 \code{data} \tab dataframe \tab Dataframe with .... \cr
-}
-}
-
-\section{Public Variables}{
-
-\tabular{ll}{
-\strong{Variable} \tab \strong{Return} \cr
-\code{data} \tab  Input data for ifnerence \cr
 }
 }
 

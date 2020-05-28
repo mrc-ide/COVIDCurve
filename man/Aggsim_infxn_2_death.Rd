@@ -20,9 +20,9 @@ Aggsim_infxn_2_death(
 )
 }
 \arguments{
-\item{casefat}{dataframe; The column names: age, ifr, and pa correspond to age-band, infection-fatality ratio, and the attack rate, respectively.}
+\item{casefat}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
 
-\item{infections}{integer vector; The infections for each day up to the current day (must be supplied if \param{expgrowth} is false).}
+\item{infections}{integer vector; The infections for each day up to the current day.}
 
 \item{m_od}{double; The mean of the onset of infection to death (gamma distribution).}
 
@@ -32,7 +32,9 @@ Aggsim_infxn_2_death(
 
 \item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
 
-\item{simulate_seroprevalence}{logical; Boolean indicating whether or not the seroprevalence should also be simulated}
+\item{level}{character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.}
+
+\item{simulate_seroprevalence}{logical; Whether or not seroprevalence data should also be simulated}
 
 \item{sero_spec}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
@@ -40,8 +42,11 @@ Aggsim_infxn_2_death(
 
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
-internal function, not exported}
+\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{m_or}{double; The mean of the onset of infection to recovery (gamma distribution).}
+
+\item{s_or}{double; The coefficient of variation of the onset of infection to recovery (gamma distribution).}
 }
 \description{
 Simulate Aggregate Expected Deaths

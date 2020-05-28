@@ -1,17 +1,17 @@
-#' @title Object-Oriented Class for Model Inference with Aggregate
-#'
-#' @description A simple R6 class with only public features.
+#' @title Make Model Inference Object-Oriented Class
+#' @description A simple R6 class with only public features. Purpose is to provide a model framework
+#' for inference of IFRs and the incidence curve from Aggregate Death Data.
 #' @name make_modinf_agg
+#' @section Public Variables:
+#'  \tabular{ll}{
+#'   \strong{Variable} \tab \strong{Return} \cr
+#'   \code{data} \tab  Input data for inference \cr
+#'   }
 #' @section Constructor Arguments:
 #' \tabular{lll}{
 #' \strong{Argument} \tab \strong{Type} \tab \strong{Details} \cr
 #' \code{data} \tab dataframe \tab Dataframe with .... \cr
 #' }
-#' @section Public Variables:
-#'  \tabular{ll}{
-#'   \strong{Variable} \tab \strong{Return} \cr
-#'   \code{data} \tab  Input data for ifnerence \cr
-#'   }
 #'
 #' @export
 NULL
@@ -61,7 +61,7 @@ make_modinf_agg <- R6::R6Class(classname = "Inference-Aggregate-Model",
                                      assert_string(IFRparams)
                                      assert_string(Infxnparams)
                                      assert_string(Seroparams)
-                                     assert_in(Seroparams, c("sens", "spec", "sero_day", "sero_rate"))
+                                     assert_in(Seroparams, c("sens", "spec", "sero_date", "sero_rate"))
                                      # assert paramdf
                                      assert_dataframe(paramdf)
                                      assert_in(x = colnames(paramdf), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
