@@ -4,10 +4,10 @@
 
 summary.IFRmodel <- function(object, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Knot Positions: "), paste(object$knots, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
+  cat(crayon::green("IFR strata params: "), paste(round(object$IFRparams, 2), collapse = ", "), "\n")
+  cat(crayon::blue("Infection Point Params: "), paste(round(object$Infxnparams, 2), collapse = ", "), "\n")
+  cat(crayon::blue("Infection Knot Positions: "), paste(round(object$knots, 2), collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(round(object$Seroparams, 2), collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
   cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
@@ -263,7 +263,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
   #......................
   # fitler to sampling and by rung
   #......................
-  mcmcout$output <-  mcmcout$output %>%
+  mcmcout.nodes <-  mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung)
 
   #......................
@@ -318,6 +318,9 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         node_j <- node_j +1
       }
     }
+    out <- data.frame(time = 1:length(infxn_spline),
+                      infxns = infxn_spline)
+    return(out)
   }
 
   #......................
