@@ -4,7 +4,7 @@ using namespace Rcpp;
 //------------------------------------------------
 // Log-Likelihood for Aggregate Expected Deaths with a Natural Cubic Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
@@ -17,8 +17,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-  double sero_day_count = params["sero_day"];
-  int sero_day = std::floor(sero_day_count);
+  double sero_day_raw = params["sero_day"];
+  int sero_day = std::floor(sero_day_raw);
 
   // extract free parameters
   double y1 = params["y1"];
@@ -27,9 +27,11 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   double y4 = params["y4"];
   double y5 = params["y5"];
   double y6 = params["y6"];
-  double ma2 = params["ma2"];
+  double ma3 = params["ma3"];
+  double r2 = params["r2"];
   double r1 = params["r1"];
-  double ma1 = ma2 * r1;
+  double ma1 = ma3 * r1;
+  double ma2 = ma3 * r2;
 
   // storage items
   int agelen = pa.size();
@@ -38,6 +40,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // fill storage
   ma[0] = ma1;
   ma[1] = ma2;
+  ma[2] = ma3;
   node_y[0] = y1;
   node_y[1] = y2;
   node_y[2] = y3;
@@ -45,7 +48,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   node_y[4] = y5;
   node_y[5] = y6;
 
-  // end liftover
   //........................................................
   // Deaths Section
   //........................................................
@@ -53,7 +55,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // natural cubic spline
   //.............................
   int n_knots = node_x.size();
-  int n_dat = node_x[n_knots-1] - node_x[0];
+  int n_dat = node_x[n_knots-1] - node_x[0] + 1;
   // NB, we want N spline functions (interpolants) and so we have n+1 knots
   // as part of simplifying the linear spline, function we write this denom: x_{i+1} - x_i
   std::vector<double> denom(n_knots-1);
@@ -98,12 +100,13 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   // create infection spline
   std::vector<double> infxn_spline(n_dat);
   int node_j = 0;
-  for (int i = 0; i < n_dat; i++) {
-    // update curve
+  infxn_spline[0] = node_y[0];
+  for (int i = 1; i < n_dat; i++) {
+    // update curve and have i+1 to account for fact days are 1-based
     infxn_spline[i] = node_y[node_j] +
-      sp1[node_j] * (i - node_x[node_j]) +
-      sp2[node_j] * pow((i - node_x[node_j]), 2) +
-      sp3[node_j] * pow((i - node_x[node_j]), 3);
+      sp1[node_j] * ((i+1) - node_x[node_j]) +
+      sp2[node_j] * pow(((i+1) - node_x[node_j]), 2) +
+      sp3[node_j] * pow(((i+1) - node_x[node_j]), 3);
 
     // update node_j
     if ((node_x[0] + i) >= node_x[node_j+1]) {
@@ -113,9 +116,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
 
   // convert cumulative infection spline into daily infection spline
   std::vector<double> cumm_infxn_spline(infxn_spline.size());
-  cumm_infxn_spline[0] = exp(infxn_spline[0]);
+  cumm_infxn_spline[0] = infxn_spline[0];
   for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-    cumm_infxn_spline[i] = exp(infxn_spline[i]) + cumm_infxn_spline[i-1];
+    cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
   }
 
   // loop through days and TOD integral
@@ -123,7 +126,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
   for (int i = 0; i < infxn_spline.size(); i++) {
     for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
       int delta = j - i - 1;
-      auc[j-1] += exp(infxn_spline[i]) * (pgmms[delta + 1] - pgmms[delta]);
+      auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
     }
   }
 
@@ -193,19 +196,24 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
     fps[i] = (popN - cumm_infxn_spline[i]) - (popN - cumm_infxn_spline[i])*spec;
   }
 
-  // account for serology delay -- average hazard of seroconversion on given day plus fpr
-  std::vector<double> sero_con_num(cumm_infxn_spline.size());
-  for (int i = 0; i < cumm_infxn_spline.size(); i++) {
-    for (int j = i+1; j < (cumm_infxn_spline.size() + 1); j++) {
-      sero_con_num[j-1] += exp(infxn_spline[i]) *
-        (sens - (exp(1/sero_rate) - 1)*sens*sero_rate*exp(-(i+1)/sero_rate));
-    }
+  // account for serology delay -- cumulative hazard of seroconversion on given day look up table
+  // days are 1-based
+  std::vector<double> cum_hazard(sero_day);
+  cum_hazard[0] = 0.0;
+  for (int i = 1; i < sero_day; i++) {
+    cum_hazard[i] = sens * (1-exp((-i/sero_rate)));
+  }
+
+  double sero_con_num = 0.0;
+  for (int i = 0; i < (sero_day-1); i++) {
+    int time_elapsed = sero_day - i - 1;
+    sero_con_num += infxn_spline[i] * cum_hazard[time_elapsed];
   }
 
   double datpos = data["obs_serologyrate"];
-  // -1 for day to being 1-based to a 0-based call
-  double pos = sero_con_num[sero_day-1] + fps[sero_day-1];
-  int posint = round(pos);
+  // update now for false positives; -1 for day to being 1-based to a 0-based call
+  sero_con_num += fps[sero_day-1];
+  int posint = round(sero_con_num);
   double sero_loglik = R::dbinom(posint, popN, datpos, true);
   // bring together
   double loglik = death_loglik + sero_loglik;
@@ -221,7 +229,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
                                       Rcpp::Named("fps") = fps,
                                       //Rcpp::Named("sero_con_prob") = sero_con_prob,
                                       Rcpp::Named("sero_con_num") = sero_con_num,
-                                      Rcpp::Named("pos") = pos,
+                                      Rcpp::Named("cum_hazard") = cum_hazard,
                                       Rcpp::Named("death_loglik") = death_loglik,
                                       Rcpp::Named("sero_loglik") = sero_loglik,
                                       Rcpp::Named("LogLik") = loglik,
@@ -233,4 +241,3 @@ Rcpp::List NatCubic_SplineGrowth_loglike(Rcpp::NumericVector params, int param_i
                                       Rcpp::Named("sp3") = sp3);
   return ret;
 }
-
