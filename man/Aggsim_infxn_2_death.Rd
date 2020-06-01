@@ -5,7 +5,7 @@
 \title{Simulate Aggregate Expected Deaths}
 \usage{
 Aggsim_infxn_2_death(
-  casefat,
+  fatalitydata,
   infections,
   m_od = 18.8,
   s_od = 0.45,
@@ -13,14 +13,14 @@ Aggsim_infxn_2_death(
   curr_day,
   level,
   simulate_seroprevalence = TRUE,
-  sero_spec,
-  sero_sens,
+  specificity,
+  sensitivity,
   popN,
   sero_delay_rate
 )
 }
 \arguments{
-\item{casefat}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
+\item{fatalitydata}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
 
 \item{infections}{integer vector; The infections for each day up to the current day.}
 
@@ -36,9 +36,9 @@ Aggsim_infxn_2_death(
 
 \item{simulate_seroprevalence}{logical; Whether or not seroprevalence data should also be simulated}
 
-\item{sero_spec}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{specificity}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{sero_sens}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{sensitivity}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
 

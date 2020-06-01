@@ -18,15 +18,17 @@ Imports:
     magrittr,
     tidyr,
     stringr,
+    ggplot2,
+    cowplot,
     drjacoby,
+    coda,
     purrr,
+    furrr,
     Rcpp,
     R6
 Remotes:
   mrc-ide/drjacoby
 Suggests: 
-    ggplot2,
-    cowplot,
     knitr,
     rmarkdown,
     covr,
