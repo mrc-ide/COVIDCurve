@@ -11,7 +11,7 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
   #..................
   # assertions
   #..................
-  assert_custom_class(modinf, "Inference-Aggregate-Model")
+  assert_custom_class(modinf, "IFRmodel")
   assert_logical(reparamIFR)
   assert_numeric(burnin)
   assert_numeric(samples)
@@ -128,6 +128,8 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, maxMa]})
   }
 
+  # append COVIDCurve class along with Dr.Jacoby class
+  class(mcmcout) <- c("IFRmodel_inf", class(mcmcout))
   return(mcmcout)
 }
 
