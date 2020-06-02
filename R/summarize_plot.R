@@ -104,7 +104,7 @@ get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_
 #' @param mcmcout IFR Model MCMC Output; The result of the IFR Model MCMC run. Object will inherits classes from COVIDCurve ("IFRmodel_inf") and DrJacoby ("drjacoby_output")
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
-#' @importFrom ggplot2 ggplot, aes, geom_line, geom_vline, xlab, ylab, labs, facet_wrap, theme_minimal, theme
+#' @param CIquant numeric; Quantile to draw from the posterior curve
 #' @importFrom magrittr %>%
 #' @export
 
@@ -197,56 +197,58 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
   #......................
   # tidy
   #......................
+  # keep IFR params around for convenience
   if (by_chain) {
     plotdat <- mcmcout.nodes %>%
-      dplyr::select(c("chain", "infxncurves")) %>%
+      dplyr::select(c("chain", IFRmodel$IFRparams, "infxncurves")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
       tidyr::unnest(cols = "infxncurves")
 
-    plotObj <- ggplot() +
-      geom_line(data = plotdat, mapping = aes(time, infxns, group = sim), alpha = 0.25,
-                lwd = 0.5, color = "#d9d9d9") +
-      geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
-      xlab("Time") + ylab("Num. Infxns")  +
-      labs(title = "Posterior Draws of the Infection Curve") +
-      facet_wrap(. ~ chain) +
-      theme_minimal() +
-      theme(
-        plot.title = element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        plot.subtitle = element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        axis.title = element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-        axis.text.x = element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-        axis.text.y = element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-        panel.background = element_blank(),
-        plot.background = element_blank(),
-        axis.line = element_line(color = "#000000", size = 1.2),
+    plotObj <- ggplot2::ggplot() +
+      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
+                         lwd = 0.5, color = "#d9d9d9") +
+      ggplot2::geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
+      ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+      ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+      ggplot2::facet_wrap(. ~ chain) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+        plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+        axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+        axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+        axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+        panel.background =  ggplot2::element_blank(),
+        plot.background =  ggplot2::element_blank(),
+        axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
 
 
   } else {
+    # keep IFR params around for convenience
     plotdat <- mcmcout.nodes %>%
-      dplyr::select(c("infxncurves")) %>%
+      dplyr::select(c(IFRmodel$IFRparams, "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "infxncurves")
 
-    plotObj <- ggplot() +
-      geom_line(data = plotdat, mapping = aes(time, infxns, group = sim), alpha = 0.25,
-                lwd = 0.5, color = "#d9d9d9") +
-      geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
-      xlab("Time") + ylab("Num. Infxns")  +
-      labs(title = "Posterior Draws of the Infection Curve") +
-      theme_minimal() +
-      theme(
-        plot.title = element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        plot.subtitle = element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        axis.title = element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-        axis.text.x = element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-        axis.text.y = element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-        panel.background = element_blank(),
-        plot.background = element_blank(),
-        axis.line = element_line(color = "#000000", size = 1.2),
+    plotObj <-  ggplot2::ggplot() +
+      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
+                         lwd = 0.5, color = "#d9d9d9") +
+      ggplot2::geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
+      ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+      ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+        plot.subtitle = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+        axis.title = ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+        axis.text.x = ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+        axis.text.y = ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+        panel.background = ggplot2::element_blank(),
+        plot.background = ggplot2::element_blank(),
+        axis.line = ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
 
   }
@@ -259,6 +261,53 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
     plotObj = plotObj
   )
   return(ret)
+}
+
+#' @title Posterior Check for Infections to Death
+#' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
+#' @inheritParams draw_posterior_infxn_points_cubic_splines
+#' @importFrom magrittr %>%
+#' @export
+
+posterior_check_infxns_to_death <- function(IFRmodel, mcmcout, whichrung = "rung1",
+                                            CIquant, by_chain = FALSE) {
+  postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel, mcmcout, whichrung = whichrung,
+                                                                   CIquant, by_chain = by_chain)$plotdat
+  # set up function to draw posterior deaths
+  postdat.sims <- split(postdat, factor(postdat$sim))
+  draw_post_deaths <- function(postdatsim){
+    gmmlkup <- stats::dgamma(postdatsim$time, shape = 1/(IFRmodel$sod^2), scale = IFRmodel$mod*IFRmodel$sod^2, log = F)
+
+    # exp deaths day and strata
+    exp_death.day <- rep(0, length = max(IFRmodel$knots) - IFRmodel$knots[1] + 1)
+    # spread infxns out to day when they may or may not die
+    for (i in 1:nrow(postdatsim)) {
+      for (j in (i+1):(nrow(postdatsim) + 1)) {
+        delta <- j - i
+        exp_death.day[j-1] <- exp_death.day[j-1] + postdatsim$infxns[i] * gmmlkup[delta]
+      }
+    }
+
+    exp_death.day.strata <- exp_death.day %*% t(IFRmodel$pa) # account for pa
+    exp_death.day.strata <- exp_death.day.strata * postdatsim[, IFRmodel$IFRparams]
+
+    #......................
+    # tidy up and out
+    #......................
+    out <- cbind.data.frame(time = 1:nrow(exp_death.day.strata), exp_death.day.strata)
+    colnames(out)[2:ncol(out)] <- paste0("deaths_", IFRmodel$IFRparams)
+    return(out)
+  }
+  # get post deaths
+  postdat.curves <- postdat %>%
+    dplyr::select("sim", IFRmodel$IFRparams) %>%
+    dplyr::filter(!duplicated(.)) %>%
+    dplyr::mutate(
+      post_deaths = furrr::future_map(postdat.sims, draw_post_deaths)
+    ) %>%
+    tidyr::unnest(cols = post_deaths)
+
+  return(postdat.curves)
 }
 
 
