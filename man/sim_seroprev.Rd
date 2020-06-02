@@ -6,8 +6,8 @@
 \usage{
 sim_seroprev(
   infxns,
-  sero_spec,
-  sero_sens,
+  specificity,
+  sensitivity,
   sero_delay_rate,
   popN,
   fatalitydata,
@@ -16,6 +16,13 @@ sim_seroprev(
 )
 }
 \arguments{
+\item{infxns}{numeric vector; the expected number of infections from the infection curve from the poisson draw
+internal function, not exported}
+
+\item{specificity}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{sensitivity}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+
 \item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
 
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}

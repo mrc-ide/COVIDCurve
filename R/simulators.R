@@ -1,11 +1,12 @@
 #' @title Simulate Seroprevalence Study
 #' @inheritParams Aggsim_infxn_2_death
-#' @noRd
+#' @param infxns numeric vector; the expected number of infections from the infection curve from the poisson draw
+#' @export
 #' internal function, not exported
 
 sim_seroprev <- function(infxns,
-                         sero_spec,
-                         sero_sens,
+                         specificity,
+                         sensitivity,
                          sero_delay_rate,
                          popN,
                          fatalitydata,
@@ -14,13 +15,13 @@ sim_seroprev <- function(infxns,
   # store prevalence which is function of infections before delay to seroconversion
   dz_pos <- cumsum(infxns)
   dz_neg <- popN - dz_pos
-  fps <- dz_neg - (dz_neg * sero_spec)
+  fps <- dz_neg - (dz_neg * specificity)
 
   # recast infections for seroprev delay
   sero.df <- data.frame(day =  min_day:curr_day,
                         infxncount = infxns)
   # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sero_sens))
+  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sensitivity))
 
   df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
@@ -170,7 +171,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   # run seroprev
   #..................
   if (simulate_seroprevalence) {
-    seroprev <- sim_seroprev(infxns = expected_inf.day, sero_spec = specificity, sero_sens = sensitivity, sero_delay_rate = sero_delay_rate,
+    seroprev <- sim_seroprev(infxns = expected_inf.day, specificity = specificity, sensitivity = sensitivity, sero_delay_rate = sero_delay_rate,
                              popN = popN, fatalitydata = fatalitydata, min_day = min_day, curr_day = curr_day)
   }
 
@@ -184,7 +185,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
       dplyr::group_by(ObsDay, age) %>%
       dplyr::summarise(deaths = sum(day_deaths)) %>%
       dplyr::rename(
-        AgeGroup = age,
+        Strata = age,
         Deaths = deaths)
   } else {
     death_line_list <- death_line_list %>%
@@ -192,7 +193,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
       dplyr::rename(
         ObsDay = obs_day,
-        AgeGroup = age,
+        Strata = age,
         Deaths = day_deaths)
   }
 

@@ -4,7 +4,7 @@
 #'
 #' @export
 
-run_modinf_agg <- function(modinf, reparamIFR = T,
+run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
                            burnin = 1e3, samples = 1e3, chains = 3,
                            rungs = 1, GTI_pow = 3, coupling_on = T,
                            pb_markdown = F, silent = T) {
@@ -13,6 +13,7 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
   #..................
   assert_custom_class(modinf, "IFRmodel")
   assert_logical(reparamIFR)
+  assert_logical(reparamInfxn)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -61,11 +62,12 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
     assert_non_null(modinf$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
   }
 
+  if (reparamInfxn) {
+    assert_non_null(modinf$relInfxn, message = "If performing reparameterization, must set a relative infection point in the R6 class object")
+  }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(modinf, reparamIFR = reparamIFR)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(modinf, reparamIFR = reparamIFR)
-
-
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(modinf, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(modinf, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
 
   #..................
   # make misc
@@ -116,7 +118,7 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
 
   if (reparamIFR) {
     #..................
-    # account for reparam
+    # account for ifr reparam
     #..................
     IFRparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$IFRparams, ]
     maxMa <- modinf$maxMa
@@ -127,6 +129,21 @@ run_modinf_agg <- function(modinf, reparamIFR = T,
     liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, maxMa]})
   }
+
+  if (reparamInfxn) {
+    #..................
+    # account for ifr reparam
+    #..................
+    Infxnparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$Infxnparams, ]
+    relInfxn <- modinf$relInfxn
+    scalars <- Infxnparams$name[Infxnparams$name != relInfxn]
+
+    liftovercols <- colnames(mcmcout$output) %in% scalars
+    liftovercols.list <- mcmcout$output[, liftovercols]
+    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
+  }
+
 
   # append COVIDCurve class along with Dr.Jacoby class
   class(mcmcout) <- c("IFRmodel_inf", class(mcmcout))

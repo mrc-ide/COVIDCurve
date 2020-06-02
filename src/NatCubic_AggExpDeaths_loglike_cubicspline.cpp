@@ -28,10 +28,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double y5 = params["y5"];
   double y6 = params["y6"];
   double ma3 = params["ma3"];
-  double r2 = params["r2"];
-  double r1 = params["r1"];
-  double ma1 = ma3 * r1;
-  double ma2 = ma3 * r2;
+  double ma2 = params["r2"];
+  double ma1 = params["r1"];
 
   // storage items
   int agelen = pa.size();

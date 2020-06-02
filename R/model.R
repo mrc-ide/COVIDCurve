@@ -26,6 +26,7 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                  IFRparams = NULL,
                                  maxMa = NULL,
                                  Infxnparams = NULL,
+                                 relInfxn = NULL,
                                  paramdf = NULL,
                                  knots = NULL,
                                  pa = NULL,
@@ -36,9 +37,12 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                  Seroparams = NULL,
                                  popN = NULL,
 
-                                 initialize = function(data = NULL, level = NULL, IFRparams = NULL, maxMa = NULL, Infxnparams = NULL,
-                                                       paramdf = NULL, knots = NULL, pa = NULL, mod = NULL, sod = NULL, gamma_lookup = NULL,
-                                                       Seroparams = NULL, popN = NULL) {
+                                 initialize = function(data = NULL, level = NULL, knots = NULL, pa = NULL,
+                                                       mod = NULL, sod = NULL, gamma_lookup = NULL,
+                                                       IFRparams = NULL, maxMa = NULL,
+                                                       Infxnparams = NULL, relInfxn = NULL,
+                                                       Seroparams = NULL, popN = NULL,
+                                                       paramdf = NULL) {
                                    #......................
                                    # assertions and checks
                                    #......................
@@ -59,8 +63,11 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_bounded(data$obs_serologyrate, left = 0, right = 1)
                                      #assert params
                                      assert_string(IFRparams)
+                                     assert_unique(IFRparams)
                                      assert_string(Infxnparams)
+                                     assert_unique(Infxnparams)
                                      assert_string(Seroparams)
+                                     assert_unique(Seroparams)
                                      assert_in(Seroparams, c("sens", "spec", "sero_day", "sero_rate"))
                                      # assert paramdf
                                      assert_dataframe(paramdf)
@@ -94,6 +101,9 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$maxMA <- maxMa
                                    }
                                    self$Infxnparams <- Infxnparams
+                                   if (!is.null(relInfxn)) {
+                                     self$relInfxn <- relInfxn
+                                   }
                                    self$Seroparams <- Seroparams
                                    self$popN <- popN
                                    self$paramdf <- paramdf
@@ -109,7 +119,9 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                    }
                                  },
 
+                                 #......................
                                  # set functions
+                                 #......................
                                  set_level = function(val) {
                                    assert_in(x = val, y = c("Time-Series", "Cumulative"))
                                    self$level <- val
@@ -139,6 +151,7 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
 
                                  set_IFRparams = function(val) {
                                    assert_string(val)
+                                   assert_unique(val)
                                    self$IFRparams <- val
                                  },
 
@@ -153,11 +166,22 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
 
                                  set_Infxnparams = function(val) {
                                    assert_string(val)
+                                   assert_unique(val)
                                    self$Infxnparams <- val
+                                 },
+
+                                 set_relInfxn = function(val) {
+                                   if (length(self$Infxnparams) == 0) {
+                                     stop("Must specify Infxnparams before specifying the relative infection point (relInfxn)")
+                                   }
+                                   assert_string(val)
+                                   assert_in(val, self$Infxnparams)
+                                   self$relInfxn <- val
                                  },
 
                                  set_Seroparams = function(val) {
                                    assert_string(val)
+                                   assert_unique(val)
                                    assert_in(val, c("sens", "spec", "sero_rate", "sero_day"),
                                              message = "Serology parameters currently limited to specifitiy (spec),
                                              sensitivity (sens), serology rate (sero_rate) and date of serology rate (sero_day)")

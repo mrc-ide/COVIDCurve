@@ -1,5 +1,10 @@
 context("aggregate fits for cpp")
 test_that("natcub cpp likelihood works", {
+
+  #............................................................
+  # N.B. By default, we are not reparameterizing
+  #...........................................................
+
   set.seed(48)
   #..................
   # sim data
@@ -13,7 +18,7 @@ test_that("natcub cpp likelihood works", {
                                               max = 50)
   pa <- rep(1/3, 3)
   fatalitydata <- data.frame(strata = c("r1", "r2", "ma3"),
-                             ifr = c(0.05, 0.1, 0.5),
+                             ifr = c(0.1, 0.2, 0.5),
                              pa = pa)
   dat <- COVIDCurve::Aggsim_infxn_2_death(
     fatalitydata = fatalitydata,

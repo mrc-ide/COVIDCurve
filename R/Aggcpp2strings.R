@@ -1,9 +1,10 @@
 #' @title Create the logprior from the IFRmodel R6 Class for DrJacoby Inference
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
+#' @param reparamInfxn logical; Whether infection y-coordinates (i.e. the infection spline) should be reparameterized or inferred seperately
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, reparamIFR) {
+make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # assertsions
   #..................
@@ -20,8 +21,28 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR) {
   IFRparams <- paramdf[paramdf$name %in% IFRparams, ]
   Seroparams <- paramdf[paramdf$name %in% Seroparams, ]
 
+  if (reparamInfxn) {
+    #..................
+    # account for Infection Point reparam
+    #..................
+    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires relative infection point to be indicated (i.e. relInfxn)")
+    relInfxn <- IFRmodel$relInfxn
+    infxnscalars <- Infxnparams$name[Infxnparams$name != relInfxn]
+
+  }
+
+  if (reparamIFR) {
+    #..................
+    # account for IFR reparam
+    #..................
+    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
+    maxMa <- IFRmodel$maxMa
+    ifrscalars <- IFRparams$name[IFRparams$name != maxMa]
+
+  }
+
   #..................
-  # gaussian for infxnpts
+  # priors for infxnpts
   #..................
   Infxnextractparams <- sapply(Infxnparams$name, function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
@@ -31,18 +52,8 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR) {
     paste0("R::dunif(", param, ",", d1, ",", d2, ",", "true) +")
   }, param = Infxnparams$name, d1 = Infxnparams$dsc1, d2 = Infxnparams$dsc2)
 
-  if (reparamIFR) {
-    #..................
-    # account for reparam
-    #..................
-    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
-    maxMa <- IFRmodel$maxMa
-    scalars <- IFRparams$name[IFRparams$name != maxMa]
-
-  }
-
   #..................
-  # beta for IFRparams
+  # priors for IFRparams
   #..................
   IFRextractparams <- sapply(IFRparams$name, function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
@@ -70,13 +81,26 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR) {
   # bring together
   #..................
   extractparams <- c(Infxnextractparams, IFRextractparams, Seroextractparams)
-  if (reparamIFR) {
-    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
-                paste0(length(scalars), "*log(", maxMa, ");"))
-  } else {
-    priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior)
-    priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
-  }
+
+  switch(paste0(reparamInfxn, "-", reparamIFR),
+         "TRUE-TRUE" = {
+           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0(length(ifrscalars), "*log(", maxMa, ");"))
+         },
+         "TRUE-FALSE" = {
+           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+         },
+         "FALSE-TRUE" = {
+           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(ifrscalars), "*log(", maxMa, ");"))
+         },
+         "FALSE-FALSE" = {
+           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior)
+           priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
+         }
+  )
 
   ret <- c("SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) {",
            extractparams,
@@ -93,11 +117,10 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR) {
 
 
 #' @title Create the loglikelihood from the IFRmodel R6 Class for DrJacoby Inference
-#' @param IFRmodel R6 class; Internal model object for COVIDCurve
-#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
+#' @inheritParams make_user_Agg_logprior
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, reparamIFR) {
+make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # assertsions
   #..................
@@ -132,31 +155,57 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR) {
 
 
   #..................
-  # liftover reparam vars to Mas
+  # liftover infxnreparam vars to Infxn pts
+  #.................
+  if (reparamInfxn) {
+    assert_non_null(IFRmodel$relInfxn, message = "Reparameterization requires relative infection points to be indicated (i.e. relInfxn)")
+    infxnparamdf <- paramdf[paramdf$name %in% Infxnparams, ]
+    relInfxn <- IFRmodel$relInfxn
+    infxnscalars <- infxnparamdf$name[infxnparamdf$name != relInfxn]
+    node_yvec <- rep(NA, length(Infxnparams))
+    # determine which relative position in our node-y vector
+    relnodey_pos <- which(relInfxn == Infxnparams)
+    nodey_counter <- 1
+    for (i in 1:length(node_yvec)) {
+      if (i == relnodey_pos) {
+        node_yvec[i] <- paste0("node_y[", i-1, "] = ", relInfxn, ";")
+      } else {
+        node_yvec[i] <- paste0("node_y[", i-1, "] = ", infxnscalars[nodey_counter], "*", relInfxn, ";")
+        nodey_counter <- nodey_counter + 1
+      }
+    }
+  } else {
+    node_yvec <- rep(NA, length(Infxnparams))
+    for (i in 1:length(Infxnparams)){
+      node_yvec[i] <- paste0("node_y[", i-1, "]", " = ", Infxnparams[i], ";")
+    }
+  }
+
+  #..................
+  # liftover ifrreparam vars to Mas
   #.................
   if (reparamIFR) {
     assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
-    infxnparamdf <- paramdf[paramdf$name %in% IFRparams, ]
+    ifrparamdf <- paramdf[paramdf$name %in% IFRparams, ]
     maxMa <- IFRmodel$maxMa
-    scalars <- infxnparamdf$name[infxnparamdf$name != maxMa]
-    mavec <- rep(NA, (length(scalars)+1))
-    for (i in 1:length(scalars)) {
-      mavec[i] <- paste0("ma[", i-1, "] = ", scalars[i], "*", maxMa, ";")
+    ifrscalars <- ifrparamdf$name[ifrparamdf$name != maxMa]
+    mavec <- rep(NA, length(IFRparams))
+    # determine which relative position in our ma vector
+    mamax_pos <- which(maxMa == IFRparams)
+    ma_counter <- 1
+    for (i in 1:length(mavec)) {
+      if (i == mamax_pos) {
+        mavec[i] <- paste0("ma[", i-1, "] = ", maxMa, ";")
+      } else {
+        mavec[i] <- paste0("ma[", i-1, "] = ", ifrscalars[ma_counter], "*", maxMa, ";")
+        ma_counter <- ma_counter + 1
+      }
     }
-    mavec[length(mavec)] <- paste0("ma[", length(mavec)-1, "] = ", maxMa, ";")
   } else {
     mavec <- rep(NA, length(IFRparams))
     for (i in 1:length(IFRparams)){
       mavec[i] <- paste0("ma[", i-1, "]", " = ", IFRparams[i], ";")
     }
-  }
-
-  #..................
-  # Fill in Infxn Pts
-  #..................
-  Infxnparamschar <- rep(NA, length(Infxnparams))
-  for (i in 1:length(Infxnparams)){
-    Infxnparamschar[i] <- paste0("node_y[", i-1, "]", " = ", Infxnparams[i], ";")
   }
 
   #..................
@@ -176,7 +225,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR) {
            extmisc,
            params,
            storageitems,
-           Infxnparamschar,
+           node_yvec,
            mavec,
            loglike,
            "return Rcpp::wrap(loglik);",

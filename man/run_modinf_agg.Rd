@@ -7,6 +7,7 @@
 run_modinf_agg(
   modinf,
   reparamIFR = T,
+  reparamInfxn = T,
   burnin = 1000,
   samples = 1000,
   chains = 3,
