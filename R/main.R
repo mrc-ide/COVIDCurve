@@ -76,7 +76,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
                    knots = IFRmodel$knots,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
                    popN = IFRmodel$popN,
-                   days_obsd = IFRmodel$maxObsDay)
+                   rcensor_day = IFRmodel$rcensor_day)
 
   #..................
   # make data list

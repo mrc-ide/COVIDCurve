@@ -84,12 +84,12 @@ dat <- list(obs_deaths = dat$AggDat,
 #                                  dsc1 = c(0,     0,     0,     rep(0,15)),
 #                                  dsc2 = c(1,     1,     1,     rep(1e4,15)))
 
-deathdf_params <- tibble::tibble(name = c("r1", "r2",  "ma3",  paste0("y", 1:4), "y5"),
-                                 min =  c(0,     0,     0,     rep(0, 4),         2500),
-                                 init = c(0.5,   0.5,   0.5,   rep(2, 4),         5000),
-                                 max =  c(1,     1,     1,     rep(5, 4),         10000),
-                                 dsc1 = c(0,     0,     0,     rep(0, 4),         2500),
-                                 dsc2 = c(1,     1,     1,     rep(5, 4),         10000)
+deathdf_params <- tibble::tibble(name = c("r1", "r2",  "ma3",  paste0("y", 1:10), "y11"),
+                                 min =  c(0,     0,     0,     rep(0, 10),         2500),
+                                 init = c(0.5,   0.5,   0.5,   rep(2, 10),         5000),
+                                 max =  c(1,     1,     1,     rep(5, 10),         10000),
+                                 dsc1 = c(0,     0,     0,     rep(0, 10),         2500),
+                                 dsc2 = c(1,     1,     1,     rep(5, 10),         10000)
 )
 
 # serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
@@ -108,14 +108,15 @@ serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 dsc2 =  c(1,     1,     15,          85))
 
 df_params <- rbind.data.frame(deathdf_params, serodf_params)
-knots <- round(seq(from = 1, to = 120, length.out = sum(grepl("y[0-9]+", df_params$name))))
+#knots <- round(seq(from = 1, to = 150, length.out = sum(grepl("y[0-9]+", df_params$name))))
+knots <- c(1, 15, 30, 45, 60, 75, 82, 90, 105, 120, 150)
 mod1 <- make_modinf_agg$new()
 mod1$set_level("Time-Series")
 mod1$set_data(dat)
 mod1$set_IFRparams(c("r1", "r2", "ma3"))
 mod1$set_maxMa("ma3")
-mod1$set_Infxnparams(paste0("y", 1:5))
-mod1$set_relInfxn("y5")
+mod1$set_Infxnparams(paste0("y", 1:11))
+mod1$set_relInfxn("y11")
 mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_day"))
 mod1$set_popN(5e6)
 mod1$set_paramdf(df_params)
@@ -123,7 +124,7 @@ mod1$set_pa(c(1/3, 1/3, 1/3))
 mod1$set_MeanOnset(18.8)
 mod1$set_CoefVarOnset(0.45)
 mod1$set_knots(knots)
-
+mod1$set_rcensor_day(120)
 #..................
 # run model
 #..................

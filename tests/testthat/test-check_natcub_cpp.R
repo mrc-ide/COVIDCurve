@@ -39,7 +39,7 @@ test_that("natcub cpp likelihood works", {
   #..................
   # params in
   # misc list
-  #days_obsd <- 150
+  rcensor_day <- 120
   knots <- c(1, 30, 60, 90, 120, 150)
   #day <- knots[1]:(days_obsd)
   day <- knots[1]:(knots[length(knots)] + 1)
@@ -51,7 +51,7 @@ test_that("natcub cpp likelihood works", {
                    knots = knots,
                    level = FALSE,
                    popN = 5e5,
-                   days_obsd = days_obsd)
+                   rcensor_day = rcensor_day)
 
   # liftover to Rcpp list
 

@@ -22,7 +22,6 @@ NULL
 make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                public = list(
                                  data = NULL,
-                                 maxObsDay = NULL,
                                  level = NULL,
                                  IFRparams = NULL,
                                  maxMa = NULL,
@@ -37,12 +36,15 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                  # sero items
                                  Seroparams = NULL,
                                  popN = NULL,
+                                 # censoring items
+                                 rcensor_day = NULL,
 
-                                 initialize = function(data = NULL, maxObsDay = NULL, level = NULL, knots = NULL, pa = NULL,
+                                 initialize = function(data = NULL, level = NULL, knots = NULL, pa = NULL,
                                                        mod = NULL, sod = NULL, gamma_lookup = NULL,
                                                        IFRparams = NULL, maxMa = NULL,
                                                        Infxnparams = NULL, relInfxn = NULL,
                                                        Seroparams = NULL, popN = NULL,
+                                                       rcensor_day = NULL,
                                                        paramdf = NULL) {
                                    #......................
                                    # assertions and checks
@@ -87,10 +89,22 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_numeric(sod)
 
                                      # knots
-                                     assert_numeric(knots)
+                                     assert_pos_int(knots)
+                                     assert_increasing(knots)
                                      assert_same_length(knots, Infxnparams)
-                                     assert_leq(max(val), max(data$obs_deaths$ObsDay),
-                                                message = "Maximum knot cannot be greater than the last observation day in the data")
+                                     assert_eq(min(knots), max(data$obs_deaths$ObsDay),
+                                               message = "First knot must be equal to the last observation day in the data")
+                                     assert_eq(max(knots), max(data$obs_deaths$ObsDay),
+                                               message = "First knot must be equal to the first observation day in the data")
+
+                                     # censoring
+                                     if (!is.null(rcensor_day)) {
+                                       assert_pos_int(rcensor_day)
+                                       assert_bounded(rcensor_day, left = min(knots), right = max(knots),
+                                                      inclusive_left = FALSE, inclusive_right = FALSE)
+                                       assert_gr(rcensor_day, paramdf$max[paramdf$name == "sero_day"],
+                                                 message = "Day of censoring must be after maximum serology date")
+                                     }
 
                                      # pa
                                      assert_numeric(pa)
@@ -120,11 +134,16 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                    self$mod <- mod
                                    self$sod <- sod
                                    if (!is.null(self$knots)) {
-                                     day <- self$knots[1]:(self$maxObsDay + 1)
-                                     #day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
+                                     day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
                                      self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
                                    } else {
                                      self$gamma_lookup <- gamma_lookup
+                                   }
+
+                                   if (!is.null(rcensor_day)) {
+                                     self$rcensor_day <- rcensor_day
+                                   } else {
+                                     self$rcensor_day <- .Machine$integer.max # user has elected to not censor (i.e. default no censoring)
                                    }
                                  },
 
@@ -156,7 +175,6 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      }
                                    }
                                    self$data <- val
-                                   self$maxObsDay <- max(self$data$obs_deaths$ObsDay)
                                  },
 
                                  set_IFRparams = function(val) {
@@ -230,15 +248,33 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                    if (is.null(self$data)) {
                                      stop("Must specificy input data prior to specifying knots")
                                    }
-                                   assert_numeric(val)
+                                   assert_pos_int(val)
+                                   assert_increasing(val)
                                    assert_same_length(val, self$Infxnparams)
-                                   assert_leq(max(val), self$maxObsDay, message = "Maximum knot cannot be greater than the last observation day in the data")
+                                   assert_eq(min(val), min(self$data$obs_deaths$ObsDay),
+                                             message = "First knot must be equal to the last observation day in the data")
+                                   assert_eq(max(val), max(self$data$obs_deaths$ObsDay),
+                                             message = "Last knot must be equal to the last observation day in the data")
                                    self$knots <- val
 
                                    # get gamma look up table
-                                   day <- self$knots[1]:(self$maxObsDay + 1)
-                                   #day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
+                                   day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
                                    self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
+                                 },
+
+                                 set_rcensor_day = function(val) {
+                                   if (is.null(self$data)) {
+                                     stop("Must specificy knots prior to specifying day to right censor from")
+                                   }
+                                   if (is.null(self$paramdf)) {
+                                     stop("Must specificy parameter dataframe prior to specifying day to right censor from")
+                                   }
+                                   assert_pos_int(val)
+                                   assert_bounded(val, left = min(self$knots), right = max(self$knots),
+                                                  inclusive_left = FALSE, inclusive_right = FALSE)
+                                   assert_gr(val, self$paramdf$max[self$paramdf$name == "sero_day"],
+                                             message = "Day of censoring must be after maximum serology date")
+                                   self$rcensor_day <- val
                                  },
 
                                  set_pa = function(val) {
