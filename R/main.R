@@ -1,17 +1,16 @@
 #' @title Run Aggregate Model
 #' @details Wraps the Metropolic-Coupled MCMC Framework from Dr. Jacoby
 #' @inheritParams drjacoby::run_mcmc
-#'
 #' @export
 
-run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
-                           burnin = 1e3, samples = 1e3, chains = 3,
-                           rungs = 1, GTI_pow = 3, coupling_on = T,
-                           pb_markdown = F, silent = T) {
+run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
+                             burnin = 1e3, samples = 1e3, chains = 3,
+                             rungs = 1, GTI_pow = 3, coupling_on = T,
+                             pb_markdown = F, silent = T) {
   #..................
   # assertions
   #..................
-  assert_custom_class(modinf, "IFRmodel")
+  assert_custom_class(IFRmodel, "IFRmodel")
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_numeric(burnin)
@@ -22,15 +21,15 @@ run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
   assert_logical(coupling_on)
   assert_logical(pb_markdown)
   assert_logical(silent)
-  assert_non_null(modinf$level)
-  assert_non_null(modinf$data)
-  assert_non_null(modinf$IFRparams)
-  assert_non_null(modinf$Infxnparams)
-  assert_non_null(modinf$paramdf)
-  assert_non_null(modinf$knots)
-  assert_non_null(modinf$pa)
-  assert_non_null(modinf$Seroparams)
-  assert_non_null(modinf$popN)
+  assert_non_null(IFRmodel$level)
+  assert_non_null(IFRmodel$data)
+  assert_non_null(IFRmodel$IFRparams)
+  assert_non_null(IFRmodel$Infxnparams)
+  assert_non_null(IFRmodel$paramdf)
+  assert_non_null(IFRmodel$knots)
+  assert_non_null(IFRmodel$pa)
+  assert_non_null(IFRmodel$Seroparams)
+  assert_non_null(IFRmodel$popN)
 
   #............................................................
   # "Warm-Up" MCMC
@@ -59,43 +58,44 @@ run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
   # Get loglike and logprior
   #..................
   if (reparamIFR) {
-    assert_non_null(modinf$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
+    assert_non_null(IFRmodel$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
   }
 
   if (reparamInfxn) {
-    assert_non_null(modinf$relInfxn, message = "If performing reparameterization, must set a relative infection point in the R6 class object")
+    assert_non_null(IFRmodel$relInfxn, message = "If performing reparameterization, must set a relative infection point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(modinf, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(modinf, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
 
   #..................
   # make misc
   #..................
-  misc_list = list(pa = modinf$pa,
-                   pgmms = modinf$gamma_lookup,
-                   knots = modinf$knots,
-                   level = ifelse(modinf$level == "Cumulative", TRUE, FALSE),
-                   popN = modinf$popN)
+  misc_list = list(pa = IFRmodel$pa,
+                   pgmms = IFRmodel$gamma_lookup,
+                   knots = IFRmodel$knots,
+                   level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
+                   popN = IFRmodel$popN,
+                   days_obsd = IFRmodel$maxObsDay)
 
   #..................
   # make data list
   #..................
-  if (modinf$level == "Time-Series"){
-    data_list <- split(modinf$data$obs_deaths$Deaths, factor(modinf$data$obs_deaths$ObsDay))
+  if (IFRmodel$level == "Time-Series"){
+    data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
     data_list <- unname(unlist(data_list))
     data_list <- list(obs_deaths = data_list,
-                      obs_serologyrate = modinf$data$obs_serologyrate)
+                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
 
-  } else if (modinf$level == "Cumulative") {
-    data_list <- list(obs_deaths = unname(modinf$data$obs_deaths$Deaths),
-                      obs_serologyrate = modinf$data$obs_serologyrate)
+  } else if (IFRmodel$level == "Cumulative") {
+    data_list <- list(obs_deaths = unname(IFRmodel$data$obs_deaths$Deaths),
+                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
   }
 
   #..................
   # make df param
   #..................
-  df_params <-  modinf$paramdf[, 1:4]
+  df_params <-  IFRmodel$paramdf[, 1:4]
 
   #..............................................................
   # Dr Jacoby
@@ -120,8 +120,8 @@ run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
     #..................
     # account for ifr reparam
     #..................
-    IFRparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$IFRparams, ]
-    maxMa <- modinf$maxMa
+    IFRparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$IFRparams, ]
+    maxMa <- IFRmodel$maxMa
     scalars <- IFRparams$name[IFRparams$name != maxMa]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars
@@ -134,8 +134,8 @@ run_modinf_agg <- function(modinf, reparamIFR = T, reparamInfxn = T,
     #..................
     # account for ifr reparam
     #..................
-    Infxnparams <- modinf$paramdf[modinf$paramdf$name %in% modinf$Infxnparams, ]
-    relInfxn <- modinf$relInfxn
+    Infxnparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$Infxnparams, ]
+    relInfxn <- IFRmodel$relInfxn
     scalars <- Infxnparams$name[Infxnparams$name != relInfxn]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars

@@ -8,10 +8,15 @@ get_infxn_curve <- function(rmcmcout, modinf, CIquant) {
     mcmcout$output$nodegrad3 <- (rmcmcout$output$y4 - rmcmcout$output$y3)/(knots[4] - knots[3])
     mcmcout$output$nodegrad4 <- (rmcmcout$output$y5 - rmcmcout$output$y4)/(knots[5] - knots[4])
     mcmcout$output$nodegrad5 <- (rmcmcout$output$y6 - rmcmcout$output$y5)/(knots[6] - knots[5])
-    #mcmcout$output$nodegrad6 <- (rmcmcout$output$y7 - rmcmcout$output$y6)/(knots[7] - knots[6])
-    #mcmcout$output$nodegrad7 <- (rmcmcout$output$y8 - rmcmcout$output$y7)/(knots[8] - knots[7])
-    #mcmcout$output$nodegrad8 <- (rmcmcout$output$y9 - rmcmcout$output$y8)/(knots[9] - knots[8])
-    #mcmcout$output$nodegrad9 <- (rmcmcout$output$y10 - rmcmcout$output$y9)/(knots[10] - knots[9])
+    # mcmcout$output$nodegrad6 <- (rmcmcout$output$y7 - rmcmcout$output$y6)/(knots[7] - knots[6])
+    # mcmcout$output$nodegrad7 <- (rmcmcout$output$y8 - rmcmcout$output$y7)/(knots[8] - knots[7])
+    # mcmcout$output$nodegrad8 <- (rmcmcout$output$y9 - rmcmcout$output$y8)/(knots[9] - knots[8])
+    # mcmcout$output$nodegrad9 <- (rmcmcout$output$y10 - rmcmcout$output$y9)/(knots[10] - knots[9])
+    # mcmcout$output$nodegrad10 <- (rmcmcout$output$y7 - rmcmcout$output$y6)/(knots[11] - knots[10])
+    # mcmcout$output$nodegrad11 <- (rmcmcout$output$y8 - rmcmcout$output$y7)/(knots[12] - knots[11])
+    # mcmcout$output$nodegrad12 <- (rmcmcout$output$y9 - rmcmcout$output$y8)/(knots[13] - knots[12])
+    # mcmcout$output$nodegrad13 <- (rmcmcout$output$y10 - rmcmcout$output$y9)/(knots[14] - knots[13])
+    # mcmcout$output$nodegrad14 <- (rmcmcout$output$y10 - rmcmcout$output$y9)/(knots[15] - knots[14])
     return(mcmcout)
   }
   r_mcmc_out.infxncurve <- liftover_infxn_curve(rmcmcout, knots = modinf$knots)
@@ -19,8 +24,7 @@ get_infxn_curve <- function(rmcmcout, modinf, CIquant) {
   #......................
   # make infection curve
   #......................
-  make_infxn_curve <- function(y1, nodegrad1, nodegrad2, nodegrad3, nodegrad4, nodegrad5,
-                               nodegrad6, nodegrad7, nodegrad8, nodegrad9, knots){
+  make_infxn_curve <- function(y1, nodegrad1, nodegrad2, nodegrad3, nodegrad4, nodegrad5, nodegrad6, knots){
     curr_day <- knots[length(knots)] - knots[1] + 1
     ret <- rep(NA, times = curr_day)
     ret[1] <- y1
@@ -42,18 +46,9 @@ get_infxn_curve <- function(rmcmcout, modinf, CIquant) {
              "k5" = {
                ret[i] <- nodegrad5 + ret[i-1]
              }
-             # ,"k6" = {
-             #   ret[i] <- nodegrad6 + ret[i-1]
-             # },
-             # "k7" = {
-             #   ret[i] <- nodegrad7 + ret[i-1]
-             # },
-             # "k8" = {
-             #   ret[i] <- nodegrad8 + ret[i-1]
-             # },
-             # "k9" = {
-             #   ret[i] <- nodegrad9 + ret[i-1]
-             # }
+             ,"k6" = {
+               ret[i] <- nodegrad6 + ret[i-1]
+             }
       )
     }
     ret <- data.frame(time = 1:curr_day, infxns = exp(ret))
@@ -71,9 +66,8 @@ get_infxn_curve <- function(rmcmcout, modinf, CIquant) {
 
   knots <- modinf$knots
   r_mcmc_out.infxncurve$output$knots <- lapply(1:nrow(r_mcmc_out.infxncurve$output), function(x) return(unlist(knots)))
-  r_mcmc_out.infxncurve$output$infxncurves <- purrr::pmap(r_mcmc_out.infxncurve$output[,c("knots", "y1", "nodegrad1", "nodegrad2", "nodegrad3", "nodegrad4", "nodegrad5"
-                                                                                          #, "nodegrad6", "nodegrad7", "nodegrad8", "nodegrad9"
-                                                                                          )],
+  r_mcmc_out.infxncurve$output$infxncurves <- purrr::pmap(r_mcmc_out.infxncurve$output[,c("y1", "nodegrad1", "nodegrad2", "nodegrad3", "nodegrad4",
+                                                                                          "nodegrad5", "knots")],
                                                           make_infxn_curve)
   #......................
   # tidy

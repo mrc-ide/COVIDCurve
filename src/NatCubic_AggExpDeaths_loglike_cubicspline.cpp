@@ -11,6 +11,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
   std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
+  int days_obsd = misc["days_obsd"];
 
   // extract serology items
   int popN = misc["popN"];
@@ -26,7 +27,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double y3 = params["y3"];
   double y4 = params["y4"];
   double y5 = params["y5"];
-  double y6 = params["y6"];
   double ma3 = params["ma3"];
   double ma2 = params["r2"];
   double ma1 = params["r1"];
@@ -44,7 +44,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   node_y[2] = y3;
   node_y[3] = y4;
   node_y[4] = y5;
-  node_y[5] = y6;
 
   //........................................................
   // Deaths Section
@@ -53,7 +52,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   // natural cubic spline
   //.............................
   int n_knots = node_x.size();
-  int n_dat = node_x[n_knots-1] - node_x[0] + 1;
+  //int n_dat = node_x[(n_knots-1)] - node_x[0] + 1;
+  int n_dat = days_obsd - node_x[0] + 1;
   // NB, we want N spline functions (interpolants) and so we have n+1 knots
   // as part of simplifying the linear spline, function we write this denom: x_{i+1} - x_i
   std::vector<double> denom(n_knots-1);
@@ -106,11 +106,25 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       sp2[node_j] * pow(((i+1) - node_x[node_j]), 2) +
       sp3[node_j] * pow(((i+1) - node_x[node_j]), 3);
 
-    // update node_j
-    if ((node_x[0] + i) >= node_x[node_j+1]) {
-      node_j++;
+    // for all interpolants except the last knot
+    if (node_j < (node_x.size()-2)) {
+      // update node_j
+      if ((node_x[0] + i) >= node_x[node_j+1]) {
+        node_j++;
+      }
     }
   }
+  // for (int i = 1; i < n_dat; i++) {
+  //   // update curve and have i+1 to account for fact days are 1-based
+  //   infxn_spline[i] = node_y[node_j] +
+  //     sp1[node_j] * ((i+1) - node_x[node_j]) +
+  //     sp2[node_j] * pow(((i+1) - node_x[node_j]), 2) +
+  //     sp3[node_j] * pow(((i+1) - node_x[node_j]), 3);
+  //   // update node_j
+  //   if ((node_x[0] + i) >= node_x[node_j+1]) {
+  //     node_j++;
+  //   }
+  // }
 
   // convert cumulative infection spline into daily infection spline
   std::vector<double> cumm_infxn_spline(infxn_spline.size());

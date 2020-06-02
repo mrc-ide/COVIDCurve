@@ -22,6 +22,7 @@ NULL
 make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                public = list(
                                  data = NULL,
+                                 maxObsDay = NULL,
                                  level = NULL,
                                  IFRparams = NULL,
                                  maxMa = NULL,
@@ -37,7 +38,7 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                  Seroparams = NULL,
                                  popN = NULL,
 
-                                 initialize = function(data = NULL, level = NULL, knots = NULL, pa = NULL,
+                                 initialize = function(data = NULL, maxObsDay = NULL, level = NULL, knots = NULL, pa = NULL,
                                                        mod = NULL, sod = NULL, gamma_lookup = NULL,
                                                        IFRparams = NULL, maxMa = NULL,
                                                        Infxnparams = NULL, relInfxn = NULL,
@@ -75,18 +76,22 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_string(paramdf$name)
                                      assert_in(paramdf$name, c(IFRparams, Infxnparams,  Seroparams))
                                      assert_in(c(IFRparams, Infxnparams, Seroparams), paramdf$name)
-
                                      assert_numeric(paramdf$init)
                                      assert_numeric(paramdf$min)
                                      assert_numeric(paramdf$max)
                                      assert_numeric(paramdf$dsc1)
                                      assert_numeric(paramdf$dsc2)
+
                                      # OTD
                                      assert_numeric(mod)
                                      assert_numeric(sod)
+
                                      # knots
                                      assert_numeric(knots)
                                      assert_same_length(knots, Infxnparams)
+                                     assert_leq(max(val), max(data$obs_deaths$ObsDay),
+                                                message = "Maximum knot cannot be greater than the last observation day in the data")
+
                                      # pa
                                      assert_numeric(pa)
                                      assert_same_length(pa, IFRparams)
@@ -95,6 +100,9 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
 
                                    # fill in
                                    self$data <- data
+                                   if (!is.null(data)) {
+                                     self$maxObsDay <- max(self$data$obs_deaths$ObsDay)
+                                   }
                                    self$level <- level
                                    self$IFRparams <- IFRparams
                                    if (!is.null(maxMa)) {
@@ -112,7 +120,8 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                    self$mod <- mod
                                    self$sod <- sod
                                    if (!is.null(self$knots)) {
-                                     day <- self$knots[1]:self$knots[length(self$knots)]
+                                     day <- self$knots[1]:(self$maxObsDay + 1)
+                                     #day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
                                      self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
                                    } else {
                                      self$gamma_lookup <- gamma_lookup
@@ -147,6 +156,7 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                      }
                                    }
                                    self$data <- val
+                                   self$maxObsDay <- max(self$data$obs_deaths$ObsDay)
                                  },
 
                                  set_IFRparams = function(val) {
@@ -217,12 +227,17 @@ make_modinf_agg <- R6::R6Class(classname = "IFRmodel",
                                    if (is.null(self$mod) | is.null(self$sod)) {
                                      stop("Must specificy the mean and coefficient of variation for the onset-to-death distribution prior to specifying knots")
                                    }
+                                   if (is.null(self$data)) {
+                                     stop("Must specificy input data prior to specifying knots")
+                                   }
                                    assert_numeric(val)
                                    assert_same_length(val, self$Infxnparams)
+                                   assert_leq(max(val), self$maxObsDay, message = "Maximum knot cannot be greater than the last observation day in the data")
                                    self$knots <- val
 
                                    # get gamma look up table
-                                   day <- self$knots[1]:self$knots[length(self$knots)]
+                                   day <- self$knots[1]:(self$maxObsDay + 1)
+                                   #day <- self$knots[1]:(self$knots[length(self$knots)] + 1)
                                    self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
                                  },
 

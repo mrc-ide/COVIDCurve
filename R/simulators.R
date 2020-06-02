@@ -1,8 +1,7 @@
-#' @title Simulate Seroprevalence Study
+#' Simulate Seroprevalence Study
 #' @inheritParams Aggsim_infxn_2_death
 #' @param infxns numeric vector; the expected number of infections from the infection curve from the poisson draw
 #' @noRd
-#' internal function, not exported
 
 sim_seroprev <- function(infxns,
                          specificity,
@@ -101,7 +100,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   assert_single_string(level)
   assert_in(x = level, y = c("Time-Series", "Cumulative"))
   assert_vector(infections)
-  assert_same_length(infections, min_day:(curr_day))
+  assert_same_length(infections, min_day:curr_day)
   assert_logical(simulate_seroprevalence)
   if (simulate_seroprevalence) {
     assert_numeric(specificity)

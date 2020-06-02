@@ -28,7 +28,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
     assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires relative infection point to be indicated (i.e. relInfxn)")
     relInfxn <- IFRmodel$relInfxn
     infxnscalars <- Infxnparams$name[Infxnparams$name != relInfxn]
-
   }
 
   if (reparamIFR) {
@@ -38,7 +37,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
     assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
     maxMa <- IFRmodel$maxMa
     ifrscalars <- IFRparams$name[IFRparams$name != maxMa]
-
   }
 
   #..................
@@ -135,7 +133,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # extract misc
   #..................
-  extmisc <- "std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc[\"knots\"]); int popN = misc[\"popN\"];"
+  extmisc <- "std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc[\"knots\"]); int popN = misc[\"popN\"]; int days_obsd = misc[\"days_obsd\"];"
 
   #..................
   # extract inputs
@@ -211,7 +209,9 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # get loglike
   #..................
-  loglike <- readLines(system.file("src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
+  loglike <- readLines("~/Documents/GitHub/COVIDCurve/src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp")
+  # TODO temp for debugging otherwise won't work for devtools::load_all() quickly
+  #loglike <- readLines(system.file("src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
   loglike_start <- grep("// Deaths Section", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]
