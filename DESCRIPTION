@@ -18,22 +18,24 @@ Imports:
     magrittr,
     tidyr,
     stringr,
+    ggplot2,
+    cowplot,
     drjacoby,
+    coda,
     purrr,
+    furrr,
     Rcpp,
     R6
 Remotes:
   mrc-ide/drjacoby
 Suggests: 
-    ggplot2,
-    cowplot,
     knitr,
     rmarkdown,
     covr,
     testthat (>= 2.1.0)
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.0
 LinkingTo: 
     Rcpp
 SystemRequirements: C++11

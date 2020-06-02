@@ -270,6 +270,16 @@ assert_limit <- function(x, message = "%s must be a valid plotting limit, i.e. c
 }
 
 
+#------------------------------------------------
+# x is unique
+assert_unique <- function(x, message = "%s must have all unique values", name = deparse(substitute(x))) {
+  assert_vector(x, name = name)
+  assert_same_length(length(unique(x)), length(x))
+  return(TRUE)
+}
+
+
+
 #### VALUE COMPARISONS ####################################################################
 
 #------------------------------------------------

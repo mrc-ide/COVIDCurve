@@ -2,42 +2,52 @@
 % Please edit documentation in R/simulators.R
 \name{Aggsim_infxn_2_death}
 \alias{Aggsim_infxn_2_death}
-\title{Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve}
+\title{Simulate Aggregate Expected Deaths}
 \usage{
 Aggsim_infxn_2_death(
-  casefat,
-  I0,
-  r,
+  fatalitydata,
+  infections,
   m_od = 18.8,
   s_od = 0.45,
   min_day = 1,
   curr_day,
   level,
-  expgrowth,
-  infections
+  simulate_seroprevalence = TRUE,
+  specificity,
+  sensitivity,
+  popN,
+  sero_delay_rate
 )
 }
 \arguments{
-\item{casefat}{dataframe; column names age, ifr, and pa that correspond to age-band, infection-fatality ratio, and the attack rate in given age band, respectively}
+\item{fatalitydata}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
 
-\item{I0}{integer; number of infected individuals at the beginning of the epidemic for exponential growth}
+\item{infections}{integer vector; The infections for each day up to the current day.}
 
-\item{r}{double; the expontential growth rate of the epidemic}
+\item{m_od}{double; The mean of the onset of infection to death (gamma distribution).}
 
-\item{m_od}{double; the mean of the onset of infection to death (gamma distribution)}
+\item{s_od}{double; The coefficient of variation of the onset of infection to death (gamma distribution).}
 
-\item{s_od}{double; the coefficient of variation of the onset of infection to death (gamma distribution)}
+\item{min_day}{numeric; First day epidemic was observed.}
 
-\item{min_day}{numeric; first day epidemic was observed}
+\item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
 
-\item{curr_day}{numeric; current day of epidemic, considered up to but not including this day}
+\item{level}{character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.}
 
-\item{level}{character; Either "Cumulative" or "Time-Series" if expected deaths should be returned as a total or for each day, respectively}
+\item{simulate_seroprevalence}{logical; Whether or not seroprevalence data should also be simulated}
 
-\item{expgrowth}{logical; Simulate exponential growth or not}
+\item{specificity}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{infections}{integer vector; The infections for each day}
+\item{sensitivity}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{m_or}{double; The mean of the onset of infection to recovery (gamma distribution).}
+
+\item{s_or}{double; The coefficient of variation of the onset of infection to recovery (gamma distribution).}
 }
 \description{
-Simulate Aggregate Expected Deaths for a Given Day Assuming Exponential Growth of the Incidence Curve
+Simulate Aggregate Expected Deaths
 }
