@@ -1,7 +1,7 @@
 #' @title Simulate Seroprevalence Study
 #' @inheritParams Aggsim_infxn_2_death
 #' @param infxns numeric vector; the expected number of infections from the infection curve from the poisson draw
-#' @export
+#' @noRd
 #' internal function, not exported
 
 sim_seroprev <- function(infxns,

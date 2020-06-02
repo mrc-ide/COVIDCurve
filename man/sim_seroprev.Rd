@@ -16,8 +16,7 @@ sim_seroprev(
 )
 }
 \arguments{
-\item{infxns}{numeric vector; the expected number of infections from the infection curve from the poisson draw
-internal function, not exported}
+\item{infxns}{numeric vector; the expected number of infections from the infection curve from the poisson draw}
 
 \item{specificity}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
