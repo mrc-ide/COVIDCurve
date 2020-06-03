@@ -169,9 +169,27 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   }
 
 
-  # append COVIDCurve class along with Dr.Jacoby class
-  class(mcmcout) <- c("IFRmodel_inf", class(mcmcout))
-  return(mcmcout)
+  # store input along with Dr.Jacoby output for later use
+  inputs <- list(
+    IFRmodel = IFRmodel,
+    reparamIFR = reparamIFR,
+    reparamInfxn = reparamInfxn,
+    reparamKnots = reparamKnots,
+    burnin = burnin,
+    samples = samples,
+    chains = chains)
+  if (rungs > 1) {
+    inputs <- append(inputs, list(rungs = rungs,
+                                  GTI_pow = GTI_pow,
+                                  coupling_on = coupling_on))
+  }
+
+  ret <- list(
+    inputs = inputs,
+    mcmcout = mcmcout
+  )
+  class(ret) <- c("IFRmodel_inf")
+  return(ret)
 }
 
 
