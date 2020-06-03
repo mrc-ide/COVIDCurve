@@ -86,7 +86,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    popN = IFRmodel$popN,
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel$Knotparams))
+                   n_knots = length(IFRmodel$Knotparams) + 1) # +1 because we set an internal knot for pos 1
 
   #..................
   # make data list

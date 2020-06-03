@@ -127,15 +127,18 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$level <- level
                                      self$IFRparams <- IFRparams
                                      if (!is.null(maxMa)) {
+                                       assert_in(maxMa, IFRparams)
                                        self$maxMA <- maxMa
                                      }
                                      self$Knotparams <- Knotparams
                                      if (!is.null(relKnot)) {
+                                       assert_in(relKnot, Knotparams)
                                        self$relKnot <- relKnot
                                      }
 
                                      self$Infxnparams <- Infxnparams
                                      if (!is.null(relInfxn)) {
+                                       assert_in(relInfxn, Infxnparams)
                                        self$relInfxn <- relInfxn
                                      }
                                      self$Seroparams <- Seroparams

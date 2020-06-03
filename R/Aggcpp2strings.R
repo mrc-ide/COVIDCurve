@@ -204,10 +204,11 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # storage items
   #..................
-  storageitems <- "int agelen = pa.size(); std::vector<double>ma(agelen); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
+  storageitems <- "int agelen = pa.size(); std::vector<double>ma(agelen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
 
   #..................
   # liftover knotreparam vars for Knots -- Infxn Xpositions
+  # NB, "raw" here because we take in a double and need to convert it to an integer day later
   #.................
   if (reparamKnots) {
     assert_non_null(IFRmodel$relKnot, message = "Reparameterization requires relative knot to be indicated (i.e. relKnot)")
@@ -220,18 +221,20 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
     nodex_counter <- 1
     for (i in 1:length(node_xvec)) {
       if (i == relnodex_pos) {
-        node_xvec[i] <- paste0("node_x[", i-1, "] = ", relKnot, ";")
+        node_xvec[i] <- paste0("node_x_raw[", i, "] = ", relKnot, ";")
       } else {
-        node_xvec[i] <- paste0("node_x[", i-1, "] = ", knotscalars[nodex_counter], "*", relKnot, ";")
+        node_xvec[i] <- paste0("node_x_raw[", i, "] = ", knotscalars[nodex_counter], "*", relKnot, ";")
         nodex_counter <- nodex_counter + 1
       }
     }
   } else {
     node_xvec <- rep(NA, length(Knotparams))
     for (i in 1:length(Knotparams)){
-      node_xvec[i] <- paste0("node_x[", i-1, "]", " = ", Knotparams[i], ";")
+      node_xvec[i] <- paste0("node_x_raw[", i, "]", " = ", Knotparams[i], ";")
     }
   }
+  # account for internal knot at position 1
+  node_xvec <- c("node_x_raw[0] = 1.0;", node_xvec)
 
   #..................
   # liftover infxnreparam vars to Infxn Ypositions
@@ -288,6 +291,11 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   }
 
   #..................
+  # discretize knots (i.e. day is a discrete time)
+  #..................
+  node_xvec.discretize <- "for (int i = 0; i < node_x.size(); i++) { node_x[i] = std::ceil(node_x_raw[i]); }"
+
+  #..................
   # get loglike
   #..................
   loglike <- readLines("~/Documents/GitHub/COVIDCurve/src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp")
@@ -307,6 +315,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
            params,
            storageitems,
            node_xvec,
+           node_xvec.discretize,
            node_yvec,
            mavec,
            loglike,

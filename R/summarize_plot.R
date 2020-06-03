@@ -4,10 +4,10 @@
 
 summary.IFRmodel <- function(object, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(round(object$IFRparams, 2), collapse = ", "), "\n")
-  cat(crayon::blue("Infection Point Params: "), paste(round(object$Infxnparams, 2), collapse = ", "), "\n")
-  cat(crayon::blue("Infection Knot Positions: "), paste(round(object$knots, 2), collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(round(object$Seroparams, 2), collapse = ", "), "\n")
+  cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
   cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
@@ -24,7 +24,7 @@ print.IFRmodel <- function(object, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
   cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Knot Positions: "), paste(object$knots, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
@@ -45,11 +45,12 @@ print.IFRmodel <- function(object, ...){
 get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_chain = TRUE) {
   assert_custom_class(IFRmodel, "IFRmodel")
   assert_custom_class(mcmcout, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Infxnparams", "Seroparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Seroparams"))
   assert_logical(by_chain)
 
   # grouping vars
   switch(paste0(what, "-", by_chain),
+
          "IFRparams-TRUE"={
            groupingvar <- c("chain", "param")
            params <- c("chain", IFRmodel$IFRparams)
@@ -58,6 +59,16 @@ get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_
            groupingvar <- "param"
            params <-  c("iteration", IFRmodel$IFRparams)
          },
+
+         "Knotparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", IFRmodel$Knotparams)
+         },
+         "Knotparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("iteration", IFRmodel$Knotparams)
+         },
+
          "Infxnparams-TRUE"={
            groupingvar <- c("chain", "param")
            params <- c("chain", IFRmodel$Infxnparams)
@@ -124,14 +135,19 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
   # get natural cubic gradients
   #......................
   # internal functions, not generalizable
-  # inputs
-  knots <- IFRmodel$knots
-  denom <- (knots - dplyr::lag(knots))[2:(length(knots))]
 
   # function
-  make_cubic_infxn_curve <- function(mcmcout_row, IFRmodel, knots, denom){
+  make_cubic_infxn_curve <- function(mcmcout_row, IFRmodel){
+    # get x param for this row
+    knots <- unlist( mcmcout_row[, IFRmodel$Knotparams] )
+    #NB perform ceiling in Cpp code that we replicate here
+    #TODO write out Cpp file to temp folder and then use it here
+    knots <- ceiling(knots)
+    # get denom for spline
+    denom <- (knots - dplyr::lag(knots))[2:(length(knots))]
     # get y param for this row
     node_y <- unlist( mcmcout_row[, IFRmodel$Infxnparams] )
+
     # get m
     m <- rep(NA, length(knots)-2)
     for (i in 2:(length(m)+1)) {
@@ -158,7 +174,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
     }
 
     # now recreate infection spline
-    infxn_spline <- rep(NA, knots[length(knots)]- knots[1] + 1)
+    infxn_spline <- rep(NA, times  = IFRmodel$maxObsDay)
     infxn_spline[1] <- node_y[1]
     node_j <- 1
     for (i in 2:length(infxn_spline)) {
@@ -167,9 +183,12 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         sp2[node_j] * (i - knots[node_j])^2 +
         sp3[node_j] * (i - knots[node_j])^3
 
-      # update node j if needed
-      if ((knots[1] + i - 1) >= knots[node_j + 1]) {
-        node_j <- node_j +1
+      # for all interpolants except (potentially) the last knot
+      if (node_j < (length(knots)-1)) {
+        # update node j if needed
+        if ((knots[1] + i - 1) >= knots[node_j + 1]) {
+          node_j <- node_j +1
+        }
       }
     }
     out <- data.frame(time = 1:length(infxn_spline),
@@ -191,8 +210,14 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
 
   # split, run, recombine
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
-  mcmcout.nodes$infxncurves <- furrr::future_map(mcmcout.node.rows, make_cubic_infxn_curve,
-                                                 knots = knots, denom = denom, IFRmodel = IFRmodel)
+
+  if (Sys.getenv("COVIDCurve_PARALLEL_DEBUG") == "TRUE") {
+    mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, make_cubic_infxn_curve,
+                                            IFRmodel = IFRmodel)
+  } else {
+    mcmcout.nodes$infxncurves <- furrr::future_map(mcmcout.node.rows, make_cubic_infxn_curve,
+                                                   IFRmodel = IFRmodel)
+  }
 
   #......................
   # tidy
@@ -209,7 +234,6 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
     plotObj <- ggplot2::ggplot() +
       ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
-      ggplot2::geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
       ggplot2::facet_wrap(. ~ chain) +
@@ -225,6 +249,11 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
 
+    if (IFRmodel$rcensor_day < IFRmodel$maxObsDay) {
+      plotObj <- plotObj +
+        ggplot2::geom_vline(xintercept = IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
+    }
+
 
   } else {
     # keep IFR params around for convenience
@@ -236,7 +265,6 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
     plotObj <-  ggplot2::ggplot() +
       ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
-      ggplot2::geom_vline(xintercept = IFRmodel$knots, color = "#cb181d", lwd = 0.25, linetype = "dashed", alpha = 0.5) +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
       ggplot2::theme_minimal() +
@@ -250,6 +278,10 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         plot.background = ggplot2::element_blank(),
         axis.line = ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
+    if (IFRmodel$rcensor_day < IFRmodel$maxObsDay) {
+      plotObj <- plotObj +
+        ggplot2::geom_vline(xintercept = IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
+    }
 
   }
 
@@ -279,7 +311,7 @@ posterior_check_infxns_to_death <- function(IFRmodel, mcmcout, whichrung = "rung
     gmmlkup <- stats::dgamma(postdatsim$time, shape = 1/(IFRmodel$sod^2), scale = IFRmodel$mod*IFRmodel$sod^2, log = F)
 
     # exp deaths day and strata
-    exp_death.day <- rep(0, length = max(IFRmodel$knots) - IFRmodel$knots[1] + 1)
+    exp_death.day <- rep(0, length = IFRmodel$maxObsDay)
     # spread infxns out to day when they may or may not die
     for (i in 1:nrow(postdatsim)) {
       for (j in (i+1):(nrow(postdatsim) + 1)) {

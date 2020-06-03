@@ -5,7 +5,7 @@ test_that("natcub cpp likelihood works", {
   # N.B. By default, we are not reparameterizing
   #...........................................................
 
-  set.seed(48)
+  set.seed(1234)
   #..................
   # sim data
   #..................
@@ -18,7 +18,7 @@ test_that("natcub cpp likelihood works", {
                                               max = 50)
   pa <- rep(1/3, 3)
   fatalitydata <- data.frame(strata = c("r1", "r2", "ma3"),
-                             ifr = c(0.1, 0.2, 0.5),
+                             ifr = c(0.05, 0.2, 0.5),
                              pa = pa)
   dat <- COVIDCurve::Aggsim_infxn_2_death(
     fatalitydata = fatalitydata,
@@ -28,8 +28,8 @@ test_that("natcub cpp likelihood works", {
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
-    specificity = 0.95,
-    sensitivity = 0.8,
+    specificity = 1.0,
+    sensitivity = 1.0,
     sero_delay_rate = 10,
     popN = 5e5
   )
@@ -52,24 +52,30 @@ test_that("natcub cpp likelihood works", {
                    popN = 5e5,
                    rcensor_day = rcensor_day,
                    days_obsd = days_obsd,
-                   n_knots = length(knots))
+                   n_knots = length(knots)+1)
 
   # liftover to Rcpp list
 
-  morelikely.paramsin <- c("r1" = 0.1, "r2" = 0.2, "ma3" = 0.5,
-                           "x1" = 1, "x2" = 30, "x3" = 60, "x4" = 90, "x5" = 120,  "x6" = 150,
-                           "y1" = 52, "y2" = 340, "y3" = 2200, "y4" = 4502, "y5" = 4946,  "y6" = 4946,
-                           "sens" = 0.8, "spec" = 0.95, "sero_rate" = 10, "sero_day" = 135.1)
+  morelikely.paramsin <- c("r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
+                           "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,  "x5" = 150,
+                           "y1" = 17, "y2" = 304, "y3" = 2230, "y4" = 4529, "y5" = 4984,  "y6" = 5014,
+                           "sens" = 1.0, "spec" = 1.0, "sero_rate" = 10, "sero_day" = 135.1)
   sero_day <- 135
   datin <- list("obs_deaths" = dat$AggDat$Deaths,
                 "obs_serologyrate" = dat$seroprev$SeroRateFP[sero_day])
 
   # truth
-  morelikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike_cubicspline(params = morelikely.paramsin,
-                                                                       param_i = 1,
-                                                                       data = datin,
-                                                                       misc = misc_list)
+  morelikely <- COVIDCurve:::playgroundNatCubic_SplineGrowth_loglike_cubicspline(params = morelikely.paramsin,
+                                                                                 param_i = 1,
+                                                                                 data = datin,
+                                                                                 misc = misc_list)
   morelikely$LogLik
+  morelikely$auc
+  morelikely$sp1
+  morelikely$sp2
+  morelikely$sp3
+
+  plot(morelikely$infxn_spline)
 
   # random
   lesslikely.paramsin <- c("r1" = 0.5, "r2" = 0.5, "ma3" = 0.5,
