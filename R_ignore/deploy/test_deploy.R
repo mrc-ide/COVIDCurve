@@ -144,15 +144,6 @@ mod1$set_rcensor_day(130)
 #..................
 # run model
 #..................
-pout <- capture.output(COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
-                                                    reparamIFR = TRUE,
-                                                    reparamInfxn = TRUE,
-                                                    reparamKnot = TRUE,
-                                                    burnin = 1e2,
-                                                    samples = 1e2,
-                                                    chains = 1,
-                                                    rungs = 1))
-
 
 r_mcmc_out.ts <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                               reparamIFR = TRUE,

@@ -41,7 +41,7 @@ test_that("natcub cpp likelihood works", {
   # misc list
   days_obsd <- 150
   rcensor_day <- .Machine$integer.max
-  knots <- c(1, 30, 60, 90, 120, 150)
+  knots <- c(30, 60, 90, 120, 150)
   day <- 1:(days_obsd+1)
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
@@ -65,10 +65,12 @@ test_that("natcub cpp likelihood works", {
                 "obs_serologyrate" = dat$seroprev$SeroRateFP[sero_day])
 
   # truth
-  morelikely <- COVIDCurve:::playgroundNatCubic_SplineGrowth_loglike_cubicspline(params = morelikely.paramsin,
+  morelikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike_cubicspline(params = morelikely.paramsin,
                                                                                  param_i = 1,
                                                                                  data = datin,
                                                                                  misc = misc_list)
+  morelikely$node_x
+  morelikely$node_y
   morelikely$LogLik
   morelikely$auc
   morelikely$sp1
