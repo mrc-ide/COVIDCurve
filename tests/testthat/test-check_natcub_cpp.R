@@ -39,24 +39,26 @@ test_that("natcub cpp likelihood works", {
   #..................
   # params in
   # misc list
-  rcensor_day <- 120
+  days_obsd <- 150
+  rcensor_day <- .Machine$integer.max
   knots <- c(1, 30, 60, 90, 120, 150)
-  #day <- knots[1]:(days_obsd)
-  day <- knots[1]:(knots[length(knots)] + 1)
+  day <- 1:(days_obsd+1)
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
 
   misc_list = list(pa = pa,
                    pgmms = gamma_lookup,
-                   knots = knots,
                    level = FALSE,
                    popN = 5e5,
-                   rcensor_day = rcensor_day)
+                   rcensor_day = rcensor_day,
+                   days_obsd = days_obsd,
+                   n_knots = length(knots))
 
   # liftover to Rcpp list
 
   morelikely.paramsin <- c("r1" = 0.1, "r2" = 0.2, "ma3" = 0.5,
-                           "y1" = 52, "y2" = 340, "y3" = 2200, "y4" = 4502, "y5" = 4946,
+                           "x1" = 1, "x2" = 30, "x3" = 60, "x4" = 90, "x5" = 120,  "x6" = 150,
+                           "y1" = 52, "y2" = 340, "y3" = 2200, "y4" = 4502, "y5" = 4946,  "y6" = 4946,
                            "sens" = 0.8, "spec" = 0.95, "sero_rate" = 10, "sero_day" = 135.1)
   sero_day <- 135
   datin <- list("obs_deaths" = dat$AggDat$Deaths,
@@ -67,22 +69,17 @@ test_that("natcub cpp likelihood works", {
                                                                        param_i = 1,
                                                                        data = datin,
                                                                        misc = misc_list)
-  morelikely$auc
-  morelikely$death_loglik
-  morelikely$sero_loglik
+  morelikely$LogLik
 
   # random
   lesslikely.paramsin <- c("r1" = 0.5, "r2" = 0.5, "ma3" = 0.5,
-                           "y1" = 50, "y2" = 150, "y3" = 1000, "y4" = 5000, "y5" = 5000,
+                           "x1" = 1, "x2" = 30, "x3" = 60, "x4" = 90, "x5" = 120,  "x6" = 150,
+                           "y1" = 50, "y2" = 150, "y3" = 1000, "y4" = 5000, "y5" = 5000, "y6" = 5000,
                            "sens" = 0.95, "spec" = 0.95, "sero_rate" = 5, "sero_day" = 120.6)
   lesslikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike_cubicspline(params = lesslikely.paramsin,
                                                                        param_i = 1,
                                                                        data = datin,
                                                                        misc = misc_list)
-  lesslikely$auc
-  lesslikely$death_loglik
-  lesslikely$sero_loglik
-
 
   testthat::expect_gt(object = morelikely$LogLik, expected = lesslikely$LogLik)
 

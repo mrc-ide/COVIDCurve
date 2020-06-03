@@ -10,8 +10,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
-  std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc["knots"]);
+  int n_knots = misc["n_knots"];
   int rcensor_day = misc["rcensor_day"];
+  int days_obsd = misc["days_obsd"];
 
   // extract serology items
   int popN = misc["popN"];
@@ -20,8 +21,13 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double sero_rate = params["sero_rate"];
   double sero_day_raw = params["sero_day"];
   int sero_day = std::floor(sero_day_raw);
-
   // extract free parameters
+  double x1 = params["x1"];
+  double x2 = params["x2"];
+  double x3 = params["x3"];
+  double x4 = params["x4"];
+  double x5 = params["x5"];
+  double x6 = params["x6"];
   double y1 = params["y1"];
   double y2 = params["y2"];
   double y3 = params["y3"];
@@ -32,20 +38,29 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double ma2 = params["r2"];
   double ma1 = params["r1"];
 
+
   // storage items
   int agelen = pa.size();
   std::vector<double>ma(agelen);
-  std::vector<double> node_y(node_x.size());
+  std::vector<double> node_x(n_knots);
+  std::vector<double> node_y(n_knots);
   // fill storage
-  ma[0] = ma1;
-  ma[1] = ma2;
-  ma[2] = ma3;
+  node_x[0] = x1;
+  node_x[1] = x2;
+  node_x[2] = x3;
+  node_x[3] = x4;
+  node_x[4] = x5;
+  node_x[5] = x6;
   node_y[0] = y1;
   node_y[1] = y2;
   node_y[2] = y3;
   node_y[3] = y4;
   node_y[4] = y5;
   node_y[5] = y6;
+  ma[0] = ma1;
+  ma[1] = ma2;
+  ma[2] = ma3;
+
 
   //........................................................
   // Deaths Section
@@ -53,8 +68,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   //.............................
   // natural cubic spline
   //.............................
-  int n_knots = node_x.size();
-  int n_dat = node_x[(n_knots-1)] - node_x[0] + 1;
+  // n_knots from misc list
+  int n_dat = days_obsd;
   // NB, we want N spline functions (interpolants) and so we have n+1 knots
   // as part of simplifying the linear spline, function we write this denom: x_{i+1} - x_i
   std::vector<double> denom(n_knots-1);
@@ -107,9 +122,13 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       sp2[node_j] * pow(((i+1) - node_x[node_j]), 2) +
       sp3[node_j] * pow(((i+1) - node_x[node_j]), 3);
 
-    // update node_j
-    if ((node_x[0] + i) >= node_x[node_j+1]) {
-      node_j++;
+
+    // for all interpolants except (potentially) the last knot
+    if (node_j < (node_x.size()-2)) {
+      // update node_j
+      if ((node_x[0] + i) >= node_x[node_j+1]) {
+        node_j++;
+      }
     }
   }
 
@@ -223,8 +242,19 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   // bring together
   double loglik = death_loglik + sero_loglik;
 
-  // catch underflow
-  if (!std::isfinite(loglik)) {
+  //........................................................
+  // Check node_x section
+  //........................................................
+  // N.B. Could make this more efficient by having catch at beginning but have here for posterity
+  bool nodex_pass = true;
+  for (int i = 1; i < node_x.size(); i++) {
+    if (node_x[i] < node_x[i-1]) {
+      nodex_pass = false;
+    }
+  }
+
+  // catch underflow or failed node_x format
+  if (!std::isfinite(loglik) | !nodex_pass) {
     const double OVERFLO_DOUBLE = DBL_MAX/100.0;
     loglik = -OVERFLO_DOUBLE;
   }

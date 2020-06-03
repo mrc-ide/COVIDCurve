@@ -84,13 +84,13 @@ dat <- list(obs_deaths = dat$AggDat,
 #                                  dsc1 = c(0,     0,     0,     rep(0,15)),
 #                                  dsc2 = c(1,     1,     1,     rep(1e4,15)))
 
-deathdf_params <- tibble::tibble(name = c("r1", "r2",  "ma3",  paste0("y", 1:10), "y11"),
-                                 min =  c(0,     0,     0,     rep(0, 10),         2500),
-                                 init = c(0.5,   0.5,   0.5,   rep(2, 10),         5000),
-                                 max =  c(1,     1,     1,     rep(5, 10),         10000),
-                                 dsc1 = c(0,     0,     0,     rep(0, 10),         2500),
-                                 dsc2 = c(1,     1,     1,     rep(5, 10),         10000)
-)
+deathdf_params <- tibble::tibble(name = c("r1", "r2",  "ma3",  paste0("y", 1:10), "y11",  paste0("x", 1:10), "x11"),
+                                 min =  c(0,     0,     0,     rep(0, 10),         2500,  rep(0, 10),         120),
+                                 init = c(0.5,   0.5,   0.5,   rep(2, 10),         5000,  rep(0.5, 10),       130),
+                                 max =  c(1,     1,     1,     rep(5, 10),         10000, rep(1, 10),         150),
+                                 dsc1 = c(0,     0,     0,     rep(0, 10),         2500,  rep(0, 10),         120),
+                                 dsc2 = c(1,     1,     1,     rep(5, 10),         10000, rep(1, 10),         150)
+                                 )
 
 # serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
 #                                 min =   c(0.75,    0.91,   10,          75),
@@ -110,25 +110,29 @@ serodf_params <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
 df_params <- rbind.data.frame(deathdf_params, serodf_params)
 #knots <- round(seq(from = 1, to = 150, length.out = sum(grepl("y[0-9]+", df_params$name))))
 knots <- c(1, 15, 30, 45, 60, 75, 82, 90, 105, 120, 150)
-mod1 <- make_modinf_agg$new()
+mod1 <- make_IFRmodel_agg$new()
+mod1$set_MeanOnset(18.8)
+mod1$set_CoefVarOnset(0.45)
 mod1$set_level("Time-Series")
 mod1$set_data(dat)
 mod1$set_IFRparams(c("r1", "r2", "ma3"))
 mod1$set_maxMa("ma3")
+mod1$set_Knotparams(paste0("x", 1:11))
+mod1$set_relKnot("x11")
 mod1$set_Infxnparams(paste0("y", 1:11))
 mod1$set_relInfxn("y11")
 mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_day"))
 mod1$set_popN(5e6)
 mod1$set_paramdf(df_params)
 mod1$set_pa(c(1/3, 1/3, 1/3))
-mod1$set_MeanOnset(18.8)
-mod1$set_CoefVarOnset(0.45)
-mod1$set_knots(knots)
-mod1$set_rcensor_day(120)
+mod1$set_rcensor_day(.Machine$integer.max)
 #..................
 # run model
 #..................
-r_mcmc_out.ts <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1, reparamIFR = TRUE, reparamInfxn = TRUE,
+r_mcmc_out.ts <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
+                                              reparamIFR = TRUE,
+                                              reparamInfxn = TRUE,
+                                              reparamKnot = TRUE,
                                               burnin = 1e3,
                                               samples = 1e3,
                                               chains = 10,
