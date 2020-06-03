@@ -34,18 +34,19 @@ print.IFRmodel <- function(object, ...){
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
-#' @param IFRmodel R6 class; Internal model object for COVIDCurve
-#' @param mcmcout IFR Model MCMC Output; The result of the IFR Model MCMC run. Object will inherits classes from COVIDCurve ("IFRmodel_inf") and DrJacoby ("drjacoby_output")
+#' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
 #' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", or "Seroparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
 #' @export
 
-get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_chain = TRUE) {
-  assert_custom_class(IFRmodel, "IFRmodel")
-  assert_custom_class(mcmcout, "IFRmodel_inf")
+get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain = TRUE) {
+  assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
+  assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
+  assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Seroparams"))
+  assert_string(whichrung)
   assert_logical(by_chain)
 
   # grouping vars
@@ -53,42 +54,42 @@ get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_
 
          "IFRparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel$IFRparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRparams)
          },
          "IFRparams-FALSE"={
            groupingvar <- "param"
-           params <-  c("iteration", IFRmodel$IFRparams)
+           params <-  c("iteration", IFRmodel_inf$inputs$IFRparams)
          },
 
          "Knotparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel$Knotparams)
+           params <- c("chain", IFRmodel_inf$inputs$Knotparams)
          },
          "Knotparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel$Knotparams)
+           params <- c("iteration", IFRmodel_inf$inputs$Knotparams)
          },
 
          "Infxnparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel$Infxnparams)
+           params <- c("chain", IFRmodel_inf$inputs$Infxnparams)
          },
          "Infxnparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel$Infxnparams)
+           params <- c("iteration", IFRmodel_inf$inputs$Infxnparams)
          },
 
          "Seroparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel$Seroparams)
+           params <- c("chain", IFRmodel_inf$inputs$Seroparams)
          },
          "Seroparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel$Seroparams)
+           params <- c("iteration", IFRmodel_inf$inputs$Seroparams)
          }
   )
 
-  mcmcout$output %>%
+  IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung) %>%
     dplyr::select_at(params) %>%
     tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
@@ -111,90 +112,23 @@ get_cred_intervals <- function(IFRmodel, mcmcout, what, whichrung = "rung1", by_
 
 #' @title Draw posterior results from the Cubic Spline
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
-#' @param IFRmodel R6 class; Internal model object for COVIDCurve
-#' @param mcmcout IFR Model MCMC Output; The result of the IFR Model MCMC run. Object will inherits classes from COVIDCurve ("IFRmodel_inf") and DrJacoby ("drjacoby_output")
-#' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
-#' @param whichrung character; Specify which rung to sample from (default is rung1)
-#' @param CIquant numeric; Quantile to draw from the posterior curve
+#' @inheritParams get_cred_intervals
 #' @importFrom magrittr %>%
 #' @export
 
-draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichrung = "rung1", CIquant, by_chain = TRUE) {
-  assert_custom_class(IFRmodel, "IFRmodel")
-  assert_custom_class(mcmcout, "IFRmodel_inf")
+draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", CIquant, by_chain = TRUE) {
+  assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
+  assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
+  assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_numeric(CIquant)
+  assert_string(whichrung)
   assert_bounded(CIquant, left = 0, right = 1)
   assert_logical(by_chain)
   #......................
   # fitler to sampling and by rung
   #......................
-  mcmcout.nodes <-  mcmcout$output %>%
+  mcmcout.nodes <-  IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung)
-
-  #......................
-  # get natural cubic gradients
-  #......................
-  # internal functions, not generalizable
-
-  # function
-  make_cubic_infxn_curve <- function(mcmcout_row, IFRmodel){
-    # get x param for this row
-    knots <- unlist( mcmcout_row[, IFRmodel$Knotparams] )
-    #NB perform ceiling in Cpp code that we replicate here
-    #TODO write out Cpp file to temp folder and then use it here
-    knots <- ceiling(knots)
-    # get denom for spline
-    denom <- (knots - dplyr::lag(knots))[2:(length(knots))]
-    # get y param for this row
-    node_y <- unlist( mcmcout_row[, IFRmodel$Infxnparams] )
-
-    # get m
-    m <- rep(NA, length(knots)-2)
-    for (i in 2:(length(m)+1)) {
-      m[i-1] <- (3/denom[i])*(node_y[i+1] - node_y[i]) - (3/denom[i-1])*(node_y[i] - node_y[i-1]);
-    }
-
-    # get z, g, k
-    z <- rep(0, length(knots)-1)
-    g <- rep(1, length(knots)-1)
-    k <- rep(0, length(knots)-1)
-    for (i in 2:(length(knots)-2)) {
-      g[i] = 2*(knots[i+1] - knots[i-1]) - (denom[i-1])*(k[i-1])
-      k[i] = denom[i]/g[i]
-      z[i] = (m[i-1] - denom[i-1]*z[i-1])/g[i]
-    }
-
-    # finally loop through and get our "slopes" for our interpolants
-    sp3 <- sp1 <- rep(NA, length(knots)-1)
-    sp2 <- rep(0, length(knots))
-    for(i in (length(knots)-1):1) {
-      sp2[i] = z[i] - k[i]*sp2[i+1]
-      sp1[i] = (node_y[i+1] - node_y[i])/(denom[i]) - (denom[i]*(sp2[i+1] + 2*sp2[i]))/3
-      sp3[i] = (sp2[i+1] - sp2[i])/(3*denom[i])
-    }
-
-    # now recreate infection spline
-    infxn_spline <- rep(NA, times  = IFRmodel$maxObsDay)
-    infxn_spline[1] <- node_y[1]
-    node_j <- 1
-    for (i in 2:length(infxn_spline)) {
-      infxn_spline[i] = node_y[node_j] +
-        sp1[node_j] * (i - knots[node_j]) +
-        sp2[node_j] * (i - knots[node_j])^2 +
-        sp3[node_j] * (i - knots[node_j])^3
-
-      # for all interpolants except (potentially) the last knot
-      if (node_j < (length(knots)-1)) {
-        # update node j if needed
-        if ((knots[1] + i - 1) >= knots[node_j + 1]) {
-          node_j <- node_j +1
-        }
-      }
-    }
-    out <- data.frame(time = 1:length(infxn_spline),
-                      infxns = infxn_spline)
-    return(out)
-  }
 
   #......................
   # sample by CI limit and make infxn curves
@@ -208,24 +142,72 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::filter(logposterior >= upperci)
 
-  # split, run, recombine
-  mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
+  #......................
+  # get natural cubic gradients
+  #......................
+  # internal function, liftover cpp likelihood to get infxn curve
+  # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
+  fitcurve_string <- COVIDCurve::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                       reparamIFR = FALSE,
+                                                       reparamKnots = FALSE,
+                                                       reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, don't need it)
+  # pull out pieces I need
+  fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
+  fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector\\<double\\> cumm_infxn_spline\\(infxn_spline.size\\(\\)\\);", n = 2)[,1]
+  fitcurve_string <- paste(fitcurve_start, fitcurve_curve, "Rcpp::List ret = Rcpp::List::create(infxn_spline); return ret;}", collapse = "")
+  Rcpp::cppFunction(fitcurve_string)
 
-  if (Sys.getenv("COVIDCurve_PARALLEL_DEBUG") == "TRUE") {
-    mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, make_cubic_infxn_curve,
-                                            IFRmodel = IFRmodel)
-  } else {
-    mcmcout.nodes$infxncurves <- furrr::future_map(mcmcout.node.rows, make_cubic_infxn_curve,
-                                                   IFRmodel = IFRmodel)
+  #......................
+  # inputs needed for cpp function
+  #......................
+  misc_list = list(pa = IFRmodel_inf$inputs$IFRmodel$pa,
+                   pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
+                   level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
+                   popN = IFRmodel_inf$inputs$IFRmodel$popN,
+                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
+                   days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1)
+
+  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                "obs_serologyrate" = IFRmodel_inf$inputs$IFRmodel$data$obs_serologyrate)
+
+
+  #......................
+  # split, run, recombine
+  #......................
+  cpp_function_wrapper <- function(params, data, misc) {
+    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                                IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                                IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                                IFRmodel_inf$inputs$IFRmodel$Seroparams)])
+    infxns <- unlist(loglike(params = paramsin,
+                             param_i = 1,
+                             data = datin,
+                             misc = misc_list))
+    ret <- data.frame(time = 1:length(infxns),
+                      infxns = infxns)
+    return(ret)
+
   }
+
+  mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
+  mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
+                                          data = datin, misc = misc_list)
 
   #......................
   # tidy
   #......................
-  # keep IFR params around for convenience
+  # keep params around for convenience
   if (by_chain) {
     plotdat <- mcmcout.nodes %>%
-      dplyr::select(c("chain", IFRmodel$IFRparams, "infxncurves")) %>%
+      dplyr::select(c("chain",
+                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                      IFRmodel_inf$inputs$IFRmodel$Seroparams,
+                      "infxncurves")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
@@ -249,16 +231,20 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
 
-    if (IFRmodel$rcensor_day < IFRmodel$maxObsDay) {
+    if (IFRmodel_inf$inputs$IFRmodel$rcensor_day < IFRmodel_inf$inputs$IFRmodel$maxObsDay) {
       plotObj <- plotObj +
-        ggplot2::geom_vline(xintercept = IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
+        ggplot2::geom_vline(xintercept = IFRmodel_inf$inputs$IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
     }
 
 
   } else {
-    # keep IFR params around for convenience
+    # keep params around for convenience
     plotdat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel$IFRparams, "infxncurves")) %>%
+      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                      IFRmodel_inf$inputs$IFRmodel$Seroparams,
+                      "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "infxncurves")
 
@@ -278,11 +264,11 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
         plot.background = ggplot2::element_blank(),
         axis.line = ggplot2::element_line(color = "#000000", size = 1.2),
         legend.position = "none")
-    if (IFRmodel$rcensor_day < IFRmodel$maxObsDay) {
-      plotObj <- plotObj +
-        ggplot2::geom_vline(xintercept = IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
-    }
 
+    if (IFRmodel_inf$inputs$IFRmodel$rcensor_day < IFRmodel_inf$inputs$IFRmodel$maxObsDay) {
+      plotObj <- plotObj +
+        ggplot2::geom_vline(xintercept = IFRmodel_inf$inputs$IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
+    }
   }
 
   #......................
@@ -301,17 +287,19 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel, mcmcout, whichru
 #' @importFrom magrittr %>%
 #' @export
 
-posterior_check_infxns_to_death <- function(IFRmodel, mcmcout, whichrung = "rung1",
+posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
                                             CIquant, by_chain = FALSE) {
-  postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel, mcmcout, whichrung = whichrung,
+
+  postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf, whichrung = whichrung,
                                                                    CIquant, by_chain = by_chain)$plotdat
   # set up function to draw posterior deaths
   postdat.sims <- split(postdat, factor(postdat$sim))
   draw_post_deaths <- function(postdatsim){
-    gmmlkup <- stats::dgamma(postdatsim$time, shape = 1/(IFRmodel$sod^2), scale = IFRmodel$mod*IFRmodel$sod^2, log = F)
+    gmmlkup <- stats::dgamma(postdatsim$time, shape = 1/(IFRmodel_inf$inputs$IFRmodel$sod^2),
+                             scale = IFRmodel_inf$inputs$IFRmodel$mod*IFRmodel_inf$inputs$IFRmodel$sod^2, log = FALSE)
 
     # exp deaths day and strata
-    exp_death.day <- rep(0, length = IFRmodel$maxObsDay)
+    exp_death.day <- rep(0, length = IFRmodel_inf$inputs$IFRmodel$maxObsDay)
     # spread infxns out to day when they may or may not die
     for (i in 1:nrow(postdatsim)) {
       for (j in (i+1):(nrow(postdatsim) + 1)) {
@@ -320,19 +308,19 @@ posterior_check_infxns_to_death <- function(IFRmodel, mcmcout, whichrung = "rung
       }
     }
 
-    exp_death.day.strata <- exp_death.day %*% t(IFRmodel$pa) # account for pa
-    exp_death.day.strata <- exp_death.day.strata * postdatsim[, IFRmodel$IFRparams]
+    exp_death.day.strata <- exp_death.day %*% t(IFRmodel_inf$inputs$IFRmodel$pa) # account for pa
+    exp_death.day.strata <- exp_death.day.strata * postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams]
 
     #......................
     # tidy up and out
     #......................
     out <- cbind.data.frame(time = 1:nrow(exp_death.day.strata), exp_death.day.strata)
-    colnames(out)[2:ncol(out)] <- paste0("deaths_", IFRmodel$IFRparams)
+    colnames(out)[2:ncol(out)] <- paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
     return(out)
   }
   # get post deaths
   postdat.curves <- postdat %>%
-    dplyr::select("sim", IFRmodel$IFRparams) %>%
+    dplyr::select("sim", IFRmodel_inf$inputs$IFRmodel$IFRparams) %>%
     dplyr::filter(!duplicated(.)) %>%
     dplyr::mutate(
       post_deaths = furrr::future_map(postdat.sims, draw_post_deaths)
