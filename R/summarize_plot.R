@@ -54,38 +54,38 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 
          "IFRparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$IFRparams)
          },
          "IFRparams-FALSE"={
            groupingvar <- "param"
-           params <-  c("iteration", IFRmodel_inf$inputs$IFRparams)
+           params <-  c("iteration", IFRmodel_inf$inputs$IFRmodel$IFRparams)
          },
 
          "Knotparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$Knotparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Knotparams)
          },
          "Knotparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$Knotparams)
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Knotparams)
          },
 
          "Infxnparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$Infxnparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
          },
          "Infxnparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$Infxnparams)
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
          },
 
          "Seroparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$Seroparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Seroparams)
          },
          "Seroparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$Seroparams)
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Seroparams)
          }
   )
 
@@ -155,7 +155,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector\\<double\\> cumm_infxn_spline\\(infxn_spline.size\\(\\)\\);", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "bool spline_test = true;", n = 2)[,1]
+  #fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector\\<double\\> cumm_infxn_spline\\(infxn_spline.size\\(\\)\\);", n = 2)[,1]
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve, "Rcpp::List ret = Rcpp::List::create(infxn_spline); return ret;}", collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
