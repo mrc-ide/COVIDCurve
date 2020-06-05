@@ -141,14 +141,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       }
     }
 
-    // check to see if infxn spline passes through 0
-    bool spline_test = true;
-    for (int i = 0; i < infxn_spline.size(); i++) {
-      if (infxn_spline[i] < 0) {
-        spline_test = false;
-      }
-    }
-    if (spline_test) {
       // convert cumulative infection spline into daily infection spline
       std::vector<double> cumm_infxn_spline(infxn_spline.size());
       cumm_infxn_spline[0] = infxn_spline[0];
@@ -264,8 +256,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       if (!std::isfinite(loglik)) {
         loglik = -OVERFLO_DOUBLE;
       }
-      // end spline catch
-    }
     // end of knot catch
   }
 
