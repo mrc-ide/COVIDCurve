@@ -147,7 +147,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                        reparamIFR = FALSE,
                                                        reparamKnots = FALSE,
                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, don't need it)
@@ -324,7 +324,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
     dplyr::select("sim", IFRmodel_inf$inputs$IFRmodel$IFRparams) %>%
     dplyr::filter(!duplicated(.)) %>%
     dplyr::mutate(
-      post_deaths = furrr::future_map(postdat.sims, draw_post_deaths)
+      post_deaths = purrr::map(postdat.sims, draw_post_deaths)
     ) %>%
     tidyr::unnest(cols = post_deaths)
 

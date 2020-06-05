@@ -4,7 +4,7 @@ using namespace Rcpp;
 //------------------------------------------------
 // Log-Likelihood for Aggregate Expected Deaths with a Natural Cubic Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline_extrasero(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
@@ -19,8 +19,9 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-  double sero_day_raw = params["sero_day"];
-  int sero_day = std::floor(sero_day_raw);
+  //double sero_day_raw = params["sero_day"];
+  //int sero_day = std::floor(sero_day_raw);
+  std::vector<int> sero_day = Rcpp::as< std::vector<int> >(misc["sero_day"]);
   // extract free parameters
   double x1 = params["x1"];
   double x2 = params["x2"];
@@ -230,6 +231,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       //........................................................
       // Serology Section
       //........................................................
+      double sero_loglik = 0.0;
+      std::vector<double> datpos = Rcpp::as< std::vector<double> >(data["obs_serologyrate"]);
       // account for false positives
       std::vector<double> fps(cumm_infxn_spline.size());
       for (int i = 0; i < cumm_infxn_spline.size(); i++) {
@@ -239,23 +242,24 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
 
       // account for serology delay -- cumulative hazard of seroconversion on given day look up table
       // days are 1-based
-      std::vector<double> cum_hazard(sero_day);
-      cum_hazard[0] = 0.0;
-      for (int i = 1; i < sero_day; i++) {
-        cum_hazard[i] = (1-exp((-i/sero_rate)));
-      }
+      for (int i = 0; i < sero_day.size(); i++) {
+        std::vector<double> cum_hazard(sero_day[i]);
+        cum_hazard[0] = 0.0;
+        for (int j = 1; j < sero_day[i]; j++) {
+          cum_hazard[j] = (1-exp((-j/sero_rate)));
+        }
 
-      double sero_con_num = 0.0;
-      for (int i = 0; i < (sero_day-1); i++) {
-        int time_elapsed = sero_day - i - 1;
-        sero_con_num += infxn_spline[i] * cum_hazard[time_elapsed];
-      }
+        double sero_con_num = 0.0;
+        for (int j = 0; j < (sero_day[i]-1); j++) {
+          int time_elapsed = sero_day[i] - j - 1;
+          sero_con_num += infxn_spline[j] * cum_hazard[time_elapsed];
+        }
 
-      double datpos = data["obs_serologyrate"];
-      // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
-      sero_con_num = sens * sero_con_num + fps[sero_day-1];
-      int posint = round(sero_con_num);
-      double sero_loglik = R::dbinom(posint, popN, datpos, true);
+        // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
+        sero_con_num = sero_con_num * sens + fps[sero_day[i]-1];
+        int posint = round(sero_con_num);
+        sero_loglik += R::dbinom(posint, popN, datpos[i], true);
+      }
 
       // bring together
       loglik = death_loglik + sero_loglik;
