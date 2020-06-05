@@ -5,21 +5,16 @@
 \title{Draw posterior results from the Cubic Spline}
 \usage{
 draw_posterior_infxn_points_cubic_splines(
-  IFRmodel,
-  mcmcout,
+  IFRmodel_inf,
   whichrung = "rung1",
   CIquant,
   by_chain = TRUE
 )
 }
 \arguments{
-\item{IFRmodel}{R6 class; Internal model object for COVIDCurve}
-
-\item{mcmcout}{IFR Model MCMC Output; The result of the IFR Model MCMC run. Object will inherits classes from COVIDCurve ("IFRmodel_inf") and DrJacoby ("drjacoby_output")}
+\item{IFRmodel_inf}{R6 class; The result of the IFR Model MCMC run along with the model input.}
 
 \item{whichrung}{character; Specify which rung to sample from (default is rung1)}
-
-\item{CIquant}{numeric; Quantile to draw from the posterior curve}
 
 \item{by_chain}{logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.}
 }

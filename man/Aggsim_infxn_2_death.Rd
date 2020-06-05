@@ -13,8 +13,8 @@ Aggsim_infxn_2_death(
   curr_day,
   level,
   simulate_seroprevalence = TRUE,
-  specificity,
-  sensitivity,
+  spec,
+  sens,
   popN,
   sero_delay_rate
 )
@@ -36,9 +36,9 @@ Aggsim_infxn_2_death(
 
 \item{simulate_seroprevalence}{logical; Whether or not seroprevalence data should also be simulated}
 
-\item{specificity}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{spec}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{sensitivity}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{sens}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
 

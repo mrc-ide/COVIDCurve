@@ -4,18 +4,10 @@
 \alias{get_cred_intervals}
 \title{Get Credible Intervals for Parameters from Sampling Iterations}
 \usage{
-get_cred_intervals(
-  IFRmodel,
-  mcmcout,
-  what,
-  whichrung = "rung1",
-  by_chain = TRUE
-)
+get_cred_intervals(IFRmodel_inf, what, whichrung = "rung1", by_chain = TRUE)
 }
 \arguments{
-\item{IFRmodel}{R6 class; Internal model object for COVIDCurve}
-
-\item{mcmcout}{IFR Model MCMC Output; The result of the IFR Model MCMC run. Object will inherits classes from COVIDCurve ("IFRmodel_inf") and DrJacoby ("drjacoby_output")}
+\item{IFRmodel_inf}{R6 class; The result of the IFR Model MCMC run along with the model input.}
 
 \item{what}{character; Specify which parameters you want: "IFRparams", "Infxnparams", or "Seroparams"}
 
