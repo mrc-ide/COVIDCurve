@@ -51,8 +51,8 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   level = "Time-Series",
   infections = infxns$infxns,
   simulate_seroprevalence = TRUE,
-  sensitivity = 0.8,
-  specificity = 0.95,
+  sens = 0.8,
+  spec = 0.95,
   sero_delay_rate = 10,
   popN = sum(get_population(country)$n)
 )
@@ -70,24 +70,24 @@ ifr_paramsdf <- tibble::tibble(name = c("r1", "r2",  "ma3"),
                                max = rep(1, 3),
                                dsc1 = rep(0, 3),
                                dsc2 = rep(1, 3))
-infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
-                                 min  = c(0,    0, 1e5, 0,   0),
-                                 init = c(0.01, 2, 2e5, 0.5, 0.5),
-                                 max =  c(0.05, 5, 5e5, 5,   5),
-                                 dsc1 = c(0.01, 0, 1e5, 0,   0),
-                                 dsc2 = c(0.05, 5, 5e5, 5,   5))
-knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-                                min  = c(0,    0.33, 0.66, 150),
-                                init = c(0.05, 0.40, 0.75, 170),
-                                max =  c(0.33, 0.66, 0.99, 181),
-                                dsc1 = c(0,    0.33, 0.66, 150),
-                                dsc2 = c(0.33, 0.66, 0.99, 181))
+infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:7),
+                                 min  = c(0,   0,    0,   0,  0,    0,   0),
+                                 init = c(0.5, 0.5,  0.5, 9,  0.5,  0.5, 0.5),
+                                 max =  c(1,   1,    1,   14, 1,    1,   1),
+                                 dsc1 = c(0,   0,    0,   0,  0,    0,   0),
+                                 dsc2 = c(1,   1,    1,   14, 1,    1,   1))
+knot_paramsdf <- tibble::tibble(name = paste0("x", 1:6),
+                                min  = c(0,    0.20, 0.40, 0.60, 0.80, 150),
+                                init = c(0.05, 0.40, 0.50, 0.75, 0.85, 170),
+                                max =  c(0.33, 0.50, 0.70, 0.90, 0.99, 181),
+                                dsc1 = c(0,    0.20, 0.40, 0.60, 0.80, 150),
+                                dsc2 = c(0.33, 0.50, 0.70, 0.90, 0.99, 181))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
-                                min =   c(0.78,    0.95,   10,          70),
-                                init =  c(0.8,     0.95,   10,          75),
-                                max =   c(0.82,     0.95,   10,          80),
-                                dsc1 =  c(8000,     9500,    5,           70),
-                                dsc2 =  c(2000,     500,     15,          80))
+                                min =   c(0.78,    0.93,   10,          95),
+                                init =  c(0.8,     0.95,   10,          100),
+                                max =   c(0.82,     0.97,   10,          105),
+                                dsc1 =  c(8000,     9500,    5,           95),
+                                dsc2 =  c(2000,     500,     15,          105))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf)
 
@@ -101,10 +101,10 @@ mod1$set_level("Time-Series")
 mod1$set_data(dat)
 mod1$set_IFRparams(c("r1", "r2", "ma3"))
 mod1$set_maxMa("ma3")
-mod1$set_Knotparams(paste0("x", 1:4))
-mod1$set_relKnot("x4")
-mod1$set_Infxnparams(paste0("y", 1:5))
-mod1$set_relInfxn("y3")
+mod1$set_Knotparams(paste0("x", 1:6))
+mod1$set_relKnot("x6")
+mod1$set_Infxnparams(paste0("y", 1:7))
+mod1$set_relInfxn("y4")
 mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_day"))
 mod1$set_popN(sum(get_population(country)$n))
 mod1$set_paramdf(df_params)
@@ -118,7 +118,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e3,
+                                       burnin = 1e4,
                                        samples = 1e3,
                                        chains = 10)
 Sys.time() - start
@@ -211,26 +211,26 @@ graphics.off()
 
 
 plot_par(modout$mcmcout, "r1", rung = 1)
-plot_par(modout, "r2", rung = 1)
-plot_par(modout, "ma3", rung = 1)
-plot_par(modout, "y1", rung = 1)
-plot_par(modout, "y2", rung = 1)
-plot_par(modout, "y3", rung = 1)
-plot_par(modout, "y4", rung = 1)
-plot_par(modout, "y5", rung = 1)
-plot_par(modout, "y6", rung = 1)
-plot_par(modout, "sens", rung = 1)
-plot_par(modout, "spec", rung = 1)
-plot_par(modout, "sero_day", rung = 1)
+plot_par(modout$mcmcout, "r2", rung = 1)
+plot_par(modout$mcmcout, "ma3", rung = 1)
+plot_par(modout$mcmcout, "y1", rung = 1)
+plot_par(modout$mcmcout, "y2", rung = 1)
+plot_par(modout$mcmcout, "y3", rung = 1)
+plot_par(modout$mcmcout, "y4", rung = 1)
+plot_par(modout$mcmcout, "y5", rung = 1)
+plot_par(modout$mcmcout, "y6", rung = 1)
+plot_par(modout$mcmcout, "sens", rung = 1)
+plot_par(modout$mcmcout, "spec", rung = 1)
+plot_par(modout$mcmcout, "sero_day", rung = 1)
 
-plot_mc_acceptance(modout)
-plot_rung_loglike(modout)
-plot_rung_loglike(modout, y_axis_type = 2)
-plot_rung_loglike(modout, y_axis_type = 3)
+plot_mc_acceptance(modout$mcmcout)
+plot_rung_loglike(modout$mcmcout)
+plot_rung_loglike(modout$mcmcout, y_axis_type = 2)
+plot_rung_loglike(modout$mcmcout, y_axis_type = 3)
 
 
-plot_cor(modout, "r1", "y4")
-plot_cor(modout, "ma3", "y4")
+plot_cor(modout$mcmcout, "r1", "y4")
+plot_cor(modout$mcmcout, "ma3", "y4")
 
 
 

@@ -13,7 +13,7 @@ library(tidyverse)
 esp <- readr::read_csv("https://www.dropbox.com/s/a2ds6orlpl5ashs/daily_deaths_ECDC20200518.csv?dl=1") %>%
   dplyr::filter(countryterritoryCode == "ESP") %>%
   dplyr::mutate(dateRep = lubridate::dmy(dateRep),
-    ObsDay = as.numeric(dateRep - min(dateRep)) + 1)
+                ObsDay = as.numeric(dateRep - min(dateRep)) + 1)
 esp <- esp %>%
   dplyr::select(c("ObsDay", "deaths")) %>%
   dplyr::rename(Deaths = deaths) %>%
@@ -36,18 +36,18 @@ ifr_paramsdf <- tibble::tibble(name = c("r1"),
                                max = 1,
                                dsc1 = 0,
                                dsc2 = 1)
-infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
-                                 min  = rep(0, 5),
-                                 init = c(0.01, rep(0.5, 3), 1e3),
-                                 max =  c(0.05, rep(1, 3),   1e4),
-                                 dsc1 = c(0.01, rep(0, 4)),
-                                 dsc2 = c(0.05, rep(1, 3),   1e4))
-knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-                                min  = c(0,    0.33, 0.66, 120),
-                                init = c(0.05, 0.40, 0.75, 135),
-                                max =  c(0.33, 0.66, 0.99, 150),
-                                dsc1 = c(0,    0.33, 0.66, 120),
-                                dsc2 = c(0.33, 0.66, 0.99, 150))
+infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:11),
+                                 min  = rep(0, 11),
+                                 init = rep(0.5, 11),
+                                 max =  rep(1, 11),
+                                 dsc1 = rep(0, 11),
+                                 dsc2 = rep(1, 11))
+knot_paramsdf <- tibble::tibble(name = paste0("x", 1:10),
+                                min  = rep(0, 10),
+                                init = rep(0.5, 10),
+                                max =  rep(1, 10),
+                                dsc1 = rep(0, 10),
+                                dsc2 = rep(1, 10))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
                                 min =   c(0.78,    0.93,   10,          70),
                                 init =  c(0.8,     0.95,   10,          75),
@@ -67,10 +67,10 @@ mod1$set_level("Time-Series")
 mod1$set_data(dat)
 mod1$set_IFRparams(c("r1"))
 mod1$set_maxMa("r1")
-mod1$set_Knotparams(paste0("x", 1:4))
-mod1$set_relKnot("x4")
-mod1$set_Infxnparams(paste0("y", 1:5))
-mod1$set_relInfxn("y5")
+mod1$set_Knotparams(paste0("x", 1:10))
+mod1$set_relKnot("x5")
+mod1$set_Infxnparams(paste0("y", 1:11))
+mod1$set_relInfxn("y6")
 mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_day"))
 mod1$set_popN(sum(squire::get_population("Spain")$n))
 mod1$set_paramdf(df_params)
@@ -97,32 +97,47 @@ Rcpp::cppFunction(fitcurve_string)
 #......................
 # inputs needed for cpp function
 #......................
-misc_list = list(pa = 1,
-                 pgmms = c(1,1,1),
-                 level = TRUE,
-                 popN = 1,
-                 rcensor_day = 1,
-                 days_obsd = max(dat$obs_deaths$ObsDay),
-                 n_knots = nrow(knot_paramsdf)+1)
+misc_list = list(pa = mod1$pa,
+                 pgmms = mod1$gamma_lookup,
+                 level = ifelse(mod1$level == "Cumulative", TRUE, FALSE),
+                 popN = mod1$popN,
+                 rcensor_day = mod1$rcensor_day,
+                 days_obsd = mod1$maxObsDay,
+                 n_knots = length(mod1$Knotparams)+1)
 
-extparams <- c("sens" = 1, "spec" = 1, "sero_day" = 1, "r1" = 1)
+
+extparams <- c("sens" = 0.85, "spec" = 1, "sero_day" = 125, "sero_rate" = 10, "r1" = 1)
 #............................................................
 # run function w/ parameters in that matter
 #...........................................................
-xparams <- c(40, 60, 80, 100)
-names(xparams) <- paste0("x", 1:4)
-yparams <- c(0, 0, 0, 107, 743, 184)
-names(yparams) <- paste0("y", 1:5)
+xparams <- round(seq(1, max(dat$obs_deaths$ObsDay), length.out = 11))[2:11]
+names(xparams) <- paste0("x", 1:10)
+yparams <- dat$obs_deaths$Deaths[c(1, xparams)]
+names(yparams) <- paste0("y", 1:11)
+paramsin <- c(extparams, xparams, yparams)
 
-loglike(params = c(extparams, xparams, yparams),
-        param_i = 1,
-        data = datin,
-        misc = misc_list)
+splineinfxn <- loglike(params = paramsin,
+                       param_i = 1,
+                       data = dat,
+                       misc = misc_list)
+plot(splineinfxn[[1]])
+splineinfxn[[1]][xparams]
+esp$Deaths[xparams]
 
-
-
-
-
+#......................
+# plot dat
+#......................
+plotdat <- data.frame(
+  time = rep(1:length(splineinfxn[[1]]), 2),
+  lvl = c(rep("deaths", length(splineinfxn[[1]])), rep("spline", length(splineinfxn[[1]]))),
+  curve = c(esp$Deaths, splineinfxn[[1]])
+)
+plotdat %>%
+  ggplot() +
+  geom_line(aes(x=time, y = curve, color = lvl)) +
+  geom_vline(xintercept = xparams, color = "#bdbdbd", linetype = "dashed") +
+  scale_color_viridis_d() +
+  theme_bw()
 
 
 

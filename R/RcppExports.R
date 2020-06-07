@@ -5,7 +5,3 @@ NatCubic_SplineGrowth_loglike_cubicspline <- function(params, param_i, data, mis
     .Call(`_COVIDCurve_NatCubic_SplineGrowth_loglike_cubicspline`, params, param_i, data, misc)
 }
 
-NatCubic_SplineGrowth_loglike_cubicspline_extrasero <- function(params, param_i, data, misc) {
-    .Call(`_COVIDCurve_NatCubic_SplineGrowth_loglike_cubicspline_extrasero`, params, param_i, data, misc)
-}
-
