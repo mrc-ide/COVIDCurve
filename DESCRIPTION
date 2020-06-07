@@ -23,7 +23,6 @@ Imports:
     drjacoby,
     coda,
     purrr,
-    furrr,
     Rcpp,
     R6
 Remotes:

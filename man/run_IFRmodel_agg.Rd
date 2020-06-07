@@ -6,16 +6,17 @@
 \usage{
 run_IFRmodel_agg(
   IFRmodel,
-  reparamIFR = T,
-  reparamInfxn = T,
+  reparamIFR = TRUE,
+  reparamInfxn = TRUE,
+  reparamKnots = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
   rungs = 1,
   GTI_pow = 3,
-  coupling_on = T,
-  pb_markdown = F,
-  silent = T
+  coupling_on = TRUE,
+  pb_markdown = FALSE,
+  silent = TRUE
 )
 }
 \arguments{

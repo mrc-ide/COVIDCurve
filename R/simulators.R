@@ -1,26 +1,26 @@
 #' Simulate Seroprevalence Study
 #' @inheritParams Aggsim_infxn_2_death
-#' @param infxns numeric vector; the expected number of infections from the infection curve from the poisson draw
+#' @param seroinfxns numeric vector; the expected number of infections from the infection curve from the poisson draw
 #' @noRd
 
-sim_seroprev <- function(infxns,
-                         specificity,
-                         sensitivity,
+sim_seroprev <- function(seroinfxns,
+                         spec,
+                         sens,
                          sero_delay_rate,
                          popN,
                          fatalitydata,
                          min_day,
                          curr_day) {
   # store prevalence which is function of infections before delay to seroconversion
-  dz_pos <- cumsum(infxns)
+  dz_pos <- cumsum(seroinfxns)
   dz_neg <- popN - dz_pos
-  fps <- dz_neg - (dz_neg * specificity)
+  fps <- dz_neg - (dz_neg * spec)
 
   # recast infections for seroprev delay
   sero.df <- data.frame(day =  min_day:curr_day,
-                        infxncount = infxns)
+                        infxncount = seroinfxns)
   # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sensitivity))
+  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sens))
 
   df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
@@ -76,8 +76,8 @@ sim_seroprev <- function(infxns,
 #' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
 #' @param level character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.
 #' @param simulate_seroprevalence logical; Whether or not seroprevalence data should also be simulated
-#' @param specificity double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param sensitivity double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @importFrom magrittr %>%
@@ -86,7 +86,7 @@ sim_seroprev <- function(infxns,
 Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0.45,
                                  min_day = 1, curr_day, level,
                                  simulate_seroprevalence = TRUE,
-                                 specificity, sensitivity, popN, sero_delay_rate){
+                                 spec, sens, popN, sero_delay_rate){
 
   #..................
   # Assertions that are specific to this project
@@ -103,10 +103,10 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   assert_same_length(infections, min_day:curr_day)
   assert_logical(simulate_seroprevalence)
   if (simulate_seroprevalence) {
-    assert_numeric(specificity)
-    assert_bounded(specificity, left = 0, right = 1)
-    assert_numeric(sensitivity)
-    assert_bounded(sensitivity, left = 0, right = 1)
+    assert_numeric(spec)
+    assert_bounded(spec, left = 0, right = 1)
+    assert_numeric(sens)
+    assert_bounded(sens, left = 0, right = 1)
     assert_numeric(sero_delay_rate)
     assert_pos_int(popN)
   }
@@ -170,7 +170,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   # run seroprev
   #..................
   if (simulate_seroprevalence) {
-    seroprev <- sim_seroprev(infxns = expected_inf.day, specificity = specificity, sensitivity = sensitivity, sero_delay_rate = sero_delay_rate,
+    seroprev <- sim_seroprev(seroinfxns = expected_inf.day, spec = spec, sens = sens, sero_delay_rate = sero_delay_rate,
                              popN = popN, fatalitydata = fatalitydata, min_day = min_day, curr_day = curr_day)
   }
 

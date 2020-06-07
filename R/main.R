@@ -3,16 +3,17 @@
 #' @inheritParams drjacoby::run_mcmc
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
+run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3,
-                             rungs = 1, GTI_pow = 3, coupling_on = T,
-                             pb_markdown = F, silent = T) {
+                             rungs = 1, GTI_pow = 3, coupling_on = TRUE,
+                             pb_markdown = FALSE, silent = TRUE) {
   #..................
   # assertions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
+  assert_logical(reparamKnots)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -25,11 +26,15 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
   assert_non_null(IFRmodel$data)
   assert_non_null(IFRmodel$IFRparams)
   assert_non_null(IFRmodel$Infxnparams)
+  assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
-  assert_non_null(IFRmodel$knots)
   assert_non_null(IFRmodel$pa)
   assert_non_null(IFRmodel$Seroparams)
   assert_non_null(IFRmodel$popN)
+  assert_non_null(IFRmodel$mod)
+  assert_non_null(IFRmodel$sod)
+  assert_non_null(IFRmodel$gamma_lookup)
+  assert_non_null(IFRmodel$maxObsDay)
 
   #............................................................
   # "Warm-Up" MCMC
@@ -65,18 +70,23 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
     assert_non_null(IFRmodel$relInfxn, message = "If performing reparameterization, must set a relative infection point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn)
+  if (reparamKnots) {
+    assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
+  }
+
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
 
   #..................
   # make misc
   #..................
   misc_list = list(pa = IFRmodel$pa,
                    pgmms = IFRmodel$gamma_lookup,
-                   knots = IFRmodel$knots,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
                    popN = IFRmodel$popN,
-                   days_obsd = IFRmodel$maxObsDay)
+                   rcensor_day = IFRmodel$rcensor_day,
+                   days_obsd = IFRmodel$maxObsDay,
+                   n_knots = length(IFRmodel$Knotparams) + 1) # +1 because we set an internal knot for pos 1
 
   #..................
   # make data list
@@ -130,9 +140,23 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, maxMa]})
   }
 
+  if (reparamKnots) {
+    #..................
+    # account for knots (infxn X position) reparam
+    #..................
+    Knotparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$Knotparams, ]
+    relKnot <- IFRmodel$relKnot
+    scalars <- Knotparams$name[Knotparams$name != relKnot]
+
+    liftovercols <- colnames(mcmcout$output) %in% scalars
+    liftovercols.list <- mcmcout$output[, liftovercols]
+    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relKnot]})
+  }
+
   if (reparamInfxn) {
     #..................
-    # account for ifr reparam
+    # account for Infxn Y position reparam
     #..................
     Infxnparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$Infxnparams, ]
     relInfxn <- IFRmodel$relInfxn
@@ -145,9 +169,27 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = T, reparamInfxn = T,
   }
 
 
-  # append COVIDCurve class along with Dr.Jacoby class
-  class(mcmcout) <- c("IFRmodel_inf", class(mcmcout))
-  return(mcmcout)
+  # store input along with Dr.Jacoby output for later use
+  inputs <- list(
+    IFRmodel = IFRmodel,
+    reparamIFR = reparamIFR,
+    reparamInfxn = reparamInfxn,
+    reparamKnots = reparamKnots,
+    burnin = burnin,
+    samples = samples,
+    chains = chains)
+  if (rungs > 1) {
+    inputs <- append(inputs, list(rungs = rungs,
+                                  GTI_pow = GTI_pow,
+                                  coupling_on = coupling_on))
+  }
+
+  ret <- list(
+    inputs = inputs,
+    mcmcout = mcmcout
+  )
+  class(ret) <- c("IFRmodel_inf")
+  return(ret)
 }
 
 

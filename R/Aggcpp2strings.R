@@ -1,10 +1,11 @@
 #' @title Create the logprior from the IFRmodel R6 Class for DrJacoby Inference
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
-#' @param reparamInfxn logical; Whether infection y-coordinates (i.e. the infection spline) should be reparameterized or inferred seperately
+#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
+#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
+make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots) {
   #..................
   # assertsions
   #..................
@@ -13,19 +14,30 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
   # setup
   #..................
   paramdf <- IFRmodel$paramdf
-  Infxnparams <- IFRmodel$Infxnparams
   IFRparams <- IFRmodel$IFRparams
+  Knotparams <- IFRmodel$Knotparams
+  Infxnparams <- IFRmodel$Infxnparams
   Seroparams <- IFRmodel$Seroparams
 
-  Infxnparams <- paramdf[paramdf$name %in% Infxnparams, ]
   IFRparams <- paramdf[paramdf$name %in% IFRparams, ]
+  Knotparams <- paramdf[paramdf$name %in% Knotparams, ]
+  Infxnparams <- paramdf[paramdf$name %in% Infxnparams, ]
   Seroparams <- paramdf[paramdf$name %in% Seroparams, ]
+
+  if (reparamKnots) {
+    #..................
+    # account for knot reparam -- xpos
+    #..................
+    assert_non_null(IFRmodel$relKnot, message = "Reparameterization requires relative knot to be indicated (i.e. relKnot)")
+    relKnot <- IFRmodel$relKnot
+    knotscalars <- Knotparams$name[Knotparams$name != relKnot]
+  }
 
   if (reparamInfxn) {
     #..................
-    # account for Infection Point reparam
+    # account for Infection Point reparam -- Ypos
     #..................
-    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires relative infection point to be indicated (i.e. relInfxn)")
+    assert_non_null(IFRmodel$relInfxn, message = "Reparameterization requires relative infection point to be indicated (i.e. relInfxn)")
     relInfxn <- IFRmodel$relInfxn
     infxnscalars <- Infxnparams$name[Infxnparams$name != relInfxn]
   }
@@ -40,7 +52,18 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
   }
 
   #..................
-  # priors for infxnpts
+  # priors for knots -- Xpos
+  #..................
+  Knotextractparams <- sapply(Knotparams$name, function(param){
+    paste0("double ", param, " = params[\"",  param, "\"];")
+  })
+
+  makeknotpriors <- mapply(function(param, d1, d2){
+    paste0("R::dunif(", param, ",", d1, ",", d2, ",", "true) +")
+  }, param = Knotparams$name, d1 = Knotparams$dsc1, d2 = Knotparams$dsc2)
+
+  #..................
+  # priors for infxnpts -- Ypos
   #..................
   Infxnextractparams <- sapply(Infxnparams$name, function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
@@ -78,25 +101,56 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # bring together
   #..................
-  extractparams <- c(Infxnextractparams, IFRextractparams, Seroextractparams)
+  extractparams <- c(IFRextractparams, Knotextractparams, Infxnextractparams, Seroextractparams)
 
-  switch(paste0(reparamInfxn, "-", reparamIFR),
-         "TRUE-TRUE" = {
-           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
-                       paste0(length(ifrscalars), "*log(", maxMa, ");"))
-         },
-         "TRUE-FALSE" = {
-           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
+  switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn),
+         "TRUE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
-         "FALSE-TRUE" = {
-           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior,
+
+         "TRUE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ");"))
+         },
+
+         "TRUE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+         },
+
+         "FALSE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+         },
+
+         "TRUE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
                        paste0(length(ifrscalars), "*log(", maxMa, ");"))
          },
-         "FALSE-FALSE" = {
-           priors <- c("double ret =", makeinfxnpriors, makeifrpriors, makeSerobetapriors, serorateprior, serodateprior)
+
+         "FALSE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(knotscalars), "*log(", relKnot, ");"))
+         },
+
+         "FALSE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+         },
+
+         "FALSE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior)
            priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
+         },
+
+         {
+           stop("Prior option not correctly specified during make priors")
          }
   )
 
@@ -118,7 +172,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn) {
 #' @inheritParams make_user_Agg_logprior
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
+make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots) {
   #..................
   # assertsions
   #..................
@@ -127,13 +181,14 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   # setup
   #..................
   paramdf <- IFRmodel$paramdf
+  Knotparams <- IFRmodel$Knotparams
   Infxnparams <- IFRmodel$Infxnparams
   IFRparams <- IFRmodel$IFRparams
 
   #..................
   # extract misc
   #..................
-  extmisc <- "std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; std::vector<double> node_x = Rcpp::as< std::vector<double> >(misc[\"knots\"]); int popN = misc[\"popN\"]; int days_obsd = misc[\"days_obsd\"];"
+  extmisc <- "std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; int popN = misc[\"popN\"]; int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"];"
 
   #..................
   # extract inputs
@@ -149,11 +204,40 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   #..................
   # storage items
   #..................
-  storageitems <- "int agelen = pa.size(); std::vector<double>ma(agelen); std::vector<double> node_y(node_x.size());"
-
+  storageitems <- "int agelen = pa.size(); std::vector<double>ma(agelen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
 
   #..................
-  # liftover infxnreparam vars to Infxn pts
+  # liftover knotreparam vars for Knots -- Infxn Xpositions
+  # NB, "raw" here because we take in a double and need to convert it to an integer day later
+  #.................
+  if (reparamKnots) {
+    assert_non_null(IFRmodel$relKnot, message = "Reparameterization requires relative knot to be indicated (i.e. relKnot)")
+    knotparamdf <- paramdf[paramdf$name %in% Knotparams, ]
+    relKnot <- IFRmodel$relKnot
+    knotscalars <- knotparamdf$name[knotparamdf$name != relKnot]
+    node_xvec <- rep(NA, length(Knotparams))
+    # determine which relative position in our knot vector
+    relnodex_pos <- which(relKnot == Knotparams)
+    nodex_counter <- 1
+    for (i in 1:length(node_xvec)) {
+      if (i == relnodex_pos) {
+        node_xvec[i] <- paste0("node_x_raw[", i, "] = ", relKnot, ";")
+      } else {
+        node_xvec[i] <- paste0("node_x_raw[", i, "] = ", knotscalars[nodex_counter], "*", relKnot, ";")
+        nodex_counter <- nodex_counter + 1
+      }
+    }
+  } else {
+    node_xvec <- rep(NA, length(Knotparams))
+    for (i in 1:length(Knotparams)){
+      node_xvec[i] <- paste0("node_x_raw[", i, "]", " = ", Knotparams[i], ";")
+    }
+  }
+  # account for internal knot at position 1
+  node_xvec <- c("node_x_raw[0] = 1.0;", node_xvec)
+
+  #..................
+  # liftover infxnreparam vars to Infxn Ypositions
   #.................
   if (reparamInfxn) {
     assert_non_null(IFRmodel$relInfxn, message = "Reparameterization requires relative infection points to be indicated (i.e. relInfxn)")
@@ -207,6 +291,11 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
   }
 
   #..................
+  # discretize knots (i.e. day is a discrete time)
+  #..................
+  node_xvec.discretize <- "for (int i = 0; i < node_x.size(); i++) { node_x[i] = std::ceil(node_x_raw[i]); }"
+
+  #..................
   # get loglike
   #..................
   loglike <- readLines("~/Documents/GitHub/COVIDCurve/src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp")
@@ -225,6 +314,8 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn) {
            extmisc,
            params,
            storageitems,
+           node_xvec,
+           node_xvec.discretize,
            node_yvec,
            mavec,
            loglike,
