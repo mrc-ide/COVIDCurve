@@ -97,6 +97,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   d2 = Seroparams$dsc2[!Seroparams$name %in% c("sero_rate", "sero_day")])
   serorateprior <- paste0("R::dunif(sero_rate,", Seroparams$dsc1[Seroparams$name == "sero_rate"], ",", Seroparams$dsc2[Seroparams$name == "sero_rate"], ",true) +")
   serodateprior <- paste0("R::dunif(sero_day,", Seroparams$dsc1[Seroparams$name == "sero_day"], ",", Seroparams$dsc2[Seroparams$name == "sero_day"], ",true) +")
+  underreportprior <- paste0("R::dunif(underreport,", Seroparams$dsc1[Seroparams$name == "underreport"], ",", Seroparams$dsc2[Seroparams$name == "underreport"], ",true) +")
 
   #..................
   # bring together
@@ -105,47 +106,47 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
   switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn),
          "TRUE-TRUE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "TRUE-TRUE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ");"))
          },
 
          "TRUE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "FALSE-TRUE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "TRUE-FALSE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(ifrscalars), "*log(", maxMa, ");"))
          },
 
          "FALSE-TRUE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(knotscalars), "*log(", relKnot, ");"))
          },
 
          "FALSE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior,
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior,
                        paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "FALSE-FALSE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior)
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerobetapriors, serorateprior, serodateprior, underreportprior)
            priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to a semicolon
          },
 

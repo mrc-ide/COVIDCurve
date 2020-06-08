@@ -75,7 +75,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_unique(Knotparams)
                                        assert_string(Seroparams)
                                        assert_unique(Seroparams)
-                                       assert_in(Seroparams, c("sens", "spec", "sero_day", "sero_rate"))
+                                       assert_in(Seroparams, c("sens", "spec", "sero_day", "sero_rate", "underreport"))
                                        # assert paramdf
                                        assert_dataframe(paramdf)
                                        assert_in(x = colnames(paramdf), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
@@ -242,9 +242,9 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    set_Seroparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
-                                     assert_in(val, c("sens", "spec", "sero_rate", "sero_day"),
+                                     assert_in(val, c("sens", "spec", "sero_rate", "sero_day", "underreport"),
                                                message = "Serology parameters currently limited to specifitiy (spec),
-                                             sensitivity (sens), serology rate (sero_rate) and date of serology rate (sero_day)")
+                                             sensitivity (sens), serology rate (sero_rate), date of serology rate (sero_day), and fraction of unreported deaths")
                                      self$Seroparams <- val
                                    },
 

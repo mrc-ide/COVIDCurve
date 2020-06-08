@@ -17,6 +17,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   // extract serology items
   int popN = misc["popN"];
   double sens = params["sens"];
+  double underreport = params["underreport"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
   double sero_day_raw = params["sero_day"];
@@ -140,13 +141,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
-    // convert cumulative infection spline into daily infection spline
-    std::vector<double> cumm_infxn_spline(infxn_spline.size());
-    cumm_infxn_spline[0] = infxn_spline[0];
-    for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-      cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
-    }
-
     // loop through days and TOD integral
     std::vector<double> auc(infxn_spline.size());
     for (int i = 0; i < infxn_spline.size(); i++) {
@@ -174,6 +168,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       for (int a = 0; a < agelen; a++) {
         expd[a] = aucsum * pa[a] * ma[a];
       }
+
       // get log-likelihood over all days
       for (int a = 0; a < agelen; a++) {
         // a+1 to account for 1-based dates
@@ -221,6 +216,12 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
     //........................................................
     // Serology Section
     //........................................................
+    // convert cumulative infection spline into daily infection spline
+    std::vector<double> cumm_infxn_spline(infxn_spline.size());
+    cumm_infxn_spline[0] = infxn_spline[0];
+    for (int i = 1; i < cumm_infxn_spline.size(); i++) {
+      cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
+    }
     // account for false positives
     std::vector<double> fps(cumm_infxn_spline.size());
     for (int i = 0; i < cumm_infxn_spline.size(); i++) {
@@ -244,7 +245,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
 
     double datpos = data["obs_serologyrate"];
     // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
-    int posint = round((sens * sero_con_num + fps[sero_day-1]));
+    int posint = round(((1/underreport) * sens * sero_con_num + fps[sero_day-1]));
     double sero_loglik = R::dbinom(posint, popN, datpos, true);
 
     // bring together
@@ -254,7 +255,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
     if (!std::isfinite(loglik)) {
       loglik = -OVERFLO_DOUBLE;
     }
-  // end node_x test
+    // end node_x test
   }
 
   // return as Rcpp list

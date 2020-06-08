@@ -113,10 +113,12 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 #' @title Draw posterior results from the Cubic Spline
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
+#' @param eval_underreporting logical; whether or not to consider under-reporting in curve fit
 #' @importFrom magrittr %>%
 #' @export
 
-draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", CIquant, by_chain = TRUE) {
+draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", CIquant, by_chain = TRUE,
+                                                      eval_underreporting = FALSE) {
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
@@ -148,9 +150,9 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
-                                                       reparamIFR = FALSE,
-                                                       reparamKnots = FALSE,
-                                                       reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, don't need it)
+                                                        reparamIFR = FALSE,
+                                                        reparamKnots = FALSE,
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, don't need it)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -195,6 +197,13 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
                                           data = datin, misc = misc_list)
+
+  if (eval_underreporting) {
+    mcmcout.nodes <- mcmcout.nodes %>%
+      tibble::as.tibble(.) %>%
+      dplyr::mutate(infxncurves = purrr::map2(.x = infxncurves, .y = underreport,
+                                              function(x, y){ x$infxns <- x$infxns * (1/y); return(x) }))
+  }
 
   #......................
   # tidy

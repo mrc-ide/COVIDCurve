@@ -6,6 +6,7 @@
 sim_seroprev <- function(seroinfxns,
                          spec,
                          sens,
+                         underreport,
                          sero_delay_rate,
                          popN,
                          fatalitydata,
@@ -19,11 +20,9 @@ sim_seroprev <- function(seroinfxns,
   # recast infections for seroprev delay
   sero.df <- data.frame(day =  min_day:curr_day,
                         infxncount = seroinfxns)
-  # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sens))
 
   df_expand <- function(datrow){
-    datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
+    datrow <- datrow[rep(1, times = datrow$infxncount), ]
     return(datrow)
   }
 
@@ -31,7 +30,7 @@ sim_seroprev <- function(seroinfxns,
   sero_line_list <- lapply(sero_line_list, df_expand) %>%
     dplyr::bind_rows(.) %>%
     tibble::as_tibble(.) %>%
-    dplyr::select(-c("infxncount", "detectinfxn"))
+    dplyr::select(-c("infxncount"))
 
   # draw time to seroconversion
   draw_tosc <- function(day, sero_delay_rate){
@@ -46,21 +45,30 @@ sim_seroprev <- function(seroinfxns,
     dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
     dplyr::group_by(event_obs_day, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
-    dplyr::mutate(day_seros = cumsum(day_seros),
-                  day_seros_fp = day_seros + fps)
+    dplyr::mutate(day_seros = cumsum(day_seros))
+
+  # these are the proportion of infxns we will observe -- and different truths
+  sero_line_list.agg$day_seros_fn <- rpois(n = nrow(sero_line_list.agg), lambda = (sero_line_list.agg$day_seros * sens))
+  sero_line_list.agg$day_seros_fp <- sero_line_list.agg$day_seros + fps
+  sero_line_list.agg$day_seros_fn_fp <- sero_line_list.agg$day_seros_fn + fps
 
   #..................
   # out
   #..................
   sero_line_list.agg %>%
     dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day))) %>% # protect against factor and min_day > 1
+    dplyr::mutate(
+      TrueSeroRate = day_seros/popN,
+      SeroRateFP = day_seros_fp/popN,
+      SeroRateFN = day_seros_fn/popN,
+      SeroRateFNFP = day_seros_fn_fp/popN) %>%
     dplyr::rename(
       ObsDay = event_obs_day,
-      SeroCount = day_seros,
-      SeroCountFP = day_seros_fp) %>%
-    dplyr::mutate(
-      SeroRate = SeroCount/popN,
-      SeroRateFP = SeroCountFP/popN)
+      TrueSeroCount = day_seros,
+      SeroCountFP = day_seros_fp,
+      SeroCountFN = day_seros_fn,
+      SeroCountFNFP = day_seros_fn_fp)
+
 
 }
 
@@ -78,6 +86,7 @@ sim_seroprev <- function(seroinfxns,
 #' @param simulate_seroprevalence logical; Whether or not seroprevalence data should also be simulated
 #' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
+#' @param underreport double; Fraction of deaths that are assumed to be accounted for (i.e. not missed)
 #' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @importFrom magrittr %>%
@@ -86,7 +95,7 @@ sim_seroprev <- function(seroinfxns,
 Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0.45,
                                  min_day = 1, curr_day, level,
                                  simulate_seroprevalence = TRUE,
-                                 spec, sens, popN, sero_delay_rate){
+                                 spec, sens, underreport = 1, popN, sero_delay_rate){
 
   #..................
   # Assertions that are specific to this project
@@ -135,9 +144,11 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
       t_death[i,j] <- rbinom(n = 1, size = expected_inf.age.day[i,j], prob = fatalitydata$ifr[i])
     }
   }
-
+  # account for underreporting
+  t_death.ur <- matrix(rpois(n = length(t_death), lambda = t_death * underreport),
+                       nrow = nrow(expected_inf.age.day), ncol = ncol(expected_inf.age.day))
   # expand out the death grid
-  t_death.df <- cbind.data.frame(age = fatalitydata$strata, t_death)
+  t_death.df <- cbind.data.frame(age = fatalitydata$strata, t_death.ur)
   colnames(t_death.df)[2:ncol(t_death.df)] <- min_day:(curr_day)
   t_death.df <- t_death.df %>%
     tidyr::gather(., key = "day", value = "deathcount", 2:ncol(.))
@@ -188,7 +199,6 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
         Deaths = deaths)
   } else {
     death_line_list <- death_line_list %>%
-      dplyr::ungroup(age) %>%
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
       dplyr::rename(
         ObsDay = obs_day,
