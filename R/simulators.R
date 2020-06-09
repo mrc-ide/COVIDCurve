@@ -185,10 +185,11 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
       dplyr::summarise(deaths = sum(day_deaths)) %>%
       dplyr::rename(
         Strata = age,
-        Deaths = deaths)
+        Deaths = deaths) %>%
+      dplyr::ungroup(ObsDay, age)
+
   } else {
     death_line_list <- death_line_list %>%
-      dplyr::ungroup(age) %>%
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
       dplyr::rename(
         ObsDay = obs_day,

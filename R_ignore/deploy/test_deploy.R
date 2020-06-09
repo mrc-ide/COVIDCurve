@@ -44,7 +44,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
 
 
 datin <- list(obs_deaths = dat$AggDat,
-            obs_serologyrate = dat$seroprev$SeroRateFP[sero_day])
+            obs_serologyrate = dat$seroprev$SeroRateFPFN[sero_day])
 
 #..................
 # make model
