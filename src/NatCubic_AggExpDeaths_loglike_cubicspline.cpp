@@ -141,6 +141,12 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
+    // account for underreporting
+    for (int i = 0; i < infxn_spline.size(); i++) {
+      infxn_spline[i] = infxn_spline[i] * underreport;
+    }
+
+
     // loop through days and TOD integral
     std::vector<double> auc(infxn_spline.size());
     for (int i = 0; i < infxn_spline.size(); i++) {
@@ -245,7 +251,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
 
     double datpos = data["obs_serologyrate"];
     // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
-    int posint = round(((1/underreport) * sens * sero_con_num + fps[sero_day-1]));
+    int posint = round(sens * sero_con_num + fps[sero_day-1]);
     double sero_loglik = R::dbinom(posint, popN, datpos, true);
 
     // bring together
