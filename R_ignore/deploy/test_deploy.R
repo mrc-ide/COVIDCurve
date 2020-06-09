@@ -37,14 +37,14 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   infections = infxns$infxns,
   simulate_seroprevalence = TRUE,
   sens = 0.8,
-  spec = 0.95,
+  spec = 0.99,
   sero_delay_rate = 10,
   popN = 5e6
 )
 
 
 datin <- list(obs_deaths = dat$AggDat,
-            obs_serologyrate = dat$seroprev$SeroRateFPFN[sero_day])
+            obs_serologyrate = dat$seroprev$SeroRateFP[sero_day])
 
 #..................
 # make model
@@ -69,11 +69,11 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                  dsc1 = c(0,    0.33, 0.66, 120),
                                  dsc2 = c(0.33, 0.66, 0.99, 150))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
-                                min =   c(0.78,    0.93,   10,          130),
-                                init =  c(0.8,     0.95,   10,          135),
-                                max =   c(0.82,     0.97,   10,         140),
-                                dsc1 =  c(8000,     9500,    5,         130),
-                                dsc2 =  c(2000,     500,     15,        140))
+                                min =   c(0.78,    0.99,   10,          130),
+                                init =  c(0.8,     0.99,   10,          135),
+                                max =   c(0.82,     0.99,   10,         140),
+                                dsc1 =  c(8000,     9900,    5,         130),
+                                dsc2 =  c(2000,     100,     15,        140))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf)
 
@@ -104,10 +104,11 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 5e4,
+                                       burnin = 1e3,
                                        samples = 1e3,
-                                       rungs = 1,
-                                       chains = 10)
+                                       rungs = 10,
+                                       GTI_pow = 2.0,
+                                       chains = 3)
 Sys.time() - start
 modout
 plot_par(modout$mcmcout, "r1", rung = 1)
@@ -136,10 +137,14 @@ plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
 
 plot_mc_acceptance(modout$mcmcout)
 drjacoby::plot_rung_loglike(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3)
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
 drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 2)
 drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 3)
+
+rung9 <- modout$mcmcout$output[modout$mcmcout$output$rung == "rung9", ]
+summary(rung9)
+
 
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
