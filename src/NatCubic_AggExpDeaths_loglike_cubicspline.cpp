@@ -21,6 +21,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double sero_rate = params["sero_rate"];
   double sero_day_raw = params["sero_day"];
   int sero_day = std::floor(sero_day_raw);
+
   // extract free parameters
   double x1 = params["x1"];
   double x2 = params["x2"];

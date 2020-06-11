@@ -87,8 +87,8 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 min =   c(0.83,     0.97,   10,         130),
                                 init =  c(0.85,     0.99,   10,         135),
                                 max =   c(0.87,     1.00,   10,         140),
-                                dsc1 =  c(8500,     9900,    5,         135),
-                                dsc2 =  c(1500,     100,     15,        1))
+                                dsc1 =  c(8500,     99000,    5,         135),
+                                dsc2 =  c(1500,     1000,     15,        0.1))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf)
 
@@ -119,11 +119,9 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e4,
-                                       samples = 1e3,
-                                       rungs = 20,
-                                       GTI_pow = 1.0,
-                                       chains = 3)
+                                       burnin = 1e1,
+                                       samples = 1e1,
+                                       chains = 1)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
