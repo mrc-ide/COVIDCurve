@@ -295,15 +295,146 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # TODO temp for debugging otherwise won't work for devtools::load_all() quickly
   #loglike <- readLines("~/Documents/GitHub/COVIDCurve/src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp")
-  loglike <- readLines(system.file("src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
-  loglike_start <- grep("// Deaths Section", loglike)
-  loglike_end <- grep("// return as Rcpp list", loglike)
-  loglike <- loglike[loglike_start:loglike_end]
-
+  #loglike <- readLines(system.file("src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
+  #loglike_start <- grep("// Deaths Section", loglike)
+  #loglike_end <- grep("// return as Rcpp list", loglike)
+  #loglike <- loglike[loglike_start:loglike_end]
+  loglike <- "const double OVERFLO_DOUBLE = DBL_MAX/100.0;
+  double loglik = -OVERFLO_DOUBLE;
+  bool nodex_pass = true;
+  for (int i = 1; i < node_x.size(); i++) {
+    if (node_x[i] <= node_x[i-1]) {
+      nodex_pass = false;
+    }
+  }
+  if (nodex_pass) {
+    std::vector<double> denom(n_knots-1);
+    for (int i = 0; i < denom.size(); i++) {
+      denom[i] = node_x[i+1] - node_x[i];
+    }
+    std::vector<double> z(n_knots-1);
+    z[0] = 0;
+    std::vector<double> m(n_knots-2);
+    for (int i = 1; i <= m.size(); i++) {
+      m[i-1] = (3/denom[i])*(node_y[i+1] - node_y[i]) - (3/denom[i-1])*(node_y[i] - node_y[i-1]);
+    }
+    std::vector<double> g(n_knots-1);
+    std::vector<double> k(n_knots-1);
+    g[0] = 1;
+    k[0] = 0;
+    for (int i = 1; i < (n_knots-1); i++) {
+      g[i] = 2*(node_x[i+1] - node_x[i-1]) - (denom[i-1])*(k[i-1]);
+      k[i] = denom[i]/g[i];
+      z[i] = (m[i-1] - denom[i-1]*z[i-1])/g[i];
+    }
+    std::vector<double> sp1(n_knots-1);
+    std::vector<double> sp3(n_knots-1);
+    std::vector<double> sp2(n_knots);
+    sp2[n_knots-1] = 0;
+    for (int i = (n_knots-2); i >= 0; i--) {
+      sp2[i] = z[i] - k[i]*sp2[i+1];
+      sp1[i] = (node_y[i+1] - node_y[i])/(denom[i]) - (denom[i]*(sp2[i+1] + 2*sp2[i]))/3 ;
+      sp3[i] = (sp2[i+1] - sp2[i])/(3*denom[i]);
+    }
+    std::vector<double> infxn_spline(days_obsd);
+    int node_j = 0;
+    infxn_spline[0] = node_y[0];
+    for (int i = 1; i < days_obsd; i++) {
+      infxn_spline[i] = node_y[node_j] +
+        sp1[node_j] * ((i+1) - node_x[node_j]) +
+        sp2[node_j] * pow(((i+1) - node_x[node_j]), 2) +
+        sp3[node_j] * pow(((i+1) - node_x[node_j]), 3);
+      if (node_j < (node_x.size()-2)) {
+        if ((node_x[0] + i) >= node_x[node_j+1]) {
+          node_j++;
+        }
+      }
+    }
+    for (int i = 0; i < infxn_spline.size(); i++) {
+      infxn_spline[i] = exp(infxn_spline[i]);
+    }
+    std::vector<double> cumm_infxn_spline(infxn_spline.size());
+    cumm_infxn_spline[0] = infxn_spline[0];
+    for (int i = 1; i < cumm_infxn_spline.size(); i++) {
+      cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
+    }
+    if (cumm_infxn_spline[cumm_infxn_spline.size() - 1] <= popN) {
+      std::vector<double> auc(infxn_spline.size());
+      for (int i = 0; i < infxn_spline.size(); i++) {
+        for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
+          int delta = j - i - 1;
+          auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
+        }
+      }
+      double death_loglik = 0.0;
+      if (level) {
+        std::vector<int> obsd = Rcpp::as< std::vector<int> >(data[\"obs_deaths\"]);
+        double aucsum = 0;
+        for (int i = 0; i < auc.size(); i++) {
+          aucsum += auc[i];
+        }
+        std::vector<double>expd(agelen);
+        for (int a = 0; a < agelen; a++) {
+          expd[a] = aucsum * pa[a] * ma[a];
+        }
+        for (int a = 0; a < agelen; a++) {
+          if ((a+1) < rcensor_day) {
+            if (obsd[a] != -1) {
+              death_loglik += R::dpois(obsd[a], expd[a], true);
+            }
+          }
+        }
+      } else {
+        std::vector<int> raw = Rcpp::as< std::vector<int> >(data[\"obs_deaths\"]);
+        std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(agelen));
+        int iter = 0;
+        for (int i = 0; i < infxn_spline.size(); i++) {
+          for (int j = 0; j < agelen; j++) {
+            obsd[i][j] = raw[iter];
+            iter++;
+          }
+        }
+        std::vector<std::vector<double>> expd(infxn_spline.size(), std::vector<double>(agelen));
+        for (int  i = 0; i < infxn_spline.size(); i++) {
+          for (int a = 0; a < agelen; a++) {
+            expd[i][a] = auc[i] * pa[a] * ma[a];
+          }
+        }
+        for (int  i = 0; i < infxn_spline.size(); i++) {
+          for (int a = 0; a < agelen; a++) {
+            if ((a+1) < rcensor_day) {
+              if (obsd[i][a] != -1) {
+                death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+              }
+            }
+          }
+        }
+      }
+      std::vector<double> cum_hazard(sero_day);
+      cum_hazard[0] = 0.0;
+      for (int i = 1; i < sero_day; i++) {
+        cum_hazard[i] = (1-exp((-i/sero_rate)));
+      }
+      double sero_con_num = 0.0;
+      for (int i = 0; i < sero_day; i++) {
+        int time_elapsed = sero_day - i - 1;
+        sero_con_num += infxn_spline[i] * cum_hazard[time_elapsed];
+      }
+      double obs_prev = (sero_con_num/popN) * (spec + (sens-1)) - (spec-1);
+      int posint = round(obs_prev * popN);
+      double datpos = data[\"obs_serologyrate\"];
+      double sero_loglik = R::dbinom(posint, popN, datpos, true);
+      loglik = death_loglik + sero_loglik;
+      if (!std::isfinite(loglik)) {
+        loglik = -OVERFLO_DOUBLE;
+      }
+    }
+  }
+"
   # remove comments which cause issues when coercing to string in this format
-  commlines <- grep("//", loglike)
-  loglike <- loglike[! 1:length(loglike) %in% commlines]
-
+  #commlines <- grep("//", loglike)
+  #loglike <- loglike[! 1:length(loglike) %in% commlines]
+  loglike <- gsub("\\\n", "", loglike)
   # end loglike and now out
   ret <- c("SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {",
            extmisc,
