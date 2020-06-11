@@ -223,13 +223,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       //........................................................
       // Serology Section
       //........................................................
-      // account for false positives
-      std::vector<double> fps(cumm_infxn_spline.size());
-      for (int i = 0; i < cumm_infxn_spline.size(); i++) {
-        // dz negative minus dz_negative times those that are true negatives
-        fps[i] = (popN - cumm_infxn_spline[i]) - (popN - cumm_infxn_spline[i])*spec;
-      }
-
       // account for serology delay -- cumulative hazard of seroconversion on given day look up table
       // days are 1-based
       std::vector<double> cum_hazard(sero_day);
@@ -244,9 +237,10 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
         sero_con_num += infxn_spline[i] * cum_hazard[time_elapsed];
       }
 
-      double datpos = data["obs_serologyrate"];
       // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
-      int posint = round((sens * sero_con_num + fps[sero_day-1]));
+      double obs_prev = (sero_con_num/popN) * (spec + (sens-1)) - (spec-1);
+      int posint = round(obs_prev * popN);
+      double datpos = data["obs_serologyrate"];
       double sero_loglik = R::dbinom(posint, popN, datpos, true);
 
       // bring together

@@ -11,16 +11,12 @@ sim_seroprev <- function(seroinfxns,
                          fatalitydata,
                          min_day,
                          curr_day) {
-  # store prevalence which is function of infections before delay to seroconversion
-  dz_pos <- cumsum(seroinfxns)
-  dz_neg <- popN - dz_pos
-  fps <- dz_neg - (dz_neg * spec)
 
   # recast infections for seroprev delay
   sero.df <- data.frame(day =  min_day:curr_day,
                         infxncount = seroinfxns)
   # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount * sens))
+  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount))
 
   df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
@@ -39,28 +35,20 @@ sim_seroprev <- function(seroinfxns,
   }
   sero_line_list$tosc <- sapply(sero_line_list$day, draw_tosc, sero_delay_rate = 1/sero_delay_rate)
 
+  #..................
   # Tidy up so that we observe deaths on a daily time step
-  sero_line_list.agg <- sero_line_list %>%
+  #..................
+ sero_line_list %>%
     dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:curr_day),
                                       labels = min_day:curr_day)) %>%
     dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
     dplyr::group_by(event_obs_day, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
-    dplyr::mutate(day_seros = cumsum(day_seros),
-                  day_seros_fp = day_seros + fps)
-
-  #..................
-  # out
-  #..................
-  sero_line_list.agg %>%
-    dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day))) %>% # protect against factor and min_day > 1
-    dplyr::rename(
-      ObsDay = event_obs_day,
-      SeroCount = day_seros,
-      SeroCountFP = day_seros_fp) %>%
-    dplyr::mutate(
-      SeroRate = SeroCount/popN,
-      SeroRateFP = SeroCountFP/popN)
+    dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day)), # protect against factor and min_day > 1
+                  TrueSeroCount = cumsum(day_seros),
+                  TruePrev = TrueSeroCount/popN,
+                  ObsPrev = TruePrev * (spec + (sens - 1)) - (spec-1)
+                  )
 
 }
 

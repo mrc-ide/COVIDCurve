@@ -14,15 +14,10 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   # setup
   #..................
   paramdf <- IFRmodel$paramdf
-  IFRparams <- IFRmodel$IFRparams
-  Knotparams <- IFRmodel$Knotparams
-  Infxnparams <- IFRmodel$Infxnparams
-  Seroparams <- IFRmodel$Seroparams
-
-  IFRparams <- paramdf[paramdf$name %in% IFRparams, ]
-  Knotparams <- paramdf[paramdf$name %in% Knotparams, ]
-  Infxnparams <- paramdf[paramdf$name %in% Infxnparams, ]
-  Seroparams <- paramdf[paramdf$name %in% Seroparams, ]
+  IFRparams <- paramdf[paramdf$name %in% IFRmodel$IFRparams, ]
+  Knotparams <- paramdf[paramdf$name %in% IFRmodel$Knotparams, ]
+  Infxnparams <- paramdf[paramdf$name %in% IFRmodel$Infxnparams, ]
+  Seroparams <- paramdf[paramdf$name %in% IFRmodel$Seroparams, ]
 
   if (reparamKnots) {
     #..................
