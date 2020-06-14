@@ -91,7 +91,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   d1 = Seroparams$dsc1[!Seroparams$name %in% c("sero_rate", "sero_day")],
   d2 = Seroparams$dsc2[!Seroparams$name %in% c("sero_rate", "sero_day")])
   serorateprior <- paste0("R::dunif(sero_rate,", Seroparams$dsc1[Seroparams$name == "sero_rate"], ",", Seroparams$dsc2[Seroparams$name == "sero_rate"], ",true) +")
-  serodateprior <- paste0("R::dnorm(sero_day,", Seroparams$dsc1[Seroparams$name == "sero_day"], ",", Seroparams$dsc2[Seroparams$name == "sero_day"], ",true) +")
+  serodateprior <- paste0("R::dunif(sero_day,", Seroparams$dsc1[Seroparams$name == "sero_day"], ",", Seroparams$dsc2[Seroparams$name == "sero_day"], ",true) +")
 
   #..................
   # bring together
