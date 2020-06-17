@@ -11,6 +11,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
   int n_knots = misc["n_knots"];
+  int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
 
@@ -19,8 +20,15 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-  double sero_day_raw = params["sero_day"];
-  int sero_day = std::floor(sero_day_raw);
+  double sero_day1_raw = params["sero_day1"];
+  double sero_day2_raw = params["sero_day2"];
+  std::vector<double> sero_day_raw(n_sero_obs);
+  sero_day_raw[0] = sero_day1_raw;
+  sero_day_raw[1] = sero_day2_raw;
+  std::vector<int> sero_day(n_sero_obs);
+  for (int i = 0; i < n_sero_obs; i++) {
+    sero_day[i] =  std::floor(sero_day_raw[i]);
+  }
 
   // extract free parameters
   double x1 = params["x1"];
@@ -226,23 +234,28 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       //........................................................
       // account for serology delay -- cumulative hazard of seroconversion on given day look up table
       // days are 1-based
-      std::vector<double> cum_hazard(sero_day);
-      cum_hazard[0] = 0.0;
-      for (int i = 1; i < sero_day; i++) {
-        cum_hazard[i] = (1-exp((-i/sero_rate)));
-      }
+      std::vector<double> sero_con_num(n_sero_obs);
+      for (int i = 0; i< n_sero_obs; i++) {
+        std::vector<double> cum_hazard(sero_day[i]);
+        cum_hazard[0] = 0.0;
+        for (int j = 1; j < sero_day[i]; j++) {
+          cum_hazard[j] = (1-exp((-j/sero_rate)));
+        }
 
-      double sero_con_num = 0.0;
-      for (int i = 0; i < sero_day; i++) {
-        int time_elapsed = sero_day - i - 1;
-        sero_con_num += infxn_spline[i] * cum_hazard[time_elapsed];
+        for (int j = 0; j < sero_day[i]; j++) {
+          int time_elapsed = sero_day[i] - j - 1;
+          sero_con_num[i] += infxn_spline[j] * cum_hazard[time_elapsed];
+        }
       }
 
       // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
-      double obs_prev = (sero_con_num/popN) * (spec + (sens-1)) - (spec-1);
-      int posint = round(obs_prev * popN);
-      double datpos = data["obs_serologyrate"];
-      double sero_loglik = R::dbinom(posint, popN, datpos, true);
+      double sero_loglik = 0.0;
+      std::vector<double> datpos = Rcpp::as< std::vector<double> >(data["obs_serologyrate"]);
+      for (int i = 0; i < n_sero_obs; i++) {
+        double obs_prev = (sero_con_num[i]/popN) * (spec + (sens-1)) - (spec-1);
+        int posint = round(obs_prev * popN);
+        sero_loglik += R::dbinom(posint, popN, datpos[i], true);
+      }
 
       // bring together
       loglik = death_loglik + sero_loglik;
@@ -251,6 +264,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       if (!std::isfinite(loglik)) {
         loglik = -OVERFLO_DOUBLE;
       }
+
       // end cumulative vs. popN check
     }
     // end node_x check

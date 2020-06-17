@@ -99,9 +99,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        # censoring
                                        if (!is.null(rcensor_day)) {
                                          assert_pos_int(rcensor_day)
-                                         assert_bounded(rcensor_day, left = min(knots), right = max(knots),
-                                                        inclusive_left = FALSE, inclusive_right = FALSE)
-                                         assert_gr(rcensor_day, paramdf$max[paramdf$name == "sero_day"],
+                                         assert_gr(rcensor_day, max(paramdf$max[paramdf$name %in% Serodayparams]),
                                                    message = "Day of censoring must be after maximum serology date")
                                        }
 
@@ -260,8 +258,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    },
 
                                    set_paramdf = function(val) {
-                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Seroparams) == 0) {
-                                       stop("Must specify IFRparams, Knotparams, Infxnparams, and Seroparams before specifying the param dataframe")
+                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Serotestparams) == 0 | length(self$Serodayparams) == 0) {
+                                       stop("Must specify IFRparams, Knotparams, Infxnparams, Serotestparams, and Serodayparams before specifying the param dataframe")
                                      }
                                      assert_dataframe(val)
                                      assert_in(x = colnames(val), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
@@ -280,6 +278,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_numeric(val)
                                      self$mod <- val
                                    },
+
                                    set_CoefVarOnset = function(val) {
                                      assert_numeric(val)
                                      self$sod <- val
@@ -289,8 +288,11 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      if (is.null(self$paramdf)) {
                                        stop("Must specificy parameter dataframe prior to specifying day to right censor from")
                                      }
+                                     if (is.null(self$Serodayparams)) {
+                                       stop("Must specificy serology day parameters prior to specifying day to right censor from")
+                                     }
                                      assert_pos_int(val)
-                                     assert_gr(val, self$paramdf$max[self$paramdf$name == "sero_day"],
+                                     assert_gr(val, max(self$paramdf$max[self$paramdf$name %in% self$Serodayparams]),
                                                message = "Day of censoring must be after maximum serology date")
                                      self$rcensor_day <- val
                                    },
