@@ -82,18 +82,18 @@ infxndf_params <- tibble::tibble(name = paste0("y", 1:5),
                                  max =  c(1,   1,   14, 1,   1),
                                  dsc1 = c(0,   0,    0,  0,   0),
                                  dsc2 = c(1,   1,    14, 1,   1))
-# knotdf_params <- tibble::tibble(name = paste0("x", 1:4),
-#                                 min  = c(0,    0.30, 0.50, 125),
-#                                 init = c(0.05, 0.50, 0.60, 128),
-#                                 max =  c(0.5,  0.75, 0.99, 137),
-#                                 dsc1 = c(0,    0.30, 0.50, 125),
-#                                 dsc2 = c(0.5,  0.75, 0.99, 137))
 knotdf_params <- tibble::tibble(name = paste0("x", 1:4),
-                                min  = c(40, 70, 90, 135),
-                                init = c(40, 70, 90, 135),
-                                max =  c(42, 72, 92, 137),
-                                dsc1 = c(40, 70, 90, 135),
-                                dsc2 = c(42, 72, 92, 137))
+                                min  = c(0,    0.30, 0.50, 125),
+                                init = c(0.05, 0.50, 0.60, 128),
+                                max =  c(0.5,  0.75, 0.99, 137),
+                                dsc1 = c(0,    0.30, 0.50, 125),
+                                dsc2 = c(0.5,  0.75, 0.99, 137))
+# knotdf_params <- tibble::tibble(name = paste0("x", 1:4),
+#                                 min  = c(40, 70, 90, 135),
+#                                 init = c(40, 70, 90, 135),
+#                                 max =  c(42, 72, 92, 137),
+#                                 dsc1 = c(40, 70, 90, 135),
+#                                 dsc2 = c(42, 72, 92, 137))
 
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
                                 min =   c(0.83,     0.97,   10,         120),
@@ -130,11 +130,11 @@ mod1$set_rcensor_day(.Machine$integer.max)
 modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
-                                       reparamKnot = FALSE,
-                                       burnin = 1e2,
-                                       samples = 1e2,
-                                       rungs = 10,
-                                       GTI_pow = 4.0,
+                                       reparamKnot = TRUE,
+                                       burnin = 1e3,
+                                       samples = 1e3,
+                                       rungs = 25,
+                                       GTI_pow = 5.0,
                                        chains = 3)
 summary(modout$mcmcout$output$loglikelihood[modout$mcmcout$output$rung == "rung1" & modout$mcmcout$output$stage == "sampling"])
 plot(modout$mcmcout$output$loglikelihood[modout$mcmcout$output$rung == "rung1" & modout$mcmcout$output$stage == "sampling"])
