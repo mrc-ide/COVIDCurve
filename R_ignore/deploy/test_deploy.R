@@ -7,7 +7,7 @@ devtools::load_all()
 set.seed(1234)
 library(drjacoby)
 # sigmoidal function
-infxns <- data.frame(time = 1:150)
+infxns <- data.frame(time = 1:200)
 sig <- function(x){1 / (1 +  exp(-x))}
 timevec <- seq(from = -5, to = 7, length.out = nrow(infxns))
 infxns$infxns <- sig(timevec) * 5e3 + runif(n = nrow(infxns),
@@ -20,7 +20,7 @@ fatalitydata <- data.frame(strata = c("ma1", "ma2", "ma3"),
                            ifr = c(0.05, 0.2, 0.5),
                            pa = 1/3)
 # pick serology date
-sero_day <- 135
+sero_days <- c(135, 160)
 
 #..............................................................
 # AGGREGATE
@@ -32,7 +32,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
   m_od = 18.8,
   s_od = 0.45,
-  curr_day = 150,
+  curr_day = 200,
   level = "Time-Series",
   infections = infxns$infxns,
   simulate_seroprevalence = TRUE,
@@ -44,7 +44,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
 
 
 datinput <- list(obs_deaths = dat$AggDat,
-                 obs_serologyrate = dat$seroprev$ObsPrev[sero_day])
+                 obs_serologyrate = dat$seroprev$ObsPrev[sero_days])
 
 #..................
 # make model
@@ -78,17 +78,17 @@ infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  dsc2 = c(rep(1, 4), 10))
 
 knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-                                 min  = c(0,    0.33, 0.66, 120),
-                                 init = c(0.05, 0.40, 0.75, 135),
-                                 max =  c(0.33, 0.66, 0.99, 150),
-                                 dsc1 = c(0,    0.33, 0.66, 120),
-                                 dsc2 = c(0.33, 0.66, 0.99, 150))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day"),
-                                min =   c(0.83,     0.97,   10,         130),
-                                init =  c(0.85,     0.99,   10,         135),
-                                max =   c(0.87,     1.00,   10,         140),
-                                dsc1 =  c(8500,     99000,    5,         135),
-                                dsc2 =  c(1500,     1000,     15,        0.1))
+                                 min  = c(0,    0.33, 0.66, 175),
+                                 init = c(0.05, 0.40, 0.75, 185),
+                                 max =  c(0.33, 0.66, 0.99, 200),
+                                 dsc1 = c(0,    0.33, 0.66, 175),
+                                 dsc2 = c(0.33, 0.66, 0.99, 200))
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
+                                min =   c(0.83,     0.97,   10,         130,         150),
+                                init =  c(0.85,     0.99,   10,         135,         160),
+                                max =   c(0.87,     1.00,   10,         140,         170),
+                                dsc1 =  c(8500,     990,    5,          130,         150),
+                                dsc2 =  c(1500,     10,     15,         140,         170))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf)
 
@@ -106,11 +106,13 @@ mod1$set_Knotparams(paste0("x", 1:4))
 mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
-mod1$set_Seroparams(c("sens", "spec", "sero_rate", "sero_day"))
+mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
+mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
 mod1$set_popN(5e6)
 mod1$set_paramdf(df_params)
 mod1$set_pa(c(1/3, 1/3, 1/3))
 mod1$set_rcensor_day(.Machine$integer.max)
+
 #..................
 # run model
 #..................
