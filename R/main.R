@@ -28,7 +28,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$Infxnparams)
   assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
-  assert_non_null(IFRmodel$pa)
+  assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
   assert_non_null(IFRmodel$Serodayparams)
   assert_non_null(IFRmodel$popN)
@@ -81,7 +81,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   #..................
   # make misc
   #..................
-  misc_list = list(pa = IFRmodel$pa,
+  misc_list = list(rho = IFRmodel$rho,
                    pgmms = IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
                    popN = IFRmodel$popN,

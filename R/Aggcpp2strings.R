@@ -194,7 +194,9 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # extract misc
   #..................
-  extmisc <- "std::vector<double> pa = Rcpp::as< std::vector<double> >(misc[\"pa\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; int popN = misc[\"popN\"]; int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"];"
+  extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; int popN = misc[\"popN\"]; int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"];"
+  nbinommisc <- "double noiserate = misc[\"noiserate\"]; double kbinom = misc[\"kbinom\"]; double phi = misc[\"phi\"];"
+  extmisc <- c(extmisc, nbinommisc)
 
   #..................
   # extract inputs
@@ -222,7 +224,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # storage items
   #..................
-  storageitems <- "int agelen = pa.size(); std::vector<double>ma(agelen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
+  storageitems <- "int stratlen = pa.size(); std::vector<double>ma(stratlen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
 
   #..................
   # liftover knotreparam vars for Knots -- Infxn Xpositions

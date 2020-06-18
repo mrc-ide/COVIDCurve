@@ -7,7 +7,7 @@ using namespace Rcpp;
 Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
-  std::vector<double> pa = Rcpp::as< std::vector<double> >(misc["pa"]);
+  std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
   std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   bool level = misc["level"];
   int n_knots = misc["n_knots"];
@@ -45,8 +45,8 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double ma1 = params["r1"];
 
   // storage items
-  int agelen = pa.size();
-  std::vector<double>ma(agelen);
+  int stratlen = rho.size();
+  std::vector<double>ma(stratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
   // fill storage
@@ -181,12 +181,12 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
           aucsum += auc[i];
         }
         // get exp deaths per age group
-        std::vector<double>expd(agelen);
-        for (int a = 0; a < agelen; a++) {
-          expd[a] = aucsum * pa[a] * ma[a];
+        std::vector<double>expd(stratlen);
+        for (int a = 0; a < stratlen; a++) {
+          expd[a] = aucsum * rho[a] * ma[a];
         }
         // get log-likelihood over all days
-        for (int a = 0; a < agelen; a++) {
+        for (int a = 0; a < stratlen; a++) {
           // a+1 to account for 1-based dates
           if ((a+1) < rcensor_day) {
             if (obsd[a] != -1) {
@@ -199,26 +199,26 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
         // False is for Time-Series Calculation
         // get data in right format
         std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-        std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(agelen));
+        std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(stratlen));
         int iter = 0;
         for (int i = 0; i < infxn_spline.size(); i++) {
-          for (int j = 0; j < agelen; j++) {
+          for (int j = 0; j < stratlen; j++) {
             obsd[i][j] = raw[iter];
             iter++;
           }
         }
 
         // get exp deaths per age group
-        std::vector<std::vector<double>> expd(infxn_spline.size(), std::vector<double>(agelen));
+        std::vector<std::vector<double>> expd(infxn_spline.size(), std::vector<double>(stratlen));
         for (int  i = 0; i < infxn_spline.size(); i++) {
-          for (int a = 0; a < agelen; a++) {
-            expd[i][a] = auc[i] * pa[a] * ma[a];
+          for (int a = 0; a < stratlen; a++) {
+            expd[i][a] = auc[i] * rho[a] * ma[a];
           }
         }
 
         // get log-likelihood over all days
         for (int  i = 0; i < infxn_spline.size(); i++) {
-          for (int a = 0; a < agelen; a++) {
+          for (int a = 0; a < stratlen; a++) {
             // a+1 to account for 1-based dates
             if ((a+1) < rcensor_day) {
               if (obsd[i][a] != -1) {
