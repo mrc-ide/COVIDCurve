@@ -121,9 +121,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
-  assert_numeric(CIquant)
+  assert_pos_int(dwnsmpl)
   assert_string(whichrung)
-  assert_bounded(CIquant, left = 0, right = 1)
   assert_logical(by_chain)
   #......................
   # fitler to sampling and by rung
@@ -136,10 +135,14 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-
+  # Log-Sum-Exp trick
+  convert_post_probs <- function(logpost) {
+    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
+  }
+  probs <- convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
-                         prob = exp(mcmcout.nodes$logposterior))
+                         prob = probs)
   dwnsmpl_rows <- sort(dwnsmpl_rows)
   mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
 
