@@ -20,7 +20,7 @@ Aggsim_infxn_2_death(
 )
 }
 \arguments{
-\item{fatalitydata}{dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.}
+\item{fatalitydata}{dataframe; The column names: strata, ifr, and rho correspond to (patient) strata, infection-fatality ratio, and the probability of infection (i.e. a probalistic attack rate), respectively.}
 
 \item{infections}{integer vector; The infections for each day up to the current day.}
 
@@ -43,10 +43,6 @@ Aggsim_infxn_2_death(
 \item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
 
 \item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
-
-\item{m_or}{double; The mean of the onset of infection to recovery (gamma distribution).}
-
-\item{s_or}{double; The coefficient of variation of the onset of infection to recovery (gamma distribution).}
 }
 \description{
 Simulate Aggregate Expected Deaths

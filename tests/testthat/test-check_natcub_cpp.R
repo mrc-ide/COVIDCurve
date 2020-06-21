@@ -19,7 +19,7 @@ test_that("natcub cpp likelihood works", {
   # make up fatality data
   fatalitydata <- data.frame(strata = c("ma1", "ma2", "ma3"),
                              ifr = c(0.05, 0.2, 0.5),
-                             pa = 1/3)
+                             rho = 1/3)
   # pick serology date
   sero_days <- c(110, 135)
 
@@ -55,7 +55,7 @@ test_that("natcub cpp likelihood works", {
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
 
-  misc_list = list(rho = fatalitydata$pa,
+  misc_list = list(rho = fatalitydata$rho,
                    pgmms = gamma_lookup,
                    level = FALSE,
                    popN = 5e6,
@@ -79,7 +79,6 @@ test_that("natcub cpp likelihood works", {
                                                                        data = datinput,
                                                                        misc = misc_list)
 
-  morelikely$LogLik
 
   # random
   lesslikely.paramsindup <- c("r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
@@ -93,7 +92,6 @@ test_that("natcub cpp likelihood works", {
                                                                        data = datinput,
                                                                        misc = misc_list)
 
-  lesslikely$LogLik
 
   testthat::expect_gt(object = morelikely$LogLik, expected = lesslikely$LogLik)
 

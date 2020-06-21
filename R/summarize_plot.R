@@ -10,7 +10,7 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
   cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
   cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
 }
@@ -20,17 +20,17 @@ summary.IFRmodel <- function(object, ...){
 #' @noRd
 #' @export
 
-print.IFRmodel <- function(object, ...){
+print.IFRmodel <- function(x, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
-  cat(crayon::yellow("Model Type: "), object$level, "\n")
-  cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
-  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
-  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
+  cat(crayon::green("IFR strata params: "), paste(x$IFRparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(x$Seroparams, collapse = ", "), "\n")
+  cat(crayon::yellow("Model Type: "), x$level, "\n")
+  cat(crayon::yellow("Total Population Size: "), x$popN, "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(x$rho, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), x$mod, "\n")
+  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), x$sod, "\n")
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
@@ -139,7 +139,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
 
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
-                      probs = exp(mcmcout.nodes$logposterior))
+                         prob = exp(mcmcout.nodes$logposterior))
   dwnsmpl_rows <- sort(dwnsmpl_rows)
   mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
 
@@ -148,7 +148,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                        reparamIFR = FALSE,
                                                        reparamKnots = FALSE,
                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
