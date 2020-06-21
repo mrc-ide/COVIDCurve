@@ -1,4 +1,4 @@
-context("aggregate fits for cpp")
+context("mod fit with cpp background")
 test_that("natcub cpp likelihood works", {
 
   #............................................................
