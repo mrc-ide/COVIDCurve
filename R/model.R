@@ -53,7 +53,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      #......................
                                      # assertions and checks
                                      #......................
-                                     items <- c(data, level, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, paramdf, pa, mod, sod, popN)
+                                     items <- c(data, level, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, paramdf, rho, mod, sod, popN)
                                      if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                        #assert level
                                        assert_in(x = level, y = c("Time-Series", "Cumulative"))

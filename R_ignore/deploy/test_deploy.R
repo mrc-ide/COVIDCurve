@@ -110,7 +110,7 @@ mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
 mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
 mod1$set_popN(5e6)
 mod1$set_paramdf(df_params)
-mod1$set_pa(c(1/3, 1/3, 1/3))
+mod1$set_rho(c(1/3, 1/3, 1/3))
 mod1$set_rcensor_day(.Machine$integer.max)
 
 #..................
@@ -121,9 +121,9 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e1,
-                                       samples = 1e1,
-                                       chains = 1)
+                                       burnin = 1e3,
+                                       samples = 1e3,
+                                       chains = 3)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
