@@ -18,7 +18,7 @@ sum(infxns$infxns < 0)
 # make up fatality data
 fatalitydata <- data.frame(strata = c("ma1", "ma2", "ma3"),
                            ifr = c(0.05, 0.2, 0.5),
-                           pa = 1/3)
+                           rho = 1/3)
 # pick serology date
 sero_days <- c(135, 160)
 
@@ -110,7 +110,7 @@ mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
 mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
 mod1$set_popN(5e6)
 mod1$set_paramdf(df_params)
-mod1$set_pa(c(1/3, 1/3, 1/3))
+mod1$set_rho(c(1/3, 1/3, 1/3))
 mod1$set_rcensor_day(.Machine$integer.max)
 
 #..................

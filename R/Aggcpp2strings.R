@@ -195,8 +195,6 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   # extract misc
   #..................
   extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc[\"pgmms\"]); bool level = misc[\"level\"]; int popN = misc[\"popN\"]; int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"];"
-  nbinommisc <- "double noiserate = misc[\"noiserate\"]; double kbinom = misc[\"kbinom\"]; double phi = misc[\"phi\"];"
-  extmisc <- c(extmisc, nbinommisc)
 
   #..................
   # extract inputs
@@ -224,7 +222,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # storage items
   #..................
-  storageitems <- "int stratlen = pa.size(); std::vector<double>ma(stratlen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
+  storageitems <- "int stratlen = rho.size(); std::vector<double>ma(stratlen); std::vector<double> node_x_raw(n_knots); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
 
   #..................
   # liftover knotreparam vars for Knots -- Infxn Xpositions
@@ -318,9 +316,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # get loglike
   #..................
-  # TODO temp for debugging otherwise won't work for devtools::load_all() quickly
-  #loglike <- readLines("~/Documents/GitHub/COVIDCurve/src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp")
-  loglike <- readLines(system.file("src/NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
+  loglike <- readLines(system.file("covidcurve", "NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
   loglike_start <- grep("// Deaths Section", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]
@@ -328,6 +324,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   commlines <- grep("//", loglike)
   loglike <- loglike[! 1:length(loglike) %in% commlines]
   loglike <- gsub("\\\n", "", loglike)
+
   # end loglike and now out
   ret <- c("SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {",
            extmisc,
