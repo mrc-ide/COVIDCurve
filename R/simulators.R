@@ -16,7 +16,7 @@ sim_seroprev <- function(seroinfxns,
   sero.df <- data.frame(day =  min_day:curr_day,
                         infxncount = seroinfxns)
   # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- rpois(n = nrow(sero.df), lambda = (sero.df$infxncount))
+  sero.df$detectinfxn <- stats::rpois(n = nrow(sero.df), lambda = (sero.df$infxncount))
 
   df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
@@ -31,7 +31,7 @@ sim_seroprev <- function(seroinfxns,
 
   # draw time to seroconversion
   draw_tosc <- function(day, sero_delay_rate){
-    as.numeric(day) + rexp(n = 1, rate = sero_delay_rate)
+    as.numeric(day) + stats::rexp(n = 1, rate = sero_delay_rate)
   }
   sero_line_list$tosc <- sapply(sero_line_list$day, draw_tosc, sero_delay_rate = 1/sero_delay_rate)
 
@@ -57,9 +57,7 @@ sim_seroprev <- function(seroinfxns,
 #' @param infections integer vector; The infections for each day up to the current day.
 #' @param m_od double; The mean of the onset of infection to death (gamma distribution).
 #' @param s_od double; The coefficient of variation of the onset of infection to death (gamma distribution).
-#' @param m_or double; The mean of the onset of infection to recovery (gamma distribution).
-#' @param s_or double; The coefficient of variation of the onset of infection to recovery (gamma distribution).
-#' @param fatalitydata dataframe; The column names: strata, ifr, and pa correspond to (patient) strata, infection-fatality ratio, and the attack rate, respectively.
+#' @param fatalitydata dataframe; The column names: strata, ifr, and rho correspond to (patient) strata, infection-fatality ratio, and the probability of infection (i.e. a probalistic attack rate), respectively.
 #' @param min_day numeric; First day epidemic was observed.
 #' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
 #' @param level character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.
@@ -82,7 +80,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   assert_single_numeric(m_od)
   assert_single_numeric(s_od)
   assert_dataframe(fatalitydata)
-  assert_in(colnames(fatalitydata), c("strata", "ifr", "pa"))
+  assert_in(colnames(fatalitydata), c("strata", "ifr", "rho"))
   assert_single_int(min_day)
   assert_single_int(curr_day)
   assert_single_string(level)
@@ -99,28 +97,28 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
     assert_pos_int(popN)
   }
 
-  if (sum(fatalitydata$pa) != 1) {
-    warning("Prob. of infection (pa) does not sum 1. Standardizing now.")
-    fatalitydata$pa <- fatalitydata$pa/sum(fatalitydata$pa)
+  if (sum(fatalitydata$rho) != 1) {
+    warning("Prob. of infection (rho) does not sum 1. Standardizing now.")
+    fatalitydata$rho <- fatalitydata$rho/sum(fatalitydata$rho)
   }
 
   #..................
   # Run Infxns and Deaths
   #..................
   # get  number of infections for each day
-  expected_inf.day <- rpois(length(infections), lambda = infections)
+  expected_inf.day <- stats::rpois(length(infections), lambda = infections)
 
   # Split infxns by the Age Prop.
-  expected_inf.age.day <- matrix(NA, nrow = length(fatalitydata$pa), ncol = length(expected_inf.day))
+  expected_inf.age.day <- matrix(NA, nrow = length(fatalitydata$rho), ncol = length(expected_inf.day))
   for (i in 1:length(expected_inf.day)) {
-    expected_inf.age.day[,i] <- rmultinom(n = 1, size = expected_inf.day[i], prob = fatalitydata$pa)
+    expected_inf.age.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i], prob = fatalitydata$rho)
   }
 
   # draw deaths among Infected
   t_death <- matrix(NA, nrow = nrow(expected_inf.age.day), ncol = ncol(expected_inf.age.day))
   for (i in 1:nrow(expected_inf.age.day)) {
     for(j in 1:ncol(expected_inf.age.day)) {
-      t_death[i,j] <- rbinom(n = 1, size = expected_inf.age.day[i,j], prob = fatalitydata$ifr[i])
+      t_death[i,j] <- stats::rbinom(n = 1, size = expected_inf.age.day[i,j], prob = fatalitydata$ifr[i])
     }
   }
 

@@ -24,7 +24,11 @@ Imports:
     coda,
     purrr,
     Rcpp,
-    R6
+    R6,
+    tibble,
+    crayon,
+    stats,
+    utils
 Remotes:
   mrc-ide/drjacoby
 Suggests: 

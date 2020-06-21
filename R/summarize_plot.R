@@ -10,7 +10,7 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
   cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
   cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
 }
@@ -20,17 +20,17 @@ summary.IFRmodel <- function(object, ...){
 #' @noRd
 #' @export
 
-print.IFRmodel <- function(object, ...){
+print.IFRmodel <- function(x, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
-  cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
-  cat(crayon::yellow("Model Type: "), object$level, "\n")
-  cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
-  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
-  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
+  cat(crayon::green("IFR strata params: "), paste(x$IFRparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
+  cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(x$Seroparams, collapse = ", "), "\n")
+  cat(crayon::yellow("Model Type: "), x$level, "\n")
+  cat(crayon::yellow("Total Population Size: "), x$popN, "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(x$rho, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), x$mod, "\n")
+  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), x$sod, "\n")
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
@@ -113,10 +113,11 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 #' @title Draw posterior results from the Cubic Spline
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
+#' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
 #' @importFrom magrittr %>%
 #' @export
 
-draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", CIquant, by_chain = TRUE) {
+draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl, by_chain = TRUE) {
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
@@ -136,21 +137,21 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
 
-  # filter
-  upperci <- quantile(mcmcout.nodes$logposterior,
-                      probs = CIquant)
-  mcmcout.nodes <- mcmcout.nodes %>%
-    dplyr::filter(logposterior >= upperci)
+  # downsample
+  dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
+                         prob = exp(mcmcout.nodes$logposterior))
+  dwnsmpl_rows <- sort(dwnsmpl_rows)
+  mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
 
   #......................
   # get natural cubic gradients
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                        reparamIFR = FALSE,
                                                        reparamKnots = FALSE,
-                                                       reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, don't need it)
+                                                       reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -288,10 +289,10 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
 #' @export
 
 posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
-                                            CIquant, by_chain = FALSE) {
+                                            dwnsmpl, by_chain = FALSE) {
 
   postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf, whichrung = whichrung,
-                                                                   CIquant, by_chain = by_chain)$plotdat
+                                                                   dwnsmpl = dwnsmpl, by_chain = by_chain)$plotdat
   # set up function to draw posterior deaths
   postdat.sims <- split(postdat, factor(postdat$sim))
   draw_post_deaths <- function(postdatsim){

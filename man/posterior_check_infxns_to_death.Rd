@@ -7,7 +7,7 @@
 posterior_check_infxns_to_death(
   IFRmodel_inf,
   whichrung = "rung1",
-  CIquant,
+  dwnsmpl,
   by_chain = FALSE
 )
 }
@@ -15,6 +15,8 @@ posterior_check_infxns_to_death(
 \item{IFRmodel_inf}{R6 class; The result of the IFR Model MCMC run along with the model input.}
 
 \item{whichrung}{character; Specify which rung to sample from (default is rung1)}
+
+\item{dwnsmpl}{integer; Number of posterior results to draw -- weighted by posterior prob}
 
 \item{by_chain}{logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.}
 }

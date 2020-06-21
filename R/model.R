@@ -31,7 +31,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    Infxnparams = NULL,
                                    relInfxn = NULL,
                                    paramdf = NULL,
-                                   pa = NULL,
+                                   rho = NULL,
                                    mod = NULL,
                                    sod = NULL,
                                    gamma_lookup = NULL,
@@ -42,7 +42,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    # censoring items
                                    rcensor_day = NULL,
 
-                                   initialize = function(data = NULL, maxObsDay = NULL, level = NULL, pa = NULL,
+                                   initialize = function(data = NULL, maxObsDay = NULL, level = NULL, rho = NULL,
                                                          mod = NULL, sod = NULL, gamma_lookup = NULL,
                                                          IFRparams = NULL, maxMa = NULL,
                                                          Infxnparams = NULL, relInfxn = NULL,
@@ -147,7 +147,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$Serodayparams <- Serodayparams
                                      self$popN <- popN
                                      self$paramdf <- paramdf
-                                     self$pa <- pa
+                                     self$rho <- rho
                                      self$mod <- mod
                                      self$sod <- sod
 
@@ -297,11 +297,11 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$rcensor_day <- val
                                    },
 
-                                   set_pa = function(val) {
+                                   set_rho = function(val) {
                                      assert_numeric(val)
                                      assert_same_length(val, self$IFRparams)
                                      assert_eq(sum(val), 1)
-                                     self$pa <- val
+                                     self$rho <- val
                                    },
 
                                    set_popN = function(val) {

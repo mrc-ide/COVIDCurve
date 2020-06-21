@@ -20,6 +20,14 @@ run_IFRmodel_agg(
 )
 }
 \arguments{
+\item{IFRmodel}{R6 class; Internal model object for COVIDCurve}
+
+\item{reparamIFR}{logical; Whether IFRs should be reparameterized or inferred seperately}
+
+\item{reparamInfxn}{logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately}
+
+\item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately}
+
 \item{burnin}{the number of burn-in iterations.}
 
 \item{samples}{the number of sampling iterations.}
