@@ -121,9 +121,9 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e1,
-                                       samples = 1e1,
-                                       chains = 1)
+                                       burnin = 1e3,
+                                       samples = 1e3,
+                                       chains = 3)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),

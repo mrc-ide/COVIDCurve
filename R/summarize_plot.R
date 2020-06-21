@@ -121,9 +121,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
-  assert_numeric(CIquant)
+  assert_pos_int(dwnsmpl)
   assert_string(whichrung)
-  assert_bounded(CIquant, left = 0, right = 1)
   assert_logical(by_chain)
   #......................
   # fitler to sampling and by rung
