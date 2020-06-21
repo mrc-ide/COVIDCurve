@@ -10,7 +10,7 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
   cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
   cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
 }
@@ -28,7 +28,7 @@ print.IFRmodel <- function(object, ...){
   cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
+  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$pa, 2), collapse = ", "), "\n")
   cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
   cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
 }
@@ -45,7 +45,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams",  "Serodayparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Seroparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -79,22 +79,13 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
          },
 
-         "Serotestparams-TRUE"={
+         "Seroparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Seroparams)
          },
-         "Serotestparams-FALSE"={
+         "Seroparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
-         },
-
-         "Serodayparams-TRUE"={
-           groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
-         },
-         "Serodayparams-FALSE"={
-           groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Seroparams)
          }
   )
 
