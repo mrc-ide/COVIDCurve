@@ -14,9 +14,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
-  double noiserate = misc["noiserate"];
-  double kbinom = misc["kbinom"];
-  double phi = misc["phi"];
 
   // extract serology items
   int popN = misc["popN"];
@@ -193,9 +190,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
           // a+1 to account for 1-based dates
           if ((a+1) < rcensor_day) {
             if (obsd[a] != -1) {
-              double mu = phi * expd[a] + R::rexp(noiserate);
-              death_loglik += R::dnbinom_mu(obsd[a], kbinom, mu, true);
-              //death_loglik += R::dpois(obsd[a], expd[a], true);
+              death_loglik += R::dpois(obsd[a], expd[a], true);
             }
           }
         }
@@ -227,9 +222,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
             // a+1 to account for 1-based dates
             if ((a+1) < rcensor_day) {
               if (obsd[i][a] != -1) {
-                double mu = phi * expd[i][a] + R::rexp(noiserate);
-                death_loglik += R::dnbinom_mu(obsd[i][a], kbinom, mu, true);
-                // death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
+                death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
               }
             }
           }

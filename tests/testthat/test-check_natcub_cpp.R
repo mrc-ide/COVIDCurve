@@ -62,10 +62,7 @@ test_that("natcub cpp likelihood works", {
                    rcensor_day = .Machine$integer.max,
                    days_obsd = days_obsd,
                    n_sero_obs = 2,
-                   n_knots = length(knots)+1,
-                   kbinom = 2,
-                   phi = 0.95,
-                   noiserate = 1e6)
+                   n_knots = length(knots)+1)
 
   # liftover to Rcpp list
 
