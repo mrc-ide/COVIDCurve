@@ -49,20 +49,23 @@ test_that("natcub cpp likelihood works", {
   #..................
   # params in
   # misc list
-  days_obsd <- 200
+  days_obsd <- 150
   knots <- c(30, 60, 90, 120)
   day <- 1:(days_obsd+1)
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
 
-  misc_list = list(pa = fatalitydata$pa,
+  misc_list = list(rho = fatalitydata$pa,
                    pgmms = gamma_lookup,
                    level = FALSE,
                    popN = 5e6,
                    rcensor_day = .Machine$integer.max,
                    days_obsd = days_obsd,
                    n_sero_obs = 2,
-                   n_knots = length(knots)+1)
+                   n_knots = length(knots)+1,
+                   kbinom = 2,
+                   phi = 0.95,
+                   noiserate = 1e6)
 
   # liftover to Rcpp list
 
