@@ -135,10 +135,14 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-
+  # Log-Sum-Exp trick
+  convert_post_probs <- function(logpost) {
+    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
+  }
+  probs <- convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
-                         prob = exp(mcmcout.nodes$logposterior))
+                         prob = probs)
   dwnsmpl_rows <- sort(dwnsmpl_rows)
   mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
 

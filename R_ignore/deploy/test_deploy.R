@@ -84,11 +84,11 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                  dsc1 = c(0,    0.33, 0.66, 175),
                                  dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.97,   10,         130,         150),
+                                min =   c(0.83,     0.97,   10,         135,         160),
                                 init =  c(0.85,     0.99,   10,         135,         160),
-                                max =   c(0.87,     1.00,   10,         140,         170),
-                                dsc1 =  c(8500,     990,    5,          130,         150),
-                                dsc2 =  c(1500,     10,     15,         140,         170))
+                                max =   c(0.87,     1.00,   10,         135,         160),
+                                dsc1 =  c(8500,     9900,    5,          130,         150),
+                                dsc2 =  c(1500,     100,     15,         140,         170))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf)
 
@@ -128,6 +128,7 @@ Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
+plot_par(modout$mcmcout, "sero_day1")
 
 plot_par(modout$mcmcout, "r1", rung = 1)
 plot_par(modout$mcmcout, "r2", rung = 1)
@@ -177,7 +178,7 @@ summary(rung9)
 curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = modout,
                                                                whichrung = paste0("rung", 1),
                                                                by_chain = F,
-                                                               CIquant = 0.9)
+                                                               dwnsmpl = 1e3)
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
