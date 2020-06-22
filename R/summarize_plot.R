@@ -162,7 +162,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   # inputs needed for cpp function
   #......................
-  misc_list = list(pa = IFRmodel_inf$inputs$IFRmodel$pa,
+  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
                    pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
                    popN = IFRmodel_inf$inputs$IFRmodel$popN,
