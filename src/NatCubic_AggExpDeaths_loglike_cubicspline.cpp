@@ -149,7 +149,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
-    // convert cumulative infection spline into daily infection spline
+    // get cumulative infection spline
     std::vector<double> cumm_infxn_spline(infxn_spline.size());
     cumm_infxn_spline[0] = infxn_spline[0];
     for (int i = 1; i < cumm_infxn_spline.size(); i++) {
