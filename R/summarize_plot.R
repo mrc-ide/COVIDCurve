@@ -88,7 +88,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Serotestparams-FALSE"={
            groupingvar <- "param"
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
-         }
+         },
 
          "Serodayparams-TRUE"={
            groupingvar <- c("chain", "param")
