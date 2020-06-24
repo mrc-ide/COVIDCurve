@@ -7,7 +7,8 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(object$Seroparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Test Parameters: "), paste(object$Serotestparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Day Parameters: "), paste(object$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
   cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
@@ -25,7 +26,8 @@ print.IFRmodel <- function(x, ...){
   cat(crayon::green("IFR strata params: "), paste(x$IFRparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Parameters: "), paste(x$Seroparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
+  cat(crayon::magenta("Serology Parameters: "), paste(x$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Model Type: "), x$level, "\n")
   cat(crayon::yellow("Total Population Size: "), x$popN, "\n")
   cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(x$rho, 2), collapse = ", "), "\n")
@@ -35,7 +37,7 @@ print.IFRmodel <- function(x, ...){
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
 #' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", or "Seroparams"
+#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Serodayparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
@@ -45,7 +47,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Seroparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -79,13 +81,22 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
          },
 
-         "Seroparams-TRUE"={
+         "Serotestparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Seroparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
          },
-         "Seroparams-FALSE"={
+         "Serotestparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Seroparams)
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
+         },
+
+         "Serodayparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
+         },
+         "Serodayparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
          }
   )
 
@@ -166,13 +177,14 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   #......................
   # inputs needed for cpp function
   #......................
-  misc_list = list(pa = IFRmodel_inf$inputs$IFRmodel$pa,
+  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
                    pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
                    popN = IFRmodel_inf$inputs$IFRmodel$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1)
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
+                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
 
   datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                 "obs_serologyrate" = IFRmodel_inf$inputs$IFRmodel$data$obs_serologyrate)
@@ -185,7 +197,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Seroparams)])
+                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                                IFRmodel_inf$inputs$IFRmodel$Serodayparams)])
     infxns <- unlist(loglike(params = paramsin,
                              param_i = 1,
                              data = datin,
@@ -210,7 +223,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                       IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Seroparams,
+                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                       "infxncurves")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
@@ -247,7 +261,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
       dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Seroparams,
+                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                       "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "infxncurves")
