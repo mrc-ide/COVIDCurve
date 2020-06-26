@@ -85,6 +85,10 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   #..................
   # make misc
   #..................
+  # ensure demog order is by strata (and matches seroprevalence)
+  demog <- IFRmodel$demog %>%
+    dplyr::arrange(Strata)
+
   misc_list = list(rho = IFRmodel$rho,
                    pgmms = IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
@@ -92,19 +96,24 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
-                   n_sero_obs = length(IFRmodel$Serodayparams))
+                   n_sero_obs = length(IFRmodel$Serodayparams),
+                   demog = demog)
   #..................
   # make data list
   #..................
+  # ensure seroprev order is by seroday and then strata (and matches demography for strata)
+  obs_serology <- IFRmodel$data$obs_serology %>%
+    dplyr::arrange(SeroDay, Strata)
+
   if (IFRmodel$level == "Time-Series"){
     data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
     data_list <- unname(unlist(data_list))
     data_list <- list(obs_deaths = data_list,
-                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
+                      obs_serology = obs_serology$SeroPrev)
 
   } else if (IFRmodel$level == "Cumulative") {
     data_list <- list(obs_deaths = unname(IFRmodel$data$obs_deaths$Deaths),
-                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
+                      obs_serology = obs_serology$SeroPrev)
   }
 
   #..................

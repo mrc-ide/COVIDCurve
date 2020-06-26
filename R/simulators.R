@@ -1,55 +1,56 @@
 #' Simulate Seroprevalence Study
 #' @inheritParams Aggsim_infxn_2_death
 #' @param seroinfxns numeric vector; the expected number of infections from the infection curve from the poisson draw
+#' @importFrom magrittr %>%
 #' @noRd
 
 sim_seroprev <- function(seroinfxns,
                          spec,
                          sens,
                          sero_delay_rate,
-                         popN,
+                         demog,
                          fatalitydata,
                          min_day,
                          curr_day) {
 
-  # recast infections for seroprev delay
-  sero.df <- data.frame(day =  min_day:curr_day,
-                        infxncount = seroinfxns)
-  # these are the proportion of infxns we will observe
-  sero.df$detectinfxn <- stats::rpois(n = nrow(sero.df), lambda = (sero.df$infxncount))
+  # seroinfxns matrix of stratified infections (rows) by day -- minday:currday -- of infection onset (columns)
+  sero.df <- cbind.data.frame(fatalitydata$strata, seroinfxns)
+  colnames(sero.df) <- c("strata", min_day:curr_day)
+  sero.df <- sero.df %>%
+    tidyr::gather(., key = "ObsDay", value = "infxncount", 2:ncol(.)) %>%
+    dplyr::mutate(ObsDay = as.numeric(ObsDay)) # coercing character to numeric
 
+  # expand this out to line-list
   df_expand <- function(datrow){
-    datrow <- datrow[rep(1, times = datrow$detectinfxn), ]
+    datrow <- datrow[rep(1, times = datrow$infxncount), ]
     return(datrow)
   }
-
   sero_line_list <- split(sero.df, 1:nrow(sero.df))
   sero_line_list <- lapply(sero_line_list, df_expand) %>%
     dplyr::bind_rows(.) %>%
-    tibble::as_tibble(.) %>%
-    dplyr::select(-c("infxncount", "detectinfxn"))
+    tibble::as_tibble(.)
 
   # draw time to seroconversion
   draw_tosc <- function(day, sero_delay_rate){
     as.numeric(day) + stats::rexp(n = 1, rate = sero_delay_rate)
   }
-  sero_line_list$tosc <- sapply(sero_line_list$day, draw_tosc, sero_delay_rate = 1/sero_delay_rate)
+  sero_line_list$tosc <- sapply(sero_line_list$ObsDay, draw_tosc, sero_delay_rate = 1/sero_delay_rate)
 
   #..................
   # Tidy up so that we observe deaths on a daily time step
   #..................
- sero_line_list %>%
+  sero_line_list %>%
     dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:curr_day),
                                       labels = min_day:curr_day)) %>%
     dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
-    dplyr::group_by(event_obs_day, .drop = F) %>%
+    dplyr::group_by(strata, event_obs_day, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
+    dplyr::left_join(., demog, by = "strata") %>%
     dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day)), # protect against factor and min_day > 1
                   TrueSeroCount = cumsum(day_seros),
                   TruePrev = TrueSeroCount/popN,
-                  ObsPrev = TruePrev * (spec + (sens - 1)) - (spec-1)
-                  )
-
+                  ObsPrev = TruePrev * (spec + (sens - 1)) - (spec-1)) %>%
+    dplyr::ungroup(.)
 }
 
 
@@ -57,14 +58,14 @@ sim_seroprev <- function(seroinfxns,
 #' @param infections integer vector; The infections for each day up to the current day.
 #' @param m_od double; The mean of the onset of infection to death (gamma distribution).
 #' @param s_od double; The coefficient of variation of the onset of infection to death (gamma distribution).
-#' @param fatalitydata dataframe; The column names: strata, ifr, and rho correspond to (patient) strata, infection-fatality ratio, and the probability of infection (i.e. a probalistic attack rate), respectively.
+#' @param fatalitydata dataframe; The strata-specific fatalities to simulate given a probability of infection and a noise effect. The column names: strata, ifr, rho, and Ne correspond to (patient) strata, infection-fatality ratio, the probability of infection (i.e. a probalistic attack rate), and a noise effect, respectively.
+#' @param demog dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}
 #' @param min_day numeric; First day epidemic was observed.
 #' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
 #' @param level character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.
 #' @param simulate_seroprevalence logical; Whether or not seroprevalence data should also be simulated
 #' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param popN double; Population Size (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @importFrom magrittr %>%
 #' @export
@@ -72,7 +73,7 @@ sim_seroprev <- function(seroinfxns,
 Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0.45,
                                  min_day = 1, curr_day, level,
                                  simulate_seroprevalence = TRUE,
-                                 spec, sens, popN, sero_delay_rate){
+                                 spec, sens, demog, sero_delay_rate){
 
   #..................
   # Assertions that are specific to this project
@@ -80,7 +81,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   assert_single_numeric(m_od)
   assert_single_numeric(s_od)
   assert_dataframe(fatalitydata)
-  assert_in(colnames(fatalitydata), c("strata", "ifr", "rho"))
+  assert_eq(colnames(fatalitydata), c("strata", "ifr", "rho", "Ne"))
   assert_single_int(min_day)
   assert_single_int(curr_day)
   assert_single_string(level)
@@ -94,12 +95,10 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
     assert_numeric(sens)
     assert_bounded(sens, left = 0, right = 1)
     assert_numeric(sero_delay_rate)
-    assert_pos_int(popN)
-  }
-
-  if (sum(fatalitydata$rho) != 1) {
-    warning("Prob. of infection (rho) does not sum 1. Standardizing now.")
-    fatalitydata$rho <- fatalitydata$rho/sum(fatalitydata$rho)
+    assert_dataframe(demog)
+    assert_eq(colnames(demog), c("strata", "popN"))
+    assert_eq(demog$strata, fatalitydata$strata,
+              message = "%s must equal %s -- check that your strata are in the same order")
   }
 
   #..................
@@ -108,22 +107,24 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   # get  number of infections for each day
   expected_inf.day <- stats::rpois(length(infections), lambda = infections)
 
-  # Split infxns by the Age Prop.
-  expected_inf.age.day <- matrix(NA, nrow = length(fatalitydata$rho), ncol = length(expected_inf.day))
+  # Split infxns by strata prop. and noise effect (i.e. a "random" effect but calling noise effect as we are not using a traditional MLM)
+  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$rho), ncol = length(expected_inf.day))
+  Pinfxnsero <- (fatalitydata$rho * fatalitydata$Ne)/sum((fatalitydata$rho * fatalitydata$Ne))
   for (i in 1:length(expected_inf.day)) {
-    expected_inf.age.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i], prob = fatalitydata$rho)
+    expected_inf.strt.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i],
+                                                  prob = Pinfxnsero)
   }
 
   # draw deaths among Infected
-  t_death <- matrix(NA, nrow = nrow(expected_inf.age.day), ncol = ncol(expected_inf.age.day))
-  for (i in 1:nrow(expected_inf.age.day)) {
-    for(j in 1:ncol(expected_inf.age.day)) {
-      t_death[i,j] <- stats::rbinom(n = 1, size = expected_inf.age.day[i,j], prob = fatalitydata$ifr[i])
+  t_death <- matrix(NA, nrow = nrow(expected_inf.strt.day), ncol = ncol(expected_inf.strt.day))
+  for (i in 1:nrow(expected_inf.strt.day)) {
+    for(j in 1:ncol(expected_inf.strt.day)) {
+      t_death[i,j] <- stats::rbinom(n = 1, size = expected_inf.strt.day[i,j], prob = fatalitydata$ifr[i])
     }
   }
 
   # expand out the death grid
-  t_death.df <- cbind.data.frame(age = fatalitydata$strata, t_death)
+  t_death.df <- cbind.data.frame(strata = fatalitydata$strata, t_death)
   colnames(t_death.df)[2:ncol(t_death.df)] <- min_day:(curr_day)
   t_death.df <- t_death.df %>%
     tidyr::gather(., key = "day", value = "deathcount", 2:ncol(.))
@@ -140,24 +141,24 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   death_line_list$tod <- as.numeric(death_line_list$day) + rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
 
   # Tidy up so that we observe deaths on a daily time step
-  agelvls <- unique(as.character(fatalitydata$strata)) # protect against data.frame, string as factor = F
+  stratalvls <- unique(as.character(fatalitydata$strata)) # protect against data.frame, string as factor = F
   death_line_list <- death_line_list %>%
-    dplyr::mutate(age = factor(age, levels = agelvls)) %>%  # need this for later summarize
-    dplyr::select(c("age", "tod")) %>%
+    dplyr::mutate(strata = factor(strata, levels = stratalvls)) %>%  # need this for later summarize
+    dplyr::select(c("strata", "tod")) %>%
     dplyr::mutate(obs_day = cut(tod, breaks = c((min_day-1), min_day:curr_day),
                                 labels = min_day:curr_day)) %>%
     dplyr::filter(!is.na(obs_day)) %>% # drop "future" deaths
-    dplyr::group_by(obs_day, age, .drop = F) %>%
+    dplyr::group_by(obs_day, strata, .drop = F) %>%
     dplyr::summarise(
       day_deaths = dplyr::n()) %>%
-    dplyr::ungroup(obs_day, age)
+    dplyr::ungroup(obs_day, strata)
 
   #..................
   # run seroprev
   #..................
   if (simulate_seroprevalence) {
-    seroprev <- sim_seroprev(seroinfxns = expected_inf.day, spec = spec, sens = sens, sero_delay_rate = sero_delay_rate,
-                             popN = popN, fatalitydata = fatalitydata, min_day = min_day, curr_day = curr_day)
+    seroprev <- sim_seroprev(seroinfxns = expected_inf.strt.day, spec = spec, sens = sens, sero_delay_rate = sero_delay_rate,
+                             demog = demog, fatalitydata = fatalitydata, min_day = min_day, curr_day = curr_day)
   }
 
   #..................
@@ -167,19 +168,19 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
     death_line_list <- death_line_list %>%
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day)),
                     ObsDay = max(obs_day)) %>% # protect against factor and min_day > 1
-      dplyr::group_by(ObsDay, age) %>%
+      dplyr::group_by(ObsDay, strata) %>%
       dplyr::summarise(deaths = sum(day_deaths)) %>%
       dplyr::rename(
-        Strata = age,
+        Strata = strata,
         Deaths = deaths) %>%
-      dplyr::ungroup(ObsDay, age)
+      dplyr::ungroup(ObsDay, strata)
 
   } else {
     death_line_list <- death_line_list %>%
       dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
       dplyr::rename(
         ObsDay = obs_day,
-        Strata = age,
+        Strata = strata,
         Deaths = day_deaths)
   }
 

@@ -38,7 +38,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    # sero items
                                    Serodayparams = NULL,
                                    Serotestparams = NULL,
-                                   popN = NULL,
+                                   demog = NULL,
                                    # censoring items
                                    rcensor_day = NULL,
 
@@ -47,26 +47,29 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                                          IFRparams = NULL, maxMa = NULL,
                                                          Infxnparams = NULL, relInfxn = NULL,
                                                          Knotparams = NULL, relKnot = NULL,
-                                                         Serotestparams = NULL, Serodayparams = NULL, popN = NULL,
+                                                         Serotestparams = NULL, Serodayparams = NULL, demog = NULL,
                                                          rcensor_day = NULL,
                                                          paramdf = NULL) {
                                      #......................
                                      # assertions and checks
                                      #......................
-                                     items <- c(data, level, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, paramdf, rho, mod, sod, popN)
+                                     items <- c(data, level, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, paramdf, rho, mod, sod, demog)
                                      if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                        #assert level
                                        assert_in(x = level, y = c("Time-Series", "Cumulative"))
                                        # assert data
                                        assert_list(data)
-                                       assert_in(names(data), c("obs_deaths", "obs_serologyrate"))
+                                       assert_eq(names(data), c("obs_deaths", "obs_serology"))
                                        assert_dataframe(data$obs_deaths)
-                                       assert_in(x = colnames(data$obs_deaths), y = c("ObsDay", "Deaths"))
+                                       assert_eq(x = colnames(data$obs_deaths), y = c("ObsDay", "Deaths"))
                                        assert_numeric(data$obs_deaths$ObsDay)
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
-                                       assert_numeric(data$obs_serologyrate)
-                                       assert_bounded(data$obs_serologyrate, left = 0, right = 1)
+                                       assert_dataframe(data$obs_serology)
+                                       assert_eq(colnames(data$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
+                                       assert_eq(data$obs_serology$SeroDay, Serodayparams)
+                                       assert_eq(data$obs_serology$Strata, IFRparams)
+                                       assert_bounded(data$obs_serology$SeroPrev, left = 0, right = 1)
                                        #assert params
                                        assert_string(IFRparams)
                                        assert_unique(IFRparams)
@@ -95,6 +98,13 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        # OTD
                                        assert_numeric(mod)
                                        assert_numeric(sod)
+
+                                       # demography
+                                       assert_dataframe(demog)
+                                       assert_eq(colnames(demog), c("Strata", "popN"))
+                                       assert_eq(demog$Strata, IFRparams)
+                                       assert_string(demog$strata)
+                                       assert_pos_int(demog$popN)
 
                                        # censoring
                                        if (!is.null(rcensor_day)) {
@@ -145,7 +155,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      }
                                      self$Serotestparams <- Serotestparams
                                      self$Serodayparams <- Serodayparams
-                                     self$popN <- popN
+                                     self$demog <- demog
                                      self$paramdf <- paramdf
                                      self$rho <- rho
                                      self$mod <- mod
@@ -166,37 +176,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$level <- val
                                    },
 
-                                   set_data = function(val) {
-                                     if (is.null(self$mod) | is.null(self$sod)) {
-                                       stop("Must specify a Mean and Coeff. of Variation Delay of Onset to Death (mod & sod) before specifying data")
-                                     }
-                                     if (is.null(self$level)) {
-                                       stop("Must specify a level before specifying data")
-                                     }
-                                     assert_list(val)
-                                     assert_in(names(val), c("obs_deaths", "obs_serologyrate"))
-                                     assert_dataframe(val$obs_deaths)
-                                     assert_in(x = c("ObsDay", "Deaths"), y = colnames(val$obs_deaths))
-                                     assert_numeric(val$obs_deaths$ObsDay)
-                                     assert_increasing(val$obs_deaths$ObsDay)
-                                     assert_numeric(val$obs_deaths$Deaths)
-                                     assert_numeric(val$obs_serologyrate)
-                                     assert_bounded(val$obs_serologyrate, left = 0, right = 1)
-
-                                     if (self$level == "Time-Series") {
-                                       if (unique(length(val$obs_deaths$ObsDay)) == 1) {
-                                         stop("Time-Series specified but only one observation")
-                                       }
-                                       if (min(val$obs_deaths$ObsDay) != 1) {
-                                         stop("Time-Series Data must start on day 1")
-                                       }
-                                     }
-                                     self$data <- val
-                                     day <- 1:(max(val$obs_deaths$ObsDay) + 1)
-                                     self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
-                                     self$maxObsDay <- max(val$obs_deaths$ObsDay)
-                                   },
-
                                    set_IFRparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
@@ -205,7 +184,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
 
                                    set_maxMa = function(val) {
                                      if (length(self$IFRparams) == 0) {
-                                       stop("Must specify IFRparams before specifying the maximum mortality strata (maxMa)")
+                                       stop("Must specify IFR parameters before specifying the maximum mortality strata (maxMa)")
                                      }
                                      assert_string(val)
                                      assert_in(val, self$IFRparams)
@@ -246,7 +225,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_string(val)
                                      assert_unique(val)
                                      assert_in(val, c("sens", "spec", "sero_rate"),
-                                               message = "Serology parameters currently limited to specifitiy (spec),
+                                               message = "Serology test parameters currently limited to specifitiy (spec),
                                              sensitivity (sens), and serology rate (sero_rate)")
                                      self$Serotestparams <- val
                                    },
@@ -255,6 +234,46 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_string(val)
                                      assert_unique(val)
                                      self$Serodayparams <- val
+                                   },
+
+                                   set_data = function(val) {
+                                     if (is.null(self$mod) | is.null(self$sod)) {
+                                       stop("Must specify a Mean and Coeff. of Variation Delay of Onset to Death (mod & sod) before specifying data")
+                                     }
+                                     if (is.null(self$level)) {
+                                       stop("Must specify a level before specifying data")
+                                     }
+                                     if (is.null(self$Serodayparams)) {
+                                       stop("Must specify serology day parameters before specifying data")
+                                     }
+                                     if (is.null(self$IFRparams)) {
+                                       stop("Must specify IFR parameters before specifying data")
+                                     }
+                                     assert_list(val)
+                                     assert_eq(names(val), c("obs_deaths", "obs_serology"))
+                                     assert_dataframe(val$obs_deaths)
+                                     assert_in(x = c("ObsDay", "Deaths"), y = colnames(val$obs_deaths))
+                                     assert_numeric(val$obs_deaths$ObsDay)
+                                     assert_increasing(val$obs_deaths$ObsDay)
+                                     assert_numeric(val$obs_deaths$Deaths)
+                                     assert_dataframe(val$obs_serology)
+                                     assert_eq(colnames(val$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
+                                     assert_eq(val$obs_serology$SeroDay, Serodayparams)
+                                     assert_eq(val$obs_serology$Strata, IFRparams)
+                                     assert_bounded(val$obs_serology$SeroPrev, left = 0, right = 1)
+
+                                     if (self$level == "Time-Series") {
+                                       if (unique(length(val$obs_deaths$ObsDay)) == 1) {
+                                         stop("Time-Series specified but only one observation")
+                                       }
+                                       if (min(val$obs_deaths$ObsDay) != 1) {
+                                         stop("Time-Series Data must start on day 1")
+                                       }
+                                     }
+                                     self$data <- val
+                                     day <- 1:(max(val$obs_deaths$ObsDay) + 1)
+                                     self$gamma_lookup <- stats::pgamma((day-1), shape = 1/self$sod^2, scale = self$mod*self$sod^2)
+                                     self$maxObsDay <- max(val$obs_deaths$ObsDay)
                                    },
 
                                    set_paramdf = function(val) {
@@ -304,9 +323,16 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$rho <- val
                                    },
 
-                                   set_popN = function(val) {
-                                     assert_pos_int(val)
-                                     self$popN <- val
+                                   set_demog = function(val) {
+                                     if (is.null(self$IFRparams)) {
+                                       stop("Must specificy IFR parameters prior to specifying demography data")
+                                     }
+                                     assert_dataframe(val)
+                                     assert_eq(colnames(val), c("Strata", "popN"))
+                                     assert_eq(val$Strata, IFRparams)
+                                     assert_string(val$strata)
+                                     assert_pos_int(val$popN)
+                                     self$demog <- val
                                    }
                                  )
 )

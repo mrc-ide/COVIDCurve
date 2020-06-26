@@ -18,9 +18,13 @@ sum(infxns$infxns < 0)
 # make up fatality data
 fatalitydata <- data.frame(strata = c("ma1", "ma2", "ma3"),
                            ifr = c(0.05, 0.2, 0.5),
-                           rho = 1/3)
+                           rho = 1/3,
+                           Re = c(0.1, 0.4, 0.5))
+demog <- data.frame(strata = c("ma1", "ma2", "ma3"),
+                    popN = c(1500000, 2250000, 1250000))
+
 # pick serology date
-sero_days <- c(135, 160)
+sero_days <- c(160)
 
 #..............................................................
 # AGGREGATE
@@ -30,6 +34,7 @@ sero_days <- c(135, 160)
 #..................
 dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
+  demog = demog,
   m_od = 18.8,
   s_od = 0.45,
   curr_day = 200,
@@ -39,12 +44,14 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   sens = 0.85,
   spec = 0.99,
   sero_delay_rate = 10,
-  popN = 5e6
 )
 
+obs_serologyrate <- dat$seroprev %>%
+  dplyr::group_by(strata) %>%
+  dplyr::filter(event_obs_day %in% sero_days)
 
 datinput <- list(obs_deaths = dat$AggDat,
-                 obs_serologyrate = dat$seroprev$ObsPrev[sero_days])
+                 obs_serologyrate = obs_serologyrate$ObsPrev)
 
 #..................
 # make model
