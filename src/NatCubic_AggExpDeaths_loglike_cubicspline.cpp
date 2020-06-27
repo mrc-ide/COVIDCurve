@@ -17,7 +17,6 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   int days_obsd = misc["days_obsd"];
 
   // extract serology items
-  int popN = misc["popN"];
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
@@ -75,7 +74,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   //........................................................
   // Liftover Attack Rate Section
   //........................................................
-  // rescale Ne as stick breaking
+  // // rescale Ne as stick breaking
   double ntot = 0.0;
   for (int i = 1; i < (ne.size()-1); i++) {
     // reset stick length
@@ -96,6 +95,12 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   }
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i]/nednom;
+  }
+
+  // get popN for catch
+  int popN = 0;
+  for (int i = 0; i < demog.size(); i++) {
+    popN += demog[i];
   }
 
   //........................................................

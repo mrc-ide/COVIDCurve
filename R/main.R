@@ -35,11 +35,12 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
   assert_non_null(IFRmodel$Serodayparams)
-  assert_non_null(IFRmodel$popN)
+  assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$mod)
   assert_non_null(IFRmodel$sod)
   assert_non_null(IFRmodel$gamma_lookup)
   assert_non_null(IFRmodel$maxObsDay)
+  assert_non_null(IFRmodel$demog)
 
   #............................................................
   # "Warm-Up" MCMC
@@ -92,12 +93,11 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   misc_list = list(rho = IFRmodel$rho,
                    pgmms = IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
-                   popN = IFRmodel$popN,
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
                    n_sero_obs = length(IFRmodel$Serodayparams),
-                   demog = demog)
+                   demog = demog$popN)
   #..................
   # make data list
   #..................

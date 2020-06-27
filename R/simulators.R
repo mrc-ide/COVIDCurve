@@ -14,8 +14,8 @@ sim_seroprev <- function(seroinfxns,
                          curr_day) {
 
   # seroinfxns matrix of stratified infections (rows) by day -- minday:currday -- of infection onset (columns)
-  sero.df <- cbind.data.frame(fatalitydata$strata, seroinfxns)
-  colnames(sero.df) <- c("strata", min_day:curr_day)
+  sero.df <- cbind.data.frame(fatalitydata$Strata, seroinfxns)
+  colnames(sero.df) <- c("Strata", min_day:curr_day)
   sero.df <- sero.df %>%
     tidyr::gather(., key = "ObsDay", value = "infxncount", 2:ncol(.)) %>%
     dplyr::mutate(ObsDay = as.numeric(ObsDay)) # coercing character to numeric
@@ -43,9 +43,9 @@ sim_seroprev <- function(seroinfxns,
     dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:curr_day),
                                       labels = min_day:curr_day)) %>%
     dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
-    dplyr::group_by(strata, event_obs_day, .drop = F) %>%
+    dplyr::group_by(Strata, event_obs_day, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
-    dplyr::left_join(., demog, by = "strata") %>%
+    dplyr::left_join(., demog, by = "Strata") %>%
     dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day)), # protect against factor and min_day > 1
                   TrueSeroCount = cumsum(day_seros),
                   TruePrev = TrueSeroCount/popN,
@@ -81,7 +81,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   assert_single_numeric(m_od)
   assert_single_numeric(s_od)
   assert_dataframe(fatalitydata)
-  assert_eq(colnames(fatalitydata), c("strata", "ifr", "rho", "Ne"))
+  assert_eq(colnames(fatalitydata), c("Strata", "IFR", "Rho", "Ne"))
   assert_single_int(min_day)
   assert_single_int(curr_day)
   assert_single_string(level)
@@ -96,8 +96,8 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
     assert_bounded(sens, left = 0, right = 1)
     assert_numeric(sero_delay_rate)
     assert_dataframe(demog)
-    assert_eq(colnames(demog), c("strata", "popN"))
-    assert_eq(demog$strata, fatalitydata$strata,
+    assert_eq(colnames(demog), c("Strata", "popN"))
+    assert_eq(demog$Strata, fatalitydata$Strata,
               message = "%s must equal %s -- check that your strata are in the same order")
   }
 
@@ -108,8 +108,8 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   expected_inf.day <- stats::rpois(length(infections), lambda = infections)
 
   # Split infxns by strata prop. and noise effect (i.e. a "random" effect but calling noise effect as we are not using a traditional MLM)
-  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$rho), ncol = length(expected_inf.day))
-  Pinfxnsero <- (fatalitydata$rho * fatalitydata$Ne)/sum((fatalitydata$rho * fatalitydata$Ne))
+  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$Rho), ncol = length(expected_inf.day))
+  Pinfxnsero <- (fatalitydata$Rho * fatalitydata$Ne)/sum((fatalitydata$Rho * fatalitydata$Ne))
   for (i in 1:length(expected_inf.day)) {
     expected_inf.strt.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i],
                                                   prob = Pinfxnsero)
@@ -119,12 +119,12 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   t_death <- matrix(NA, nrow = nrow(expected_inf.strt.day), ncol = ncol(expected_inf.strt.day))
   for (i in 1:nrow(expected_inf.strt.day)) {
     for(j in 1:ncol(expected_inf.strt.day)) {
-      t_death[i,j] <- stats::rbinom(n = 1, size = expected_inf.strt.day[i,j], prob = fatalitydata$ifr[i])
+      t_death[i,j] <- stats::rbinom(n = 1, size = expected_inf.strt.day[i,j], prob = fatalitydata$IFR[i])
     }
   }
 
   # expand out the death grid
-  t_death.df <- cbind.data.frame(strata = fatalitydata$strata, t_death)
+  t_death.df <- cbind.data.frame(strata = fatalitydata$Strata, t_death)
   colnames(t_death.df)[2:ncol(t_death.df)] <- min_day:(curr_day)
   t_death.df <- t_death.df %>%
     tidyr::gather(., key = "day", value = "deathcount", 2:ncol(.))
@@ -141,7 +141,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0
   death_line_list$tod <- as.numeric(death_line_list$day) + rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
 
   # Tidy up so that we observe deaths on a daily time step
-  stratalvls <- unique(as.character(fatalitydata$strata)) # protect against data.frame, string as factor = F
+  stratalvls <- unique(as.character(fatalitydata$Strata)) # protect against data.frame, string as factor = F
   death_line_list <- death_line_list %>%
     dplyr::mutate(strata = factor(strata, levels = stratalvls)) %>%  # need this for later summarize
     dplyr::select(c("strata", "tod")) %>%

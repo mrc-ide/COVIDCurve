@@ -14,12 +14,12 @@ test_that("serology likelihood accurate", {
   sum(infxns$infxns < 0)
 
   # make up fatality data
-  fatalitydata <- data.frame(strata = c("ma1", "ma2", "ma3"),
-                             ifr = c(0.05, 0.2, 0.5),
-                             rho = c(0.4, 0.4, 0.2),
+  fatalitydata <- data.frame(Strata = c("ma1", "ma2", "ma3"),
+                             IFR = c(0.05, 0.2, 0.5),
+                             Rho = c(0.4, 0.4, 0.2),
                              Ne = c(0.1, 0.4, 0.5))
   # make up demography data
-  demog <- data.frame(strata = c("ma1", "ma2", "ma3"),
+  demog <- data.frame(Strata = c("ma1", "ma2", "ma3"),
                       popN = c(1500000, 2250000, 1250000))
   # pick serology date
   sero_days <- c(110, 135)
@@ -46,7 +46,7 @@ test_that("serology likelihood accurate", {
   #......................
   obs_serology <- dat$seroprev %>%
     dplyr::filter(event_obs_day %in% sero_days) %>%
-    dplyr::arrange(event_obs_day, strata)
+    dplyr::arrange(event_obs_day, Strata)
 
   datinput <- list(obs_deaths = dat$AggDat$Deaths,
                    obs_serology = obs_serology$ObsPrev)
@@ -61,7 +61,7 @@ test_that("serology likelihood accurate", {
   gamma_lookup <- stats::pgamma((day-1),
                                 shape = 1/0.45^2, scale = 18.8*0.45^2)
 
-  misc_list = list(rho = fatalitydata$rho,
+  misc_list = list(rho = fatalitydata$Rho,
                    pgmms = gamma_lookup,
                    level = FALSE,
                    popN = 5e6,
