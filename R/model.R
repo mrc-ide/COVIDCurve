@@ -86,7 +86,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_unique(Serodayparams)
                                        assert_string(Noiseparams)
                                        assert_unique(Noiseparams)
-                                       assert_eq(length(Noiseparams), length(IFRparams-1))
+                                       assert_same_length(Noiseparams, IFRparams)
 
                                        # assert paramdf
                                        assert_dataframe(paramdf)
@@ -250,7 +250,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      if (is.null(self$IFRparams)) {
                                        stop("Must specificy IFR parmaeters before Noise Effect parameters")
                                      }
-                                     assert_eq(length(val), length(self$IFRparams)-1)
+                                     assert_same_length(val, self$IFRparams)
                                      self$Noiseparams <- val
                                    },
 

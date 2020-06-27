@@ -76,7 +76,7 @@ test_that("serology likelihood accurate", {
   morelikely.paramsin <- c("r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
-                           "ne1" = 0.1, "ne2" = 0.45,
+                           "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
                            "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 
@@ -91,7 +91,7 @@ test_that("serology likelihood accurate", {
   lesslikely.paramsin <- c("r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
                            "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
                            "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
-                           "ne1" = 0.1, "ne2" = 0.45,
+                           "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
                            "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 

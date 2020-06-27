@@ -47,6 +47,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   // extract noise parameters
   double ne1 = params["ne1"];
   double ne2 = params["ne2"];
+  double ne3 = params["ne3"];
 
   // storage items
   int stratlen = rho.size();
@@ -69,32 +70,15 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   ma[1] = ma2;
   ma[2] = ma3;
   ne[0] = ne1;
-  ne[1] = ne2;
+  ne[1] = ne1 * ne2;
+  ne[2] = ne1 * ne3;
 
   //........................................................
   // Liftover Attack Rate Section
   //........................................................
-  // // rescale Ne as stick breaking
-  double ntot = 0.0;
-  for (int i = 1; i < (ne.size()-1); i++) {
-    // reset stick length
-    double stck = 0.0;
-    for (int j = 0; j < (i-1); j++){
-      stck += ne[j];
-    }
-    ne[i] = (1 - stck) * ne[i];
-    ntot += ne[i];
-  }
-  ne[ne.size()-1] = 1 - ntot;
-
-  // rescale ne by attack rate and convert to prob
-  double nednom = 0.0;
+  // rescale ne by attack rate
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i] * rho[i];
-    nednom += ne[i];
-  }
-  for (int i = 0; i < stratlen; i++) {
-    ne[i] = ne[i]/nednom;
   }
 
   // get popN for catch
@@ -327,6 +311,5 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik);
-
   return ret;
 }

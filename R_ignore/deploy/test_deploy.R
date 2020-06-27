@@ -83,18 +83,18 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.97,   10,         135,         160),
-                                init =  c(0.85,     0.99,   10,         135,         160),
+                                min =   c(0.83,     0.8,   10,         135,         160),
+                                init =  c(0.85,     0.95,   10,         135,         160),
                                 max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     9900,    5,          130,         150),
-                                dsc2 =  c(1500,     100,     15,         140,         170))
+                                dsc1 =  c(8500,     990,    5,          130,         150),
+                                dsc2 =  c(1500,     10,     15,         140,         170))
 
-noise_paramsdf <- tibble::tibble(name = c("r1", "r2"),
-                                 min  = rep(0, 2),
-                                 init = rep(0.5, 2),
-                                 max = rep(1, 2),
-                                 dsc1 = rep(0, 2),
-                                 dsc2 = rep(1, 2))
+noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
+                                 min  = rep(0, 3),
+                                 init = rep(0.5, 3),
+                                 max = rep(10, 3),
+                                 dsc1 = rep(0, 3),
+                                 dsc2 = rep(10, 3))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf)
 
@@ -113,7 +113,7 @@ mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
 mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
 mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
-mod1$set_Noiseparams(c("r1", "r2"))
+mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
 mod1$set_paramdf(df_params)
@@ -128,8 +128,8 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e1,
-                                       samples = 1e1,
+                                       burnin = 1e3,
+                                       samples = 1e3,
                                        chains = 1)
 Sys.time() - start
 modout
@@ -137,9 +137,12 @@ modout
                                        what = "IFRparams", by_chain = F))
 plot_par(modout$mcmcout, "sero_day1")
 
-plot_par(modout$mcmcout, "r1", rung = 1)
-plot_par(modout$mcmcout, "r2", rung = 1)
+plot_par(modout$mcmcout, "ma1", rung = 1)
+plot_par(modout$mcmcout, "ma2", rung = 1)
 plot_par(modout$mcmcout, "ma3", rung = 1)
+plot_par(modout$mcmcout, "sens")
+plot_par(modout$mcmcout, "spec")
+plot_par(modout$mcmcout, "sero_day")
 plot_par(modout$mcmcout, "y1", rung = 1)
 plot_par(modout$mcmcout, "y2", rung = 1)
 plot_par(modout$mcmcout, "y3", rung = 1)
@@ -149,15 +152,17 @@ plot_par(modout$mcmcout, "x1", rung = 1)
 plot_par(modout$mcmcout, "x2", rung = 1)
 plot_par(modout$mcmcout, "x3", rung = 1)
 plot_par(modout$mcmcout, "x4", rung = 1)
+plot_par(modout$mcmcout, "ne1", rung = 1)
+plot_par(modout$mcmcout, "ne2", rung = 1)
+plot_par(modout$mcmcout, "ne3", rung = 1)
+
 summary(modout$mcmcout$output$loglikelihood)
 summary(modout$mcmcout$output$logprior)
 modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$output$loglikelihood), ]
 
 
-plot_par(modout$mcmcout, "sens")
-plot_par(modout$mcmcout, "spec")
-plot_par(modout$mcmcout, "sero_day")
-plot_cor(modout$mcmcout, "x1", "spec", rung = 1)
+
+plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
 plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
 plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
 
@@ -179,7 +184,7 @@ summary(rung9)
 (infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
                                          what = "Infxnparams", by_chain = F))
 (sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                        what = "Seroparams", by_chain = F))
+                                        what = "Serotestparams", by_chain = F))
 
 
 curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = modout,
@@ -190,10 +195,10 @@ curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = mo
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
 liftover <- data.frame(param = c("r1", "r2", "ma3"),
-                       strata = c("ma1", "ma2", "ma3"))
+                       Strata = c("ma1", "ma2", "ma3"))
 
 fatalitydataplot <- fatalitydata %>%
-  dplyr::left_join(liftover, ., by = "strata")
+  dplyr::left_join(liftover, ., by = "Strata")
 
 plot1 <- ggplot() +
   geom_pointrange(data = ifr, aes(x = param, ymin = LCI, ymax = UCI, y = median, color = param)) +

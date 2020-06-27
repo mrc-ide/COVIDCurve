@@ -47,7 +47,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -97,6 +97,15 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Serodayparams-FALSE"={
            groupingvar <- "param"
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
+         },
+
+         "Noiseparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
+         },
+         "Noiseparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
          }
   )
 
@@ -180,14 +189,14 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
                    pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
-                   popN = IFRmodel_inf$inputs$IFRmodel$popN,
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
                    n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
 
   datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serologyrate" = IFRmodel_inf$inputs$IFRmodel$data$obs_serologyrate)
+                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
 
 
   #......................
@@ -198,7 +207,8 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams)])
+                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                                IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
     infxns <- unlist(loglike(params = paramsin,
                              param_i = 1,
                              data = datin,
@@ -225,6 +235,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                       IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "infxncurves")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
@@ -263,6 +274,7 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                       IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "infxncurves")
