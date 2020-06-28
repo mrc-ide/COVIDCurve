@@ -180,7 +180,10 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double cum_infxn_check = 0.0;", n = 2)[,1]
-  fitcurve_string <- paste(fitcurve_start, fitcurve_curve, "Rcpp::List ret = Rcpp::List::create(infxn_spline_strata); return ret;}", collapse = "")
+  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
+                           "std::vector<double> infxn_spline_strata(infxn_spline.size());",
+                           "for (int i = 0; i < infxn_spline.size(); i++) {for (int a = 0; a < stratlen; a++) {infxn_spline_strata[i] += infxn_spline[i] * ne[a];}}",
+                           "Rcpp::List ret = Rcpp::List::create(infxn_spline_strata); return ret;}", collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
   #......................
@@ -213,11 +216,9 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                              param_i = 1,
                              data = datin,
                              misc = misc_list)[[1]]
-    infxns <- infxns_strata %>%
-      do.call("rbind.data.frame", .)
-    infxns <- rowSums(infxns)
-    ret <- data.frame(time = 1:length(infxns),
-                      infxns = infxns)
+
+    ret <- data.frame(time = 1:length(infxns_strata),
+                      infxns = infxns_strata)
     return(ret)
 
   }

@@ -173,13 +173,12 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
     }
 
     // get cumulative infection spline
-    std::vector<double> cumm_infxn_spline(infxn_spline.size());
-    cumm_infxn_spline[0] = infxn_spline[0];
-    for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-      cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
+    double cum_infxn_check = 0.0;
+    for (int i = 0; i < infxn_spline.size(); i++) {
+      cum_infxn_check += infxn_spline[i];
     }
 
-    if (cumm_infxn_spline[cumm_infxn_spline.size() - 1] <= popN) {
+    if (cum_infxn_check <= popN) {
 
       // loop through days and TOD integral
       std::vector<double> auc(infxn_spline.size());
