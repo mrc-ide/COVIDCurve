@@ -86,8 +86,8 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 min =   c(0.83,     0.8,   10,         135,         160),
                                 init =  c(0.85,     0.95,   10,         135,         160),
                                 max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     990,    5,          130,         150),
-                                dsc2 =  c(1500,     10,     15,         140,         170))
+                                dsc1 =  c(8500,     50,    5,          130,         150),
+                                dsc2 =  c(1500,     1,     15,         140,         170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -194,7 +194,7 @@ curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = mo
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
-liftover <- data.frame(param = c("r1", "r2", "ma3"),
+liftover <- data.frame(param = c("ma1", "ma2", "ma3"),
                        Strata = c("ma1", "ma2", "ma3"))
 
 fatalitydataplot <- fatalitydata %>%
@@ -202,7 +202,7 @@ fatalitydataplot <- fatalitydata %>%
 
 plot1 <- ggplot() +
   geom_pointrange(data = ifr, aes(x = param, ymin = LCI, ymax = UCI, y = median, color = param)) +
-  geom_hline(data = fatalitydataplot, aes(yintercept  = ifr, group = param), color = "#3182bd", linetype = "dashed", size = 1.1) +
+  geom_hline(data = fatalitydataplot, aes(yintercept  = IFR, group = param), color = "#3182bd", linetype = "dashed", size = 1.1) +
   facet_wrap(.~param) +
   scale_color_viridis_d() +
   theme_bw()
