@@ -16,12 +16,12 @@ infxns$infxns <- sig(timevec) * 5e3 + runif(n = nrow(infxns),
 sum(infxns$infxns < 0)
 
 # make up fatality data
-fatalitydata <- data.frame(Strata = c("ma1", "ma2", "ma3"),
-                           IFR = c(0.05, 0.2, 0.5),
-                           Rho = 1/3,
-                           Ne = c(0.1, 0.4, 0.5))
-demog <- data.frame(Strata = c("ma1", "ma2", "ma3"),
-                    popN = c(1500000, 2250000, 1250000))
+fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
+                               IFR = c(0.05, 0.2, 0.5),
+                               Rho = 1/3,
+                               Ne = c(0.1, 0.4, 0.5))
+demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
+                        popN = c(1500000, 2250000, 1250000))
 
 # pick serology date
 sero_days <- c(135, 160)
@@ -42,7 +42,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   infections = infxns$infxns,
   simulate_seroprevalence = TRUE,
   sens = 0.85,
-  spec = 0.99,
+  spec = 0.95,
   sero_delay_rate = 10,
 )
 
@@ -86,8 +86,8 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 min =   c(0.83,     0.8,   10,         135,         160),
                                 init =  c(0.85,     0.95,   10,         135,         160),
                                 max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     50,    5,          130,         150),
-                                dsc2 =  c(1500,     1,     15,         140,         170))
+                                dsc1 =  c(8500,     10,    5,          130,         150),
+                                dsc2 =  c(1500,     3,     15,         140,         170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -128,9 +128,12 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e3,
-                                       samples = 1e3,
-                                       chains = 3)
+                                       burnin = 1e4,
+                                       samples = 1e4,
+                                       chains = 3,
+                                       rungs = 10,
+                                       GTI_pow = 4.0,
+                                       silent = FALSE)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
@@ -163,6 +166,8 @@ modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$
 
 
 plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
+plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
+
 plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
 plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
 
@@ -189,7 +194,7 @@ summary(rung9)
 
 curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = modout,
                                                                whichrung = paste0("rung", 1),
-                                                               by_chain = F,
+                                                               by_chain = T,
                                                                dwnsmpl = 1e3)
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)

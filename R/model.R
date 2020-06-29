@@ -122,7 +122,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        # rho
                                        assert_numeric(rho)
                                        assert_same_length(rho, IFRparams)
-                                       assert_eq(sum(rho), 1)
                                      }
 
                                      # fill in
@@ -337,7 +336,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    set_rho = function(val) {
                                      assert_numeric(val)
                                      assert_same_length(val, self$IFRparams)
-                                     assert_eq(sum(val), 1)
                                      self$rho <- val
                                    },
 
