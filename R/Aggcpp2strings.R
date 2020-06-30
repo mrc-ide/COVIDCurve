@@ -356,7 +356,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # get loglike
   #..................
-  loglike <- readLines(system.file("covidcurve", "NatCubic_AggExpDeaths_loglike_cubicspline.cpp", package = "COVIDCurve", mustWork = TRUE))
+  loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike.cpp", package = "COVIDCurve", mustWork = TRUE))
   loglike_start <- grep("// Liftover Attack Rate Section", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]

@@ -172,9 +172,9 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
-                                                       reparamIFR = FALSE,
-                                                       reparamKnots = FALSE,
-                                                       reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamIFR = FALSE,
+                                                        reparamKnots = FALSE,
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -215,9 +215,11 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
                              misc = misc_list)[[1]]
     infxns <- infxns_strata %>%
       do.call("rbind.data.frame", .)
-    infxns <- rowSums(infxns)
-    ret <- data.frame(time = 1:length(infxns),
-                      infxns = infxns)
+
+    colnames(infxns) <- paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+    ret <- cbind.data.frame(time = 1:nrow(infxns),
+                            infxns,
+                            infxns = rowSums(infxns))
     return(ret)
 
   }
@@ -323,41 +325,83 @@ draw_posterior_infxn_points_cubic_splines <- function(IFRmodel_inf, whichrung = 
 
 posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
                                             dwnsmpl, by_chain = FALSE) {
-
+  #......................
+  # draw infection curves
+  #......................
   postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf, whichrung = whichrung,
                                                                    dwnsmpl = dwnsmpl, by_chain = by_chain)$plotdat
-  # set up function to draw posterior deaths
+  # split infection data for looping through later
   postdat.sims <- split(postdat, factor(postdat$sim))
-  draw_post_deaths <- function(postdatsim){
-    gmmlkup <- stats::dgamma(postdatsim$time, shape = 1/(IFRmodel_inf$inputs$IFRmodel$sod^2),
-                             scale = IFRmodel_inf$inputs$IFRmodel$mod*IFRmodel_inf$inputs$IFRmodel$sod^2, log = FALSE)
 
-    # exp deaths day and strata
-    exp_death.day <- rep(0, length = IFRmodel_inf$inputs$IFRmodel$maxObsDay)
-    # spread infxns out to day when they may or may not die
-    for (i in 1:nrow(postdatsim)) {
-      for (j in (i+1):(nrow(postdatsim) + 1)) {
-        delta <- j - i
-        exp_death.day[j-1] <- exp_death.day[j-1] + postdatsim$infxns[i] * gmmlkup[delta]
+  #......................
+  # draw deaths from infections
+  #......................
+  # make eff cpp function for drawing deaths
+  src <- "Rcpp::List get_post_deaths(Rcpp::NumericVector infxns, int daylen, int stratlen, Rcpp::NumericVector gmmlkup, Rcpp::NumericVector ifr) {
+      std::vector<double> infxns_raw = Rcpp::as< std::vector<double> >(infxns);
+      std::vector<std::vector<double>> infxns_strata(daylen, std::vector<double>(stratlen));
+      int iter = 0;
+      // recast infxns to matrix
+      for (int i = 0; i < daylen; i++) {
+        for (int j = 0; j < stratlen; j++) {
+          infxns_strata[i][j] = infxns_raw[iter];
+          iter++;
+        }
       }
-    }
+      std::vector<std::vector<double>> exp_death_day_strata(daylen, std::vector<double>(stratlen));
+      for (int i = 0; i < daylen; i++) {
+        for (int j = 0; j < stratlen; j++) {
+        exp_death_day_strata[i][j] = 0;
+        }
+      }
+      for (int i = 0; i < daylen; i++) {
+        for (int j = i+1; j < (daylen + 1); j++) {
+          int delta = j - i - 1;
+          for (int a = 0; a < stratlen; a++) {
+            exp_death_day_strata[j-1][a] += infxns_strata[i][a] * ifr[a] * gmmlkup[delta];
+          }
+        }
+      }
+    // return as Rcpp list
+    Rcpp::List ret = Rcpp::List::create(Rcpp::Named(\"exp_death_day_strata\") = exp_death_day_strata);
+    return ret;
+    }"
+  # source cpp function
+  Rcpp::cppFunction(src)
 
-    exp_death.day.strata <- exp_death.day %*% t(IFRmodel_inf$inputs$IFRmodel$pa) # account for pa
-    exp_death.day.strata <- exp_death.day.strata * postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams]
+  # items need for cpp function
+  gmmlkup <- stats::dgamma(postdat.sims[[1]]$time, shape = 1/(IFRmodel_inf$inputs$IFRmodel$sod^2),
+                           scale = IFRmodel_inf$inputs$IFRmodel$mod*IFRmodel_inf$inputs$IFRmodel$sod^2, log = FALSE)
 
-    #......................
-    # tidy up and out
-    #......................
-    out <- cbind.data.frame(time = 1:nrow(exp_death.day.strata), exp_death.day.strata)
-    colnames(out)[2:ncol(out)] <- paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
-    return(out)
+  # wrapper function for call cpp function
+  draw_post_deaths_wrapper <- function(postdatsim,
+                                       IFRmodel_inf,
+                                       gmmlkup = gmmlkup){
+    # run cpp function
+    exp_death_day_strata <- get_post_deaths(infxns = unlist(postdatsim[, paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)]),
+                                            ifr = unlist(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams]),
+                                            daylen = length(IFRmodel_inf$inputs$IFRmodel$Noiseparams),
+                                            stratlen = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
+                                            gmmlkup = gmmlkup) %>%
+      do.call("cbind.data.frame", .) %>%
+      magrittr::set_colnames(paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      dplyr::mutate(time = 1:nrow(.)) %>%
+      dplyr::select(c("time", dplyr::everything()))
+    # out
+    return(exp_death_day_strata)
   }
-  # get post deaths
+
+  #......................
+  # Run draw post deaths for each simulation iteration
+  #......................
   postdat.curves <- postdat %>%
     dplyr::select("sim", IFRmodel_inf$inputs$IFRmodel$IFRparams) %>%
     dplyr::filter(!duplicated(.)) %>%
     dplyr::mutate(
-      post_deaths = purrr::map(postdat.sims, draw_post_deaths)
+      post_deaths = purrr::map(.x = postdat.sims,
+                               .f = draw_post_deaths_wrapper,
+                               IFRmodel_inf = IFRmodel_inf,
+                               gmmlkup = gmmlkup)
     ) %>%
     tidyr::unnest(cols = post_deaths)
 

@@ -4,7 +4,7 @@ using namespace Rcpp;
 //------------------------------------------------
 // Log-Likelihood for Aggregate Expected Deaths with a Natural Cubic Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);

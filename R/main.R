@@ -41,6 +41,15 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$gamma_lookup)
   assert_non_null(IFRmodel$maxObsDay)
   assert_non_null(IFRmodel$demog)
+  assert_eq(as.character(IFRmodel$demog$Strata),
+            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            message = "Strata within the demography data-frame must be in the same order as the strata in the observed deaths data frame")
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata),
+            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            message = "Strata within the observed serology data-frame must be in the same order as the strata in the observed deaths data frame")
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata),
+            as.character(IFRmodel$demog$Strata),
+            message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
 
   #............................................................
   # "Warm-Up" MCMC
@@ -86,10 +95,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   #..................
   # make misc
   #..................
-  # ensure demog order is by strata (and matches seroprevalence)
-  demog <- IFRmodel$demog %>%
-    dplyr::arrange(Strata)
-
   misc_list = list(rho = IFRmodel$rho,
                    pgmms = IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
@@ -101,19 +106,15 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   #..................
   # make data list
   #..................
-  # ensure seroprev order is by seroday and then strata (and matches demography for strata)
-  obs_serology <- IFRmodel$data$obs_serology %>%
-    dplyr::arrange(SeroDay, Strata)
-
   if (IFRmodel$level == "Time-Series"){
     data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
     data_list <- unname(unlist(data_list))
     data_list <- list(obs_deaths = data_list,
-                      obs_serology = obs_serology$SeroPrev)
+                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
 
   } else if (IFRmodel$level == "Cumulative") {
     data_list <- list(obs_deaths = unname(IFRmodel$data$obs_deaths$Deaths),
-                      obs_serology = obs_serology$SeroPrev)
+                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
   }
 
   #..................
@@ -181,6 +182,12 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
+
+  # reparam Ne
+  liftovercols <- colnames(mcmcout$output) %in% IFRmodel$Noiseparams[2:length(IFRmodel$Noiseparams)]
+  liftovercols.list <- mcmcout$output[, liftovercols]
+  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, IFRmodel$Noiseparams[1]]})
 
 
   # store input along with Dr.Jacoby output for later use

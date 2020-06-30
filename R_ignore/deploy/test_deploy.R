@@ -86,8 +86,8 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 min =   c(0.83,     0.8,   10,         135,         160),
                                 init =  c(0.85,     0.95,   10,         135,         160),
                                 max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     10,    5,          130,         150),
-                                dsc2 =  c(1500,     3,     15,         140,         170))
+                                dsc1 =  c(8500,     10,    5,          130,         155),
+                                dsc2 =  c(1500,     3,     15,         140,         165))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -128,11 +128,9 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e4,
-                                       samples = 1e4,
+                                       burnin = 1e3,
+                                       samples = 1e3,
                                        chains = 3,
-                                       rungs = 10,
-                                       GTI_pow = 4.0,
                                        silent = FALSE)
 Sys.time() - start
 modout
@@ -225,7 +223,7 @@ graphics.off()
 # get deaths posterior pred check
 #......................
 postdeaths <- COVIDCurve::posterior_check_infxns_to_death(IFRmodel_inf = modout,
-                                                          CIquant = 0.9,
+                                                          dwnsmpl = 1e2,
                                                           by_chain = FALSE)
 postdeaths.plotObj <- postdeaths %>%
   dplyr::select(c("time", dplyr::starts_with("deaths"))) %>%
