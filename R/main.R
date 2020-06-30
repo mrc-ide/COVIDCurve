@@ -102,7 +102,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
                    n_sero_obs = length(IFRmodel$Serodayparams),
-                   demog = demog$popN)
+                   demog = IFRmodel$demog$popN)
   #..................
   # make data list
   #..................
@@ -184,10 +184,13 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   }
 
   # reparam Ne
-  liftovercols <- colnames(mcmcout$output) %in% IFRmodel$Noiseparams[2:length(IFRmodel$Noiseparams)]
-  liftovercols.list <- mcmcout$output[, liftovercols]
-  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, IFRmodel$Noiseparams[1]]})
+  if (length(IFRmodel$Noiseparams) > 1) {
+    liftovercols <- colnames(mcmcout$output) %in% IFRmodel$Noiseparams[2:length(IFRmodel$Noiseparams)]
+    liftovercols.list <- mcmcout$output[, liftovercols]
+    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, IFRmodel$Noiseparams[1]]})
+  }
+
 
 
   # store input along with Dr.Jacoby output for later use
