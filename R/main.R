@@ -10,7 +10,7 @@
 run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
-                             pb_markdown = FALSE, silent = TRUE) {
+                             cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
   #..................
   # assertions
   #..................
@@ -138,7 +138,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                                 coupling_on = coupling_on,
                                 GTI_pow = GTI_pow,
                                 pb_markdown = pb_markdown,
-                                silent = silent
+                                silent = silent,
+                                cluster = cluster
   )
 
   if (reparamIFR) {
