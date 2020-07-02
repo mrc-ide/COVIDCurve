@@ -97,15 +97,21 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  dsc1 = rep(0, 3),
                                  dsc2 = rep(10, 3))
 
-df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf)
+tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
+                               min  = c(10,    0.01),
+                               init = c(18,    0.45),
+                               max =  c(25,    1.00),
+                               dsc1 = c(2.9,   -0.78),
+                               dsc2 = c(0.05,   0.05))
+
+df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
 
 #......................
 # make mode
 #......................
 mod1 <- make_IFRmodel_agg$new()
-mod1$set_MeanOnset(18.8)
-mod1$set_CoefVarOnset(0.45)
-mod1$set_level("Time-Series")
+mod1$set_MeanTODparam("mod")
+mod1$set_CoefVarOnsetTODparam("sod")
 mod1$set_IFRparams(c("ma1", "ma2", "ma3"))
 mod1$set_maxMa("ma3")
 mod1$set_Knotparams(paste0("x", 1:4))
@@ -129,8 +135,8 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e2,
-                                       samples = 1e2,
+                                       burnin = 1e3,
+                                       samples = 1e3,
                                        chains = 3,
                                        silent = FALSE)
 Sys.time() - start

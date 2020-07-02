@@ -8,9 +8,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
   // extract misc items
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
-  std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
   std::vector<int> demog = Rcpp::as< std::vector<int> >(misc["demog"]);
-  bool level = misc["level"];
   int n_knots = misc["n_knots"];
   int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
@@ -48,6 +46,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double ne1 = params["ne1"];
   double ne2 = params["ne2"];
   double ne3 = params["ne3"];
+  // death delay params
+  double mod = params["mod"];
+  double sod = params["sod"];
 
   // storage items
   int stratlen = rho.size();
@@ -74,7 +75,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   ne[2] = ne1 * ne3;
 
   //........................................................
-  // Liftover Attack Rate Section
+  // Lookup Items
   //........................................................
   // rescale ne by attack rate
   for (int i = 0; i < stratlen; i++) {
@@ -85,6 +86,12 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   int popN = 0;
   for (int i = 0; i < stratlen; i++) {
     popN += demog[i];
+  }
+
+  // gamma look up table
+  std::vector<double> pgmms(days_obsd + 1);
+  for (int i = 0; i < (days_obsd+1); i++) {
+    pgmms[i] = R::pgamma(i, 1/pow(sod,2), mod*pow(sod,2), true, false);
   }
 
   //........................................................
@@ -192,61 +199,32 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
       // Expectation
       double death_loglik = 0.0;
-      // True is for Cumulative Calculation
-      if (level) {
-
-        // extract data
-        std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-
-        // sum up to current day
-        double aucsum = 0;
-        for (int i = 0; i < auc.size(); i++) {
-          aucsum += auc[i];
+      // get data in right format
+      std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
+      std::vector<std::vector<int>> obsd(days_obsd, std::vector<int>(stratlen));
+      int iter = 0;
+      for (int i = 0; i < days_obsd; i++) {
+        for (int j = 0; j < stratlen; j++) {
+          obsd[i][j] = raw[iter];
+          iter++;
         }
-        // get exp deaths per age group
-        std::vector<double>expd(stratlen);
+      }
+
+      // get exp deaths per age group
+      std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
+      for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
-          expd[a] = aucsum * ne[a] * ma[a];
+          expd[i][a] = auc[i] * ne[a] * ma[a];
         }
-        // get log-likelihood over all days
+      }
+
+      // get log-likelihood over all days
+      for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
           // a+1 to account for 1-based dates
           if ((a+1) < rcensor_day) {
-            if (obsd[a] != -1) {
-              death_loglik += R::dpois(obsd[a], expd[a], true);
-            }
-          }
-        }
-
-      } else {
-        // False is for Time-Series Calculation
-        // get data in right format
-        std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-        std::vector<std::vector<int>> obsd(days_obsd, std::vector<int>(stratlen));
-        int iter = 0;
-        for (int i = 0; i < days_obsd; i++) {
-          for (int j = 0; j < stratlen; j++) {
-            obsd[i][j] = raw[iter];
-            iter++;
-          }
-        }
-
-        // get exp deaths per age group
-        std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
-        for (int  i = 0; i < days_obsd; i++) {
-          for (int a = 0; a < stratlen; a++) {
-            expd[i][a] = auc[i] * ne[a] * ma[a];
-          }
-        }
-
-        // get log-likelihood over all days
-        for (int  i = 0; i < days_obsd; i++) {
-          for (int a = 0; a < stratlen; a++) {
-            // a+1 to account for 1-based dates
-            if ((a+1) < rcensor_day) {
-              if (obsd[i][a] != -1) {
-                death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
-              }
+            if (obsd[i][a] != -1) {
+              death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
             }
           }
         }

@@ -26,7 +26,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_logical(coupling_on)
   assert_logical(pb_markdown)
   assert_logical(silent)
-  assert_non_null(IFRmodel$level)
   assert_non_null(IFRmodel$data)
   assert_non_null(IFRmodel$IFRparams)
   assert_non_null(IFRmodel$Infxnparams)
@@ -36,9 +35,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$Serotestparams)
   assert_non_null(IFRmodel$Serodayparams)
   assert_non_null(IFRmodel$Noiseparams)
-  assert_non_null(IFRmodel$mod)
-  assert_non_null(IFRmodel$sod)
-  assert_non_null(IFRmodel$gamma_lookup)
+  assert_non_null(IFRmodel$modparam)
+  assert_non_null(IFRmodel$sodparam)
   assert_non_null(IFRmodel$maxObsDay)
   assert_non_null(IFRmodel$demog)
   assert_eq(as.character(IFRmodel$demog$Strata),
@@ -96,8 +94,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   # make misc
   #..................
   misc_list = list(rho = IFRmodel$rho,
-                   pgmms = IFRmodel$gamma_lookup,
-                   level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
@@ -106,16 +102,10 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   #..................
   # make data list
   #..................
-  if (IFRmodel$level == "Time-Series"){
-    data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
-    data_list <- unname(unlist(data_list))
-    data_list <- list(obs_deaths = data_list,
-                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
-
-  } else if (IFRmodel$level == "Cumulative") {
-    data_list <- list(obs_deaths = unname(IFRmodel$data$obs_deaths$Deaths),
-                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
-  }
+  data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
+  data_list <- unname(unlist(data_list))
+  data_list <- list(obs_deaths = data_list,
+                    obs_serology = IFRmodel$data$obs_serology$SeroPrev)
 
   #..................
   # make df param
