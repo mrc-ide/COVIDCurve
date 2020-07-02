@@ -138,6 +138,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        burnin = 1e3,
                                        samples = 1e3,
                                        chains = 3,
+                                       rungs = 10,
                                        silent = FALSE)
 Sys.time() - start
 modout
@@ -197,10 +198,10 @@ summary(rung9)
                                         what = "Serotestparams", by_chain = F))
 
 
-curve <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf = modout,
-                                                               whichrung = paste0("rung", 1),
-                                                               by_chain = T,
-                                                               dwnsmpl = 1e3)
+curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
+                                                        whichrung = paste0("rung", 1),
+                                                        by_chain = T,
+                                                        dwnsmpl = 1e3)
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)

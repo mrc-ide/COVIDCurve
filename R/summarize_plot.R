@@ -195,8 +195,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # inputs needed for cpp function
   #......................
   misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
-                   level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
@@ -211,7 +209,9 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # split, run, recombine
   #......................
   cpp_function_wrapper <- function(params, data, misc) {
-    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
+                                IFRmodel_inf$inputs$IFRmodel$sodparam,
+                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -242,6 +242,8 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   if (by_chain) {
     plotdat <- mcmcout.nodes %>%
       dplyr::select(c("chain",
+                      IFRmodel_inf$inputs$IFRmodel$modparam,
+                      IFRmodel_inf$inputs$IFRmodel$sodparam,
                       IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
@@ -282,7 +284,9 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   } else {
     # keep params around for convenience
     plotdat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
+                      IFRmodel_inf$inputs$IFRmodel$sodparam,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -346,7 +350,13 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   # draw deaths from infections
   #......................
   # make eff cpp function for drawing deaths
-  src <- "Rcpp::List get_post_deaths(Rcpp::NumericVector infxns, int daylen, int stratlen, Rcpp::NumericVector gmmlkup, Rcpp::NumericVector ifr) {
+  src <- "Rcpp::List get_post_deaths(Rcpp::NumericVector infxns, Rcpp::NumericVector ifr, int daylen, int stratlen, double mod, double sod) {
+
+      // get gamma look up table
+      std::vector<double> gmmlkup(daylen + 1);
+      for (int i = 0; i < (daylen+1); i++) {
+        gmmlkup[i] = R::dgamma(i, 1/pow(sod,2), mod*pow(sod,2), false);
+      }
       std::vector<double> infxns_raw = Rcpp::as< std::vector<double> >(infxns);
       std::vector<std::vector<double>> infxns_strata(daylen, std::vector<double>(stratlen));
       int iter = 0;
@@ -378,20 +388,17 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   # source cpp function
   Rcpp::cppFunction(src)
 
-  # items need for cpp function
-  gmmlkup <- stats::dgamma(postdat.sims[[1]]$time, shape = 1/(IFRmodel_inf$inputs$IFRmodel$sod^2),
-                           scale = IFRmodel_inf$inputs$IFRmodel$mod*IFRmodel_inf$inputs$IFRmodel$sod^2, log = FALSE)
 
   # wrapper function for call cpp function
   draw_post_deaths_wrapper <- function(postdatsim,
-                                       IFRmodel_inf,
-                                       gmmlkup = gmmlkup){
+                                       IFRmodel_inf){
     # run cpp function
     exp_death_day_strata <- get_post_deaths(infxns = unlist(postdatsim[, paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)]),
                                             ifr = unlist(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams]),
+                                            mod = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$modparam])),
+                                            sod = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$sodparam])),
                                             stratlen = length(IFRmodel_inf$inputs$IFRmodel$Noiseparams),
-                                            daylen = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                                            gmmlkup = gmmlkup)[[1]] %>%
+                                            daylen = IFRmodel_inf$inputs$IFRmodel$maxObsDay)[[1]] %>%
       do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(time = 1:nrow(.)) %>%
@@ -409,8 +416,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
     dplyr::mutate(
       post_deaths = purrr::map(.x = postdat.sims,
                                .f = draw_post_deaths_wrapper,
-                               IFRmodel_inf = IFRmodel_inf,
-                               gmmlkup = gmmlkup)
+                               IFRmodel_inf = IFRmodel_inf)
     ) %>%
     tidyr::unnest(cols = post_deaths)
 
@@ -484,8 +490,6 @@ draw_posterior_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dw
   # inputs needed for cpp function
   #......................
   misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   pgmms = IFRmodel_inf$inputs$IFRmodel$gamma_lookup,
-                   level = ifelse(IFRmodel_inf$inputs$IFRmodel$level == "Cumulative", TRUE, FALSE),
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
@@ -500,7 +504,9 @@ draw_posterior_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dw
   # split, run, recombine
   #......................
   cpp_function_wrapper <- function(params, data, misc) {
-    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
+                                IFRmodel_inf$inputs$IFRmodel$sodparam,
+                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -531,6 +537,8 @@ draw_posterior_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dw
   if (by_chain) {
     dat <- mcmcout.nodes %>%
       dplyr::select(c("chain",
+                      IFRmodel_inf$inputs$IFRmodel$modparam,
+                      IFRmodel_inf$inputs$IFRmodel$sodparam,
                       IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
@@ -547,7 +555,9 @@ draw_posterior_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dw
   } else {
     # keep params around for convenience
     dat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$IFRparams,
+      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
+                      IFRmodel_inf$inputs$IFRmodel$sodparam,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
