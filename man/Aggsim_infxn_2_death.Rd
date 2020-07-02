@@ -15,12 +15,12 @@ Aggsim_infxn_2_death(
   simulate_seroprevalence = TRUE,
   spec,
   sens,
-  popN,
+  demog,
   sero_delay_rate
 )
 }
 \arguments{
-\item{fatalitydata}{dataframe; The column names: strata, ifr, and rho correspond to (patient) strata, infection-fatality ratio, and the probability of infection (i.e. a probalistic attack rate), respectively.}
+\item{fatalitydata}{dataframe; The strata-specific fatalities to simulate given a probability of infection and a noise effect. The column names: strata, ifr, rho, and Ne correspond to (patient) strata, infection-fatality ratio, the probability of infection (i.e. a probalistic attack rate), and a noise effect, respectively.}
 
 \item{infections}{integer vector; The infections for each day up to the current day.}
 
@@ -40,7 +40,7 @@ Aggsim_infxn_2_death(
 
 \item{sens}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
-\item{popN}{double; Population Size (only considered if simulate_seroprevalence is set to TRUE)}
+\item{demog}{dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}}
 
 \item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
 }

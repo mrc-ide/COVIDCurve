@@ -10,7 +10,7 @@
 run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
-                             pb_markdown = FALSE, silent = TRUE) {
+                             cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
   #..................
   # assertions
   #..................
@@ -35,11 +35,21 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
   assert_non_null(IFRmodel$Serodayparams)
-  assert_non_null(IFRmodel$popN)
+  assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$mod)
   assert_non_null(IFRmodel$sod)
   assert_non_null(IFRmodel$gamma_lookup)
   assert_non_null(IFRmodel$maxObsDay)
+  assert_non_null(IFRmodel$demog)
+  assert_eq(as.character(IFRmodel$demog$Strata),
+            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            message = "Strata within the demography data-frame must be in the same order as the strata in the observed deaths data frame")
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
+            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            message = "Strata within the observed serology data-frame must be in the same order as the strata in the observed deaths data frame")
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
+            as.character(IFRmodel$demog$Strata),
+            message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
 
   #............................................................
   # "Warm-Up" MCMC
@@ -88,11 +98,11 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   misc_list = list(rho = IFRmodel$rho,
                    pgmms = IFRmodel$gamma_lookup,
                    level = ifelse(IFRmodel$level == "Cumulative", TRUE, FALSE),
-                   popN = IFRmodel$popN,
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
-                   n_sero_obs = length(IFRmodel$Serodayparams))
+                   n_sero_obs = length(IFRmodel$Serodayparams),
+                   demog = IFRmodel$demog$popN)
   #..................
   # make data list
   #..................
@@ -100,11 +110,11 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
     data_list <- unname(unlist(data_list))
     data_list <- list(obs_deaths = data_list,
-                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
+                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
 
   } else if (IFRmodel$level == "Cumulative") {
     data_list <- list(obs_deaths = unname(IFRmodel$data$obs_deaths$Deaths),
-                      obs_serologyrate = IFRmodel$data$obs_serologyrate)
+                      obs_serology = IFRmodel$data$obs_serology$SeroPrev)
   }
 
   #..................
@@ -128,7 +138,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                                 coupling_on = coupling_on,
                                 GTI_pow = GTI_pow,
                                 pb_markdown = pb_markdown,
-                                silent = silent
+                                silent = silent,
+                                cluster = cluster
   )
 
   if (reparamIFR) {
@@ -172,6 +183,15 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
+
+  # reparam Ne
+  if (length(IFRmodel$Noiseparams) > 1) {
+    liftovercols <- colnames(mcmcout$output) %in% IFRmodel$Noiseparams[2:length(IFRmodel$Noiseparams)]
+    liftovercols.list <- mcmcout$output[, liftovercols]
+    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, IFRmodel$Noiseparams[1]]})
+  }
+
 
 
   # store input along with Dr.Jacoby output for later use
