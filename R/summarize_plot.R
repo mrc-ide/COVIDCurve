@@ -252,10 +252,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
-      tidyr::unnest(cols = "infxncurves")
+      tidyr::unnest(cols = "infxncurves") %>%
+      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
 
     plotObj <- ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
+      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
@@ -289,10 +290,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                       IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
-      tidyr::unnest(cols = "infxncurves")
+      tidyr::unnest(cols = "infxncurves") %>%
+      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
 
     plotObj <-  ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(time, infxns, group = sim), alpha = 0.25,
+      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
@@ -335,8 +337,8 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   #......................
   # draw infection curves
   #......................
-  postdat <- COVIDCurve::draw_posterior_infxn_points_cubic_splines(IFRmodel_inf, whichrung = whichrung,
-                                                                   dwnsmpl = dwnsmpl, by_chain = by_chain)$plotdat
+  postdat <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf, whichrung = whichrung,
+                                                            dwnsmpl = dwnsmpl, by_chain = by_chain)$plotdat
   # split infection data for looping through later
   postdat.sims <- split(postdat, factor(postdat$sim))
 
@@ -348,9 +350,9 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
       std::vector<double> infxns_raw = Rcpp::as< std::vector<double> >(infxns);
       std::vector<std::vector<double>> infxns_strata(daylen, std::vector<double>(stratlen));
       int iter = 0;
-      // recast infxns to matrix
-      for (int i = 0; i < daylen; i++) {
-        for (int j = 0; j < stratlen; j++) {
+      // recast infxns to matrix -- r unlists by row (so column1, column2, ...)
+      for (int j = 0; j < stratlen; j++) {
+        for (int i = 0; i < daylen; i++) {
           infxns_strata[i][j] = infxns_raw[iter];
           iter++;
         }
@@ -387,10 +389,10 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
     # run cpp function
     exp_death_day_strata <- get_post_deaths(infxns = unlist(postdatsim[, paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)]),
                                             ifr = unlist(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams]),
-                                            daylen = length(IFRmodel_inf$inputs$IFRmodel$Noiseparams),
-                                            stratlen = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                                            gmmlkup = gmmlkup) %>%
-      do.call("cbind.data.frame", .) %>%
+                                            stratlen = length(IFRmodel_inf$inputs$IFRmodel$Noiseparams),
+                                            daylen = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
+                                            gmmlkup = gmmlkup)[[1]] %>%
+      do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(time = 1:nrow(.)) %>%
       dplyr::select(c("time", dplyr::everything()))

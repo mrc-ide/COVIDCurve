@@ -54,7 +54,8 @@ obs_serology <- dat$seroprev %>%
     SeroPrev = ObsPrev) %>%
   dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1",
-                                 ifelse(SeroDay == 160, "sero_day2", NA)))
+                                 ifelse(SeroDay == 160, "sero_day2", NA))) %>%
+  dplyr::arrange(SeroDay)
 
 datinput <- list(obs_deaths = dat$AggDat,
                  obs_serology = obs_serology)
