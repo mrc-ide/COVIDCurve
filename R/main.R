@@ -44,10 +44,10 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_eq(as.character(IFRmodel$demog$Strata),
             as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
             message = "Strata within the demography data-frame must be in the same order as the strata in the observed deaths data frame")
-  assert_eq(as.character(IFRmodel$data$obs_serology$Strata),
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
             as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in the observed deaths data frame")
-  assert_eq(as.character(IFRmodel$data$obs_serology$Strata),
+  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
             as.character(IFRmodel$demog$Strata),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
 

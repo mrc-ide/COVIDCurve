@@ -128,8 +128,8 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e3,
-                                       samples = 1e3,
+                                       burnin = 1e2,
+                                       samples = 1e2,
                                        chains = 3,
                                        silent = FALSE)
 Sys.time() - start
