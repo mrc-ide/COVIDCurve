@@ -82,11 +82,10 @@ test_that("serology likelihood accurate", {
 
 
   # truth
-  morelikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike_cubicspline(params = morelikely.paramsin,
-                                                                       param_i = 1,
-                                                                       data = datinput,
-                                                                       misc = misc_list)
-
+  morelikely <- COVIDCurve:::natcubspline_loglike(params = morelikely.paramsin,
+                                                  param_i = 1,
+                                                  data = datinput,
+                                                  misc = misc_list)
   # random
   lesslikely.paramsin <- c("r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
                            "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
@@ -95,10 +94,10 @@ test_that("serology likelihood accurate", {
                            "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 
-  lesslikely <- COVIDCurve:::NatCubic_SplineGrowth_loglike_cubicspline(params = lesslikely.paramsin,
-                                                                       param_i = 1,
-                                                                       data = datinput,
-                                                                       misc = misc_list)
+  lesslikely <- COVIDCurve:::natcubspline_loglike(params = lesslikely.paramsin,
+                                                  param_i = 1,
+                                                  data = datinput,
+                                                  misc = misc_list)
 
 
   testthat::expect_gt(object = morelikely$LogLik, expected = lesslikely$LogLik)
