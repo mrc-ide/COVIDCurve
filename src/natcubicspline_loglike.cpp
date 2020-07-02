@@ -168,7 +168,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     }
 
     // exponentiate infxn spline out of log space
-    for (int i = 0; i < infxn_spline.size(); i++) {
+    for (int i = 0; i < days_obsd; i++) {
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
@@ -182,9 +182,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     if (cum_infxn_check <= popN) {
 
       // loop through days and TOD integral
-      std::vector<double> auc(infxn_spline.size());
-      for (int i = 0; i < infxn_spline.size(); i++) {
-        for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
+      std::vector<double> auc(days_obsd);
+      for (int i = 0; i < days_obsd; i++) {
+        for (int j = i+1; j < (days_obsd + 1); j++) {
           int delta = j - i - 1;
           auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
         }
@@ -222,9 +222,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         // False is for Time-Series Calculation
         // get data in right format
         std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-        std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(stratlen));
+        std::vector<std::vector<int>> obsd(days_obsd, std::vector<int>(stratlen));
         int iter = 0;
-        for (int i = 0; i < infxn_spline.size(); i++) {
+        for (int i = 0; i < days_obsd; i++) {
           for (int j = 0; j < stratlen; j++) {
             obsd[i][j] = raw[iter];
             iter++;
@@ -232,15 +232,15 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
 
         // get exp deaths per age group
-        std::vector<std::vector<double>> expd(infxn_spline.size(), std::vector<double>(stratlen));
-        for (int  i = 0; i < infxn_spline.size(); i++) {
+        std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
+        for (int  i = 0; i < days_obsd; i++) {
           for (int a = 0; a < stratlen; a++) {
             expd[i][a] = auc[i] * ne[a] * ma[a];
           }
         }
 
         // get log-likelihood over all days
-        for (int  i = 0; i < infxn_spline.size(); i++) {
+        for (int  i = 0; i < days_obsd; i++) {
           for (int a = 0; a < stratlen; a++) {
             // a+1 to account for 1-based dates
             if ((a+1) < rcensor_day) {
