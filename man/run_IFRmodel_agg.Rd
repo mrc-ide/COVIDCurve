@@ -15,6 +15,7 @@ run_IFRmodel_agg(
   rungs = 1,
   GTI_pow = 3,
   coupling_on = TRUE,
+  cluster = NULL,
   pb_markdown = FALSE,
   silent = TRUE
 )
@@ -44,6 +45,9 @@ method.}
 
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}
+
+\item{cluster}{option to pass in a cluster environment, allowing chains to be
+run in parallel (see package "parallel").}
 
 \item{pb_markdown}{whether to run progress bars in markdown mode, meaning
 they are only updated when they reach 100% to avoid large amounts of output
