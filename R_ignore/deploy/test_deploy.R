@@ -84,11 +84,11 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.8,   10,         135,         160),
+                                min =   c(0.83,     0.8,    10,         135,         160),
                                 init =  c(0.85,     0.95,   10,         135,         160),
                                 max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     10,    5,          130,         155),
-                                dsc2 =  c(1500,     3,     15,         140,         165))
+                                dsc1 =  c(8500,     10,     2.15,       130,         155),
+                                dsc2 =  c(1500,     3,      0.05,       140,         165))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
