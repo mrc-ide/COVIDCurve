@@ -9,11 +9,7 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(object$Serotestparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Day Parameters: "), paste(object$Serodayparams, collapse = ", "), "\n")
-  cat(crayon::yellow("Model Type: "), object$level, "\n")
   cat(crayon::yellow("Total Population Size: "), object$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(object$rho, 2), collapse = ", "), "\n")
-  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), object$mod, "\n")
-  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), object$sod, "\n")
 }
 
 
@@ -28,11 +24,7 @@ print.IFRmodel <- function(x, ...){
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Parameters: "), paste(x$Serodayparams, collapse = ", "), "\n")
-  cat(crayon::yellow("Model Type: "), x$level, "\n")
   cat(crayon::yellow("Total Population Size: "), x$popN, "\n")
-  cat(crayon::yellow("Prob. of Infection Given Strata: "),  paste(round(x$rho, 2), collapse = ", "), "\n")
-  cat(crayon::yellow("Mean Delay of Onset-to-Death: "), x$mod, "\n")
-  cat(crayon::yellow("Coef. Var. Delay of Onset-to-Death: "), x$sod, "\n")
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
