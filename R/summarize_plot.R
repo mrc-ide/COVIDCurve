@@ -564,7 +564,7 @@ draw_posterior_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dw
   # out
   #......................
   ret <- list(
-    SeroPrevdata = dat,
+    SeroPrevdata = dat
   )
   return(ret)
 }
