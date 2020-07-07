@@ -173,12 +173,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double cum_infxn_check = 0.0;", n = 2)[,1]
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> infxn_spline_strata(days_obsd, std::vector<double>(stratlen));
-                            for (int i = 0; i < days_obsd; i++) {
-                              for (int a = 0; a < stratlen; a++) {
-                                infxn_spline_strata[i][a] =  ne[a] * infxn_spline[i];
-                              }
-                           }",
                            "Rcpp::List ret = Rcpp::List::create(infxn_spline_strata); return ret;}",
                            collapse = "")
   Rcpp::cppFunction(fitcurve_string)
@@ -246,15 +240,18 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
-      tidyr::unnest(cols = "infxncurves") %>%
-      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+      tidyr::unnest(cols = "infxncurves")
 
-    plotObj <- ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+    plotObj <- plotdat %>%
+      dplyr::select(., c("sim", "chain", "time", dplyr::starts_with("infxns_"))) %>%
+      tidyr::gather(., key = "Strata", value = "infxns", 4:ncol(.)) %>%
+      dplyr::mutate(Strata = sub("infxns_", "", Strata)) %>%
+      ggplot2::ggplot() +
+      ggplot2::geom_line(mapping =  ggplot2::aes(x = time, y = infxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-      ggplot2::facet_wrap(. ~ chain) +
+      ggplot2::facet_wrap(chain ~ Strata) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
@@ -286,14 +283,18 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                       IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "infxncurves")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
-      tidyr::unnest(cols = "infxncurves") %>%
-      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+      tidyr::unnest(cols = "infxncurves")
 
-    plotObj <-  ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+    plotObj <-  plotdat %>%
+      dplyr::select(., c("sim", "time", dplyr::starts_with("infxns_"))) %>%
+      tidyr::gather(., key = "Strata", value = "infxns", 3:ncol(.)) %>%
+      dplyr::mutate(Strata = sub("infxns_", "", Strata)) %>%
+      ggplot2::ggplot() +
+      ggplot2::geom_line(mapping =  ggplot2::aes(x = time, y = infxns, group = sim), alpha = 0.25,
                          lwd = 0.5, color = "#d9d9d9") +
       ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
       ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+      ggplot2::facet_wrap(. ~ Strata) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         plot.title = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
