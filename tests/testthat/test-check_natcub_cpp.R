@@ -32,12 +32,12 @@ test_that("serology likelihood accurate", {
     demog = demog,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 150,
+    curr_day = 200,
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
     sens = 0.85,
-    spec = 0.99,
+    spec = 0.95,
     sero_delay_rate = 10
   )
 
@@ -72,7 +72,7 @@ test_that("serology likelihood accurate", {
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
-                           "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
+                           "sens" = 0.85, "spec" = 0.95, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 
 
@@ -81,6 +81,8 @@ test_that("serology likelihood accurate", {
                                                   param_i = 1,
                                                   data = datinput,
                                                   misc = misc_list)
+  morelikely$LogLik
+
 
   # random
   lesslikely.paramsin <-  c("mod" = 17.8, "sod" = 0.45,

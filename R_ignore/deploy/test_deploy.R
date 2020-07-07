@@ -43,7 +43,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   simulate_seroprevalence = TRUE,
   sens = 0.85,
   spec = 0.95,
-  sero_delay_rate = 10,
+  sero_delay_rate = 10
 )
 
 obs_serology <- dat$seroprev %>%
