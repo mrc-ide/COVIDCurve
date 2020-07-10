@@ -32,12 +32,12 @@ test_that("serology likelihood accurate", {
     demog = demog,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 150,
+    curr_day = 200,
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
     sens = 0.85,
-    spec = 0.99,
+    spec = 0.95,
     sero_delay_rate = 10
   )
 
@@ -57,13 +57,7 @@ test_that("serology likelihood accurate", {
   # misc list
   days_obsd <- 150
   knots <- c(30, 60, 90, 120)
-  day <- 1:(days_obsd+1)
-  gamma_lookup <- stats::pgamma((day-1),
-                                shape = 1/0.45^2, scale = 18.8*0.45^2)
-
   misc_list = list(rho = fatalitydata$Rho,
-                   pgmms = gamma_lookup,
-                   level = FALSE,
                    popN = 5e6,
                    rcensor_day = .Machine$integer.max,
                    days_obsd = days_obsd,
@@ -73,11 +67,12 @@ test_that("serology likelihood accurate", {
 
   # liftover to Rcpp list
 
-  morelikely.paramsin <- c("r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
+  morelikely.paramsin <- c("mod" = 17.8, "sod" = 0.45,
+                           "r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
-                           "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
+                           "sens" = 0.85, "spec" = 0.95, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 
 
@@ -86,13 +81,17 @@ test_that("serology likelihood accurate", {
                                                   param_i = 1,
                                                   data = datinput,
                                                   misc = misc_list)
+  morelikely$LogLik
+
+
   # random
-  lesslikely.paramsin <- c("r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
-                           "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
-                           "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
-                           "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
-                           "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
-                           "sero_day1" = 110, "sero_day2" = 135)
+  lesslikely.paramsin <-  c("mod" = 17.8, "sod" = 0.45,
+                            "r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
+                            "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
+                            "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
+                            "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
+                            "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
+                            "sero_day1" = 110, "sero_day2" = 135)
 
   lesslikely <- COVIDCurve:::natcubspline_loglike(params = lesslikely.paramsin,
                                                   param_i = 1,
