@@ -14,7 +14,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   # setup
   #..................
   paramdf <- IFRmodel$paramdf
-  IFRparams <- paramdf[paramdf$name %in% IFRmodel$IFRparams, ]
+  IFRparam <- paramdf[paramdf$name %in% IFRmodel$IFRparam, ]
   Knotparams <- paramdf[paramdf$name %in% IFRmodel$Knotparams, ]
   Infxnparams <- paramdf[paramdf$name %in% IFRmodel$Infxnparams, ]
   Serodayparams <- paramdf[paramdf$name %in% IFRmodel$Serodayparams, ]
@@ -40,14 +40,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
     infxnscalars <- Infxnparams$name[Infxnparams$name != relInfxn]
   }
 
-  if (reparamIFR) {
-    #..................
-    # account for IFR reparam
-    #..................
-    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
-    maxMa <- IFRmodel$maxMa
-    ifrscalars <- IFRparams$name[IFRparams$name != maxMa]
-  }
 
   #..................
   # priors for knots -- Xpos
@@ -72,15 +64,15 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   }, param = Infxnparams$name, d1 = Infxnparams$dsc1, d2 = Infxnparams$dsc2)
 
   #..................
-  # priors for IFRparams
+  # priors for IFRparam
   #..................
-  IFRextractparams <- sapply(IFRparams$name, function(param){
+  IFRextractparams <- sapply(IFRparam$name, function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
 
   makeifrpriors <- mapply(function(param, d1, d2){
     paste0("R::dunif(",param, ",", d1, ",", d2, ",", "true) +")
-  }, param = IFRparams$name, d1 = IFRparams$dsc1, d2 = IFRparams$dsc2)
+  }, param = IFRparam$name, d1 = IFRparam$dsc1, d2 = IFRparam$dsc2)
 
 
   #..................
@@ -233,7 +225,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   paramdf <- IFRmodel$paramdf
   Knotparams <- IFRmodel$Knotparams
   Infxnparams <- IFRmodel$Infxnparams
-  IFRparams <- IFRmodel$IFRparams
+  IFRparam <- IFRmodel$IFRparam
   Noiseparams <- IFRmodel$Noiseparams
 
   #..................
@@ -244,7 +236,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # extract inputs that are potentially going to be recast or are TOD params
   #..................
-  params <- sapply(paramdf$name[!paramdf$name %in% Noiseparams], function(param){
+  params <- sapply(paramdf$name[!paramdf$name %in% c(Noiseparams, IFRparam)], function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
   #......................
@@ -281,7 +273,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # storage items
   #..................
-  storageitems <- "std::vector<double>ma(stratlen); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
+  storageitems <- "std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
 
   #..................
   # liftover knotreparam vars for Knots -- Infxn Xpositions
@@ -343,29 +335,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # liftover ifrreparam vars to Mas
   #.................
-  if (reparamIFR) {
-    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
-    ifrparamdf <- paramdf[paramdf$name %in% IFRparams, ]
-    maxMa <- IFRmodel$maxMa
-    ifrscalars <- ifrparamdf$name[ifrparamdf$name != maxMa]
-    mavec <- rep(NA, length(IFRparams))
-    # determine which relative position in our ma vector
-    mamax_pos <- which(maxMa == IFRparams)
-    ma_counter <- 1
-    for (i in 1:length(mavec)) {
-      if (i == mamax_pos) {
-        mavec[i] <- paste0("ma[", i-1, "] = ", maxMa, ";")
-      } else {
-        mavec[i] <- paste0("ma[", i-1, "] = ", ifrscalars[ma_counter], "*", maxMa, ";")
-        ma_counter <- ma_counter + 1
-      }
-    }
-  } else {
-    mavec <- rep(NA, length(IFRparams))
-    for (i in 1:length(IFRparams)){
-      mavec[i] <- paste0("ma[", i-1, "]", " = ", IFRparams[i], ";")
-    }
-  }
+    mavec <- paste0("double ma", " = params[\"", IFRparam, "\"];")
 
   #..................
   # get loglike

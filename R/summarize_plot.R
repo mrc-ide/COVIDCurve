@@ -4,7 +4,7 @@
 
 summary.IFRmodel <- function(object, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(object$IFRparams, collapse = ", "), "\n")
+  cat(crayon::green("IFR strata params: "), paste(object$IFRparam, collapse = ", "), "\n")
   cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(object$Serotestparams, collapse = ", "), "\n")
@@ -19,7 +19,7 @@ summary.IFRmodel <- function(object, ...){
 
 print.IFRmodel <- function(x, ...){
   cat(crayon::cyan("*~*~*~*~ IFR Inference Model ~*~*~*~*\n"))
-  cat(crayon::green("IFR strata params: "), paste(x$IFRparams, collapse = ", "), "\n")
+  cat(crayon::green("IFR strata params: "), paste(x$IFRparam, collapse = ", "), "\n")
   cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
@@ -29,7 +29,7 @@ print.IFRmodel <- function(x, ...){
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
 #' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Serodayparams"
+#' @param what character; Specify which parameters you want: "IFRparam", "Infxnparams", "Serotestparams", or "Serodayparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
@@ -39,20 +39,20 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams"))
+  assert_in(what, c("IFRparam", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
   # grouping vars
   switch(paste0(what, "-", by_chain),
 
-         "IFRparams-TRUE"={
+         "IFRparam-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$IFRparam)
          },
-         "IFRparams-FALSE"={
+         "IFRparam-FALSE"={
            groupingvar <- "param"
-           params <-  c("iteration", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+           params <-  c("iteration", IFRmodel_inf$inputs$IFRmodel$IFRparam)
          },
 
          "Knotparams-TRUE"={
@@ -203,7 +203,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   cpp_function_wrapper <- function(params, data, misc) {
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
-                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                                IFRmodel_inf$inputs$IFRmodel$IFRparam,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -224,7 +224,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
       do.call("rbind.data.frame", .)
 
     # out
-    colnames(infxns) <- paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+    colnames(infxns) <- paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
     ret <- cbind.data.frame(time = 1:nrow(infxns),
                             infxns)
     return(ret)
@@ -244,7 +244,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
       dplyr::select(c("chain",
                       IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -286,7 +286,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
     plotdat <- mcmcout.nodes %>%
       dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -393,14 +393,14 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   draw_post_deaths_wrapper <- function(postdatsim,
                                        IFRmodel_inf){
     # run cpp function
-    exp_death_day_strata <- get_post_deaths(infxns = unlist(postdatsim[, paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparams)]),
-                                            ifr = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams])),
+    exp_death_day_strata <- get_post_deaths(infxns = unlist(postdatsim[, paste0("infxns_", IFRmodel_inf$inputs$IFRmodel$IFRparam)]),
+                                            ifr = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparam])),
                                             mod = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$modparam])),
                                             sod = unlist(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$sodparam])),
-                                            stratlen = length(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparams])),
+                                            stratlen = length(unique(postdatsim[, IFRmodel_inf$inputs$IFRmodel$IFRparam])),
                                             daylen = IFRmodel_inf$inputs$IFRmodel$maxObsDay)[[1]] %>%
       do.call("rbind.data.frame", .) %>%
-      magrittr::set_colnames(paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      magrittr::set_colnames(paste0("deaths_", IFRmodel_inf$inputs$IFRmodel$IFRparam)) %>%
       dplyr::mutate(time = 1:nrow(.)) %>%
       dplyr::select(c("time", dplyr::everything()))
     # out
@@ -411,7 +411,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   # Run draw post deaths for each simulation iteration
   #......................
   postdat.curves <- postdat %>%
-    dplyr::select("sim", IFRmodel_inf$inputs$IFRmodel$IFRparams) %>%
+    dplyr::select("sim", IFRmodel_inf$inputs$IFRmodel$IFRparam) %>%
     dplyr::filter(!duplicated(.)) %>%
     dplyr::mutate(
       post_deaths = purrr::map(.x = postdat.sims,
@@ -506,7 +506,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
   cpp_function_wrapper <- function(params, data, misc) {
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
-                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                                IFRmodel_inf$inputs$IFRmodel$IFRparam,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -524,7 +524,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
     seroprev <- seroprev_strata %>%
       do.call("rbind.data.frame", .)
 
-    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparam)
     ret <- cbind.data.frame(SeroDay = IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                             seroprev)
     return(ret)
@@ -544,7 +544,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
       dplyr::select(c("chain",
                       IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -562,7 +562,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
     dat <- mcmcout.nodes %>%
       dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -662,7 +662,7 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
   cpp_function_wrapper <- function(params, data, misc) {
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
-                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                                IFRmodel_inf$inputs$IFRmodel$IFRparam,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -680,7 +680,7 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
     seroprev <- seroprev_strata %>%
       do.call("rbind.data.frame", .)
 
-    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparam)
     ret <- cbind.data.frame(SeroDay = IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                             seroprev)
     return(ret)
@@ -700,7 +700,7 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
       dplyr::select(c("chain",
                       IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
@@ -718,7 +718,7 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
     dat <- mcmcout.nodes %>%
       dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
                       IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                      IFRmodel_inf$inputs$IFRmodel$IFRparam,
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,

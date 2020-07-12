@@ -35,7 +35,7 @@ sero_days <- c(135, 160)
 dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
-  m_od = 18.8,
+  m_od = 17.8,
   s_od = 0.45,
   curr_day = 200,
   level = "Time-Series",
@@ -98,9 +98,9 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  dsc2 = rep(10, 3))
 
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
-                               min  = c(10,    0.01),
-                               init = c(18,    0.45),
-                               max =  c(25,    1.00),
+                               min  = c(15,    0.01),
+                               init = c(17.8,    0.45),
+                               max =  c(20,    1.00),
                                dsc1 = c(2.9,   -0.78),
                                dsc2 = c(0.05,   0.05))
 
@@ -137,19 +137,20 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        burnin = 1e3,
                                        samples = 1e3,
                                        chains = 3,
+                                       rungs = 10,
+                                       GTI_pow = 3,
                                        silent = FALSE)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "IFRparams", by_chain = F))
-plot_par(modout$mcmcout, "sero_day1")
+                                       what = "IFRparam", by_chain = F))
 
-plot_par(modout$mcmcout, "ma1", rung = 1)
-plot_par(modout$mcmcout, "ma2", rung = 1)
-plot_par(modout$mcmcout, "ma3", rung = 1)
+plot_par(modout$mcmcout, "ma", rung = 1)
+plot_par(modout$mcmcout, "ne1", rung = 1)
+plot_par(modout$mcmcout, "ne2", rung = 1)
+plot_par(modout$mcmcout, "ne3", rung = 1)
 plot_par(modout$mcmcout, "sens")
 plot_par(modout$mcmcout, "spec")
-plot_par(modout$mcmcout, "sero_day")
 plot_par(modout$mcmcout, "y1", rung = 1)
 plot_par(modout$mcmcout, "y2", rung = 1)
 plot_par(modout$mcmcout, "y3", rung = 1)
@@ -159,9 +160,7 @@ plot_par(modout$mcmcout, "x1", rung = 1)
 plot_par(modout$mcmcout, "x2", rung = 1)
 plot_par(modout$mcmcout, "x3", rung = 1)
 plot_par(modout$mcmcout, "x4", rung = 1)
-plot_par(modout$mcmcout, "ne1", rung = 1)
-plot_par(modout$mcmcout, "ne2", rung = 1)
-plot_par(modout$mcmcout, "ne3", rung = 1)
+
 
 summary(modout$mcmcout$output$loglikelihood)
 summary(modout$mcmcout$output$logprior)
@@ -198,22 +197,23 @@ summary(rung9)
 
 curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
                                                         whichrung = paste0("rung", 1),
-                                                        by_chain = T,
+                                                        by_chain = F,
                                                         dwnsmpl = 1e3)
 # plot out
-jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
-liftover <- data.frame(param = c("ma1", "ma2", "ma3"),
-                       Strata = c("ma1", "ma2", "ma3"))
+jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 
-fatalitydataplot <- fatalitydata %>%
-  dplyr::left_join(liftover, ., by = "Strata")
+serodataplot <- sero_paramsdf %>%
+  dplyr::select(c("name", "init")) %>%
+  dplyr::filter(!grepl("sero_day", name)) %>%
+  dplyr::rename(param = name,
+                est = init) %>%
+  dplyr::left_join(., y = sero, by = "param")
 
 plot1 <- ggplot() +
-  geom_pointrange(data = ifr, aes(x = param, ymin = LCI, ymax = UCI, y = median, color = param)) +
-  geom_hline(data = fatalitydataplot, aes(yintercept  = IFR, group = param), color = "#3182bd", linetype = "dashed", size = 1.1) +
-  facet_wrap(.~param) +
-  scale_color_viridis_d() +
+  geom_pointrange(data = sero, aes(x = param, ymin = LCI, ymax = UCI, y = median, color = param), color = "#000000") +
+  geom_hline(data = serodataplot, aes(yintercept  = est, group = param), color = "#3182bd", linetype = "dashed", size = 1.1) +
+  facet_wrap(.~param, scales = "free") +
   theme_bw()
 
 plot2 <- curve$plotObj +
@@ -221,6 +221,12 @@ plot2 <- curve$plotObj +
 
 cowplot::plot_grid(plot1, plot2, ncol = 1, nrow = 2)
 
+graphics.off()
+
+
+jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
+curve$plotObj +
+  geom_line(data = infxns, aes(x = time, y = infxns), color = "#3182bd")
 graphics.off()
 
 

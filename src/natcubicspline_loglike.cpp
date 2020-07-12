@@ -38,10 +38,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double y3 = params["y3"];
   double y4 = params["y4"];
   double y5 = params["y5"];
-  // extract IFR parameters
-  double ma3 = params["ma3"];
-  double ma2 = params["r2"];
-  double ma1 = params["r1"];
+  // extract IFR parameter
+  double ma = params["ma"];
   // extract noise parameters
   double ne1 = params["ne1"];
   double ne2 = params["ne2"];
@@ -52,7 +50,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
   // storage items
   int stratlen = rho.size();
-  std::vector<double>ma(stratlen);
   std::vector<double>ne(stratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
@@ -67,9 +64,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   node_y[2] = y3;
   node_y[3] = y4;
   node_y[4] = y5;
-  ma[0] = ma1;
-  ma[1] = ma2;
-  ma[2] = ma3;
   ne[0] = ne1;
   ne[1] = ne1 * ne2;
   ne[2] = ne1 * ne3;
@@ -214,7 +208,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
       for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
-          expd[i][a] = auc[i] * ne[a] * ma[a];
+          expd[i][a] = auc[i] * ne[a] * ma;
         }
       }
 

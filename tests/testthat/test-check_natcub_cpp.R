@@ -32,7 +32,7 @@ test_that("serology likelihood accurate", {
     demog = demog,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 200,
+    curr_day = 150,
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
@@ -68,7 +68,7 @@ test_that("serology likelihood accurate", {
   # liftover to Rcpp list
 
   morelikely.paramsin <- c("mod" = 17.8, "sod" = 0.45,
-                           "r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
+                           "ma" = 0.5,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,

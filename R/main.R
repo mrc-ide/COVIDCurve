@@ -27,7 +27,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_logical(pb_markdown)
   assert_logical(silent)
   assert_non_null(IFRmodel$data)
-  assert_non_null(IFRmodel$IFRparams)
+  assert_non_null(IFRmodel$IFRparam)
   assert_non_null(IFRmodel$Infxnparams)
   assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
@@ -39,15 +39,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$sodparam)
   assert_non_null(IFRmodel$maxObsDay)
   assert_non_null(IFRmodel$demog)
-  assert_eq(as.character(IFRmodel$demog$Strata),
-            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
-            message = "Strata within the demography data-frame must be in the same order as the strata in the observed deaths data frame")
-  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
-            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
-            message = "Strata within the observed serology data-frame must be in the same order as the strata in the observed deaths data frame")
-  assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
-            as.character(IFRmodel$demog$Strata),
-            message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
 
   #............................................................
   # "Warm-Up" MCMC
