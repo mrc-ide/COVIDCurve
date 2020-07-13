@@ -32,7 +32,7 @@ test_that("serology likelihood accurate", {
     demog = demog,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 200,
+    curr_day = 150,
     level = "Time-Series",
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,

@@ -299,12 +299,5 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik);
-  // Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik,
-  //                                     Rcpp::Named("sero_con_num") = sero_con_num,
-  //                                     Rcpp::Named("death_loglik") = death_loglik,
-  //                                     Rcpp::Named("sero_loglik") = sero_loglik,
-  //                                     Rcpp::Named("LogLik") = loglik,
-  //                                     Rcpp::Named("agefat") = ma,
-  //                                     Rcpp::Named("infxn_spline") = infxn_spline);
   return ret;
 }
