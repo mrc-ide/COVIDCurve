@@ -39,7 +39,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams", "TODparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -98,6 +98,15 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Noiseparams-FALSE"={
            groupingvar <- "param"
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
+         },
+
+         "TODparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
+         },
+         "TODparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("iteration", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
          }
   )
 
