@@ -174,15 +174,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
 
-  # reparam Ne
-  if (length(IFRmodel$Noiseparams) > 1) {
-    liftovercols <- colnames(mcmcout$output) %in% IFRmodel$Noiseparams[2:length(IFRmodel$Noiseparams)]
-    liftovercols.list <- mcmcout$output[, liftovercols]
-    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, IFRmodel$Noiseparams[1]]})
-  }
-
-
 
   # store input along with Dr.Jacoby output for later use
   inputs <- list(
