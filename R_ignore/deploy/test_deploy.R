@@ -35,10 +35,9 @@ sero_days <- c(135, 160)
 dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
-  m_od = 18.8,
-  s_od = 0.45,
+  m_od = 14.2,
+  s_od = 0.79,
   curr_day = 200,
-  level = "Time-Series",
   infections = infxns$infxns,
   simulate_seroprevalence = TRUE,
   sens = 0.85,
@@ -84,11 +83,11 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.8,    10,         135,         160),
-                                init =  c(0.85,     0.95,   10,         135,         160),
-                                max =   c(0.87,     1.00,   10,         135,         160),
-                                dsc1 =  c(8500,     10,     2.15,       130,         155),
-                                dsc2 =  c(1500,     3,      0.05,       140,         165))
+                                min =   c(0.83,     0.8,    0,           135,         160),
+                                init =  c(0.85,     0.95,   0.5,         135,         160),
+                                max =   c(0.87,     1.00,   1,           135,         160),
+                                dsc1 =  c(8500,     10,     50,          130,         155),
+                                dsc2 =  c(1500,     3,      50,          140,         165))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -137,12 +136,14 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamKnot = TRUE,
                                        burnin = 1e3,
                                        samples = 1e3,
-                                       chains = 3,
+                                       chains = 1,
                                        silent = FALSE)
 Sys.time() - start
 modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
+(sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
+                                       what = "Serotestparams", by_chain = F))
 plot_par(modout$mcmcout, "sero_day1")
 
 plot_par(modout$mcmcout, "ma1", rung = 1)
@@ -150,7 +151,10 @@ plot_par(modout$mcmcout, "ma2", rung = 1)
 plot_par(modout$mcmcout, "ma3", rung = 1)
 plot_par(modout$mcmcout, "sens")
 plot_par(modout$mcmcout, "spec")
-plot_par(modout$mcmcout, "sero_day")
+plot_par(modout$mcmcout, "mod")
+plot_par(modout$mcmcout, "sero_rate")
+plot_par(modout$mcmcout, "sero_day1")
+plot_par(modout$mcmcout, "sero_day2")
 plot_par(modout$mcmcout, "y1", rung = 1)
 plot_par(modout$mcmcout, "y2", rung = 1)
 plot_par(modout$mcmcout, "y3", rung = 1)
@@ -175,6 +179,9 @@ plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
 
 plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
 plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
+plot_cor(modout$mcmcout, "ma1", "ma3", rung = 1)
+
+
 
 plot_mc_acceptance(modout$mcmcout)
 drjacoby::plot_rung_loglike(modout$mcmcout)

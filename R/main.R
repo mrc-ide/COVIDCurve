@@ -174,6 +174,10 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
 
+  #......................
+  # reparameterize sero_rate
+  #......................
+  mcmcout$output$sero_rate <- mcmcout$output[, IFRmodel$modparam] * mcmcout$output$sero_rate
 
   # store input along with Dr.Jacoby output for later use
   inputs <- list(
