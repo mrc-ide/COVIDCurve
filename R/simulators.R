@@ -32,9 +32,9 @@ sim_seroprev <- function(seroinfxns,
 
   # draw time to seroconversion
   draw_tosc <- function(day, sero_delay_rate){
-    as.numeric(day) + stats::rexp(n = 1, rate = sero_delay_rate)
+    as.numeric(day) + stats::rexp(n = 1, rate = 1/sero_delay_rate)
   }
-  sero_line_list$tosc <- sapply(sero_line_list$ObsDay, draw_tosc, sero_delay_rate = 1/sero_delay_rate)
+  sero_line_list$tosc <- sapply(sero_line_list$ObsDay, draw_tosc, sero_delay_rate = sero_delay_rate)
 
   #..................
   # Tidy up so that we observe deaths on a daily time step
@@ -70,7 +70,7 @@ sim_seroprev <- function(seroinfxns,
 #' @importFrom magrittr %>%
 #' @export
 
-Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 18.8, s_od = 0.45,
+Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0.79,
                                  min_day = 1, curr_day,
                                  simulate_seroprevalence = TRUE,
                                  spec, sens, demog, sero_delay_rate){
