@@ -210,11 +210,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
-
     # run efficient cpp code
     infxns <- loglike(params = paramsin,
                       param_i = 1,
@@ -512,10 +507,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
+
 
     seroprev_strata <- loglike(params = paramsin,
                                param_i = 1,
@@ -668,10 +660,6 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
 
     seroprev_strata <- loglike(params = paramsin,
                                param_i = 1,
