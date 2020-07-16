@@ -71,8 +71,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   ma[1] = ma2;
   ma[2] = ma3;
   ne[0] = ne1;
-  ne[1] = ne1 * ne2;
-  ne[2] = ne1 * ne3;
+  ne[1] = ne2;
+  ne[2] = ne3;
 
   //........................................................
   // Lookup Items
@@ -237,14 +237,14 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       // days are 1-based
       std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
       for (int i = 0; i < n_sero_obs; i++) {
+        // get cumulative hazard for each study date
+        std::vector<double> cum_hazard(sero_day[i]);
+        for (int d = 0; d < sero_day[i]; d++) {
+          cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+        }
+        // loop through and split infection curve by strata and by number of seroconversion study dates
         for (int j = 0; j < stratlen; j++) {
-          // get cumulative hazard for each study date
-          std::vector<double> cum_hazard(sero_day[i]);
-          cum_hazard[0] = 0.0;
-          for (int d = 1; d < sero_day[i]; d++) {
-            cum_hazard[d] = (1-exp((-d/sero_rate)));
-          }
-          // loop through and split infection curve by strata and by number of seroconversion study dates
+          // go to the "end" of the day
           for (int d = 0; d < sero_day[i]; d++) {
             int time_elapsed = sero_day[i] - d - 1;
             sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
@@ -289,12 +289,5 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik);
-  // Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik,
-  //                                     Rcpp::Named("sero_con_num") = sero_con_num,
-  //                                     Rcpp::Named("death_loglik") = death_loglik,
-  //                                     Rcpp::Named("sero_loglik") = sero_loglik,
-  //                                     Rcpp::Named("LogLik") = loglik,
-  //                                     Rcpp::Named("agefat") = ma,
-  //                                     Rcpp::Named("infxn_spline") = infxn_spline);
   return ret;
 }
