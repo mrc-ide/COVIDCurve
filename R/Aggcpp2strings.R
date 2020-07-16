@@ -103,7 +103,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   })
 
   makeSerotestpriors <- c(
-    paste0("R::dlnorm(sero_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rate"], ", true) +"),
+    paste0("R::dbeta(sero_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rate"], ", true) +"),
     paste0("R::dbeta(sens,", Serotestparams$dsc1[Serotestparams$name == "sens"], ",", Serotestparams$dsc2[Serotestparams$name == "sens"], ", true) +"),
     paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +")
   )
@@ -141,45 +141,52 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "TRUE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(knotscalars), "*log(", relKnot, ");"))
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "TRUE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "FALSE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "TRUE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ");"))
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "FALSE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(knotscalars), "*log(", relKnot, ");"))
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "FALSE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ");"))
          },
 
          "FALSE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, maketodpriors, makenoisepriors)
-           priors[length(priors)] <- sub("\\) \\+$", ");", priors[length(priors)]) # trailing + sign to blank
+           priors <- c(priors, paste0("log(", IFRmodel$modparam, ");"))
          },
 
          {
@@ -259,6 +266,10 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   serolftovr <- "for (int i = 0; i < n_sero_obs; i++) {sero_day[i] =  std::floor(sero_day_raw[i]);}"
   # bring together
   serolftovr <- c(serodayitems, serorawvector, serolftovr)
+  #......................
+  # liftover mean offset (gamma) for sero rate (exp)
+  #......................
+  seroratelftovr <- paste0("sero_rate = sero_rate * ", IFRmodel$modparam)
 
   #..................
   # storage items
@@ -367,6 +378,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
            params,
            noisevec,
            serolftovr,
+           seroratelftovr,
            storageitems,
            node_xvec,
            node_yvec,
