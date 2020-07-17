@@ -39,7 +39,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams", "TODparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -98,6 +98,15 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Noiseparams-FALSE"={
            groupingvar <- "param"
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
+         },
+
+         "TODparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
+         },
+         "TODparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("iteration", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
          }
   )
 
@@ -209,11 +218,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
 
     # run efficient cpp code
     infxns <- loglike(params = paramsin,
@@ -512,10 +516,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
+
 
     seroprev_strata <- loglike(params = paramsin,
                                param_i = 1,
@@ -580,14 +581,14 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
 }
 
 
-#' @title Draw the Inferred Seroprevalnces Before Adjusting for Specificity and Sensitivity with the Rogan-Gladen Estimator
+#' ' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
 #' @importFrom magrittr %>%
 #' @export
 
-draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl, by_chain = TRUE) {
+draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl, by_chain = TRUE) {
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
@@ -630,15 +631,36 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_replace(fitcurve_curve, "if \\(cum_infxn_check <= popN\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double sero_loglik = 0.0;", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<std::vector<double>> sero_con_num\\(n_sero_obs, std::vector<double>\\(stratlen\\)\\);", n = 2)[,1]
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> inf_prev_mat(n_sero_obs, std::vector<double>(stratlen));
-                            for (int i = 0; i < n_sero_obs; i++) {
+                           "std::vector<std::vector<double>> full_sero_con_num(days_obsd, std::vector<double>(stratlen));
+                            std::vector<std::vector<double>> RGfull_sero_con_num(days_obsd, std::vector<double>(stratlen));
+                            // get cumulative hazard for study period
+                            std::vector<double> cum_hazard(days_obsd);
+                            for (int d = 0; d < days_obsd; d++) {
+                              cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+                            }
+
+                            for (int i = 0; i < days_obsd; i++) {
                               for (int j = 0; j < stratlen; j++) {
-                                inf_prev_mat[i][j] = (sero_con_num[i][j]/demog[j]);
+                                // loop through and split infection curve by strata and by number of seroconversion study period
+                                // note this cumulative, so loop through previous days
+                                for (int d = 0; d < days_obsd; d++) {
+                                  int time_elapsed = days_obsd - d - 1;
+                                  full_sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+                                }
+                              }
+                            }
+
+                            // correct for spec/sens
+                            for (int i = 0; i < days_obsd; i++) {
+                              for (int j = 0; j < stratlen; j++) {
+                                // Rogan-Gladen Estimator
+                                double obs_prev = (full_sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
+                                RGfull_sero_con_num[i][j] = round(obs_prev * demog[j]);
                               }
                             }",
-                           "Rcpp::List ret = Rcpp::List::create(inf_prev_mat); return ret;}",
+                           "Rcpp::List ret = Rcpp::List::create(full_sero_con_num,  RGfull_sero_con_num); return ret;}",
                            collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
@@ -668,21 +690,27 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-    # need to reparameterize the noiseparams which are always reparameterized (can't fix in FALSE)
-    reparamNe <- paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ]
-    reparamNe <- reparamNe/paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[1] ]
-    paramsin[ IFRmodel_inf$inputs$IFRmodel$Noiseparams[2:length(IFRmodel_inf$inputs$IFRmodel$Noiseparams)] ] <- reparamNe
 
-    seroprev_strata <- loglike(params = paramsin,
-                               param_i = 1,
-                               data = datin,
-                               misc = misc_list)[[1]]
-    seroprev <- seroprev_strata %>%
-      do.call("rbind.data.frame", .)
+    seroprev_lists <- loglike(params = paramsin,
+                              param_i = 1,
+                              data = datin,
+                              misc = misc_list)
 
-    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
-    ret <- cbind.data.frame(SeroDay = IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                            seroprev)
+    inf_sero_con_num <- seroprev_lists[[1]] %>%
+      do.call("rbind.data.frame", .) %>%
+      magrittr::set_colnames(paste0("inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
+      dplyr::select(c("ObsDay", dplyr::everything()))
+
+    RG_sero_con_num <- seroprev_lists[[2]] %>%
+      do.call("rbind.data.frame", .) %>%
+      magrittr::set_colnames(paste0("RG_inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
+      dplyr::select(c("ObsDay", dplyr::everything()))
+
+
+    ret <- list(inf_sero_con_num = inf_sero_con_num,
+                RG_sero_con_num = RG_sero_con_num)
     return(ret)
 
   }
@@ -734,9 +762,3 @@ draw_posterior_inferred_seroprevalences <- function(IFRmodel_inf, whichrung = "r
   #......................
   return(dat)
 }
-
-
-
-
-
-

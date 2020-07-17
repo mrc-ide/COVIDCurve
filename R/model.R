@@ -267,7 +267,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        stop("Must specify IFR parameters before specifying data")
                                      }
                                      assert_list(val)
-                                     assert_eq(names(val), c("obs_deaths", "obs_serology"))
+                                     assert_in(names(val), c("obs_deaths", "obs_serology"))
                                      assert_dataframe(val$obs_deaths)
                                      assert_in(x = c("Strata", "ObsDay", "Deaths"), y = colnames(val$obs_deaths))
                                      assert_numeric(val$obs_deaths$ObsDay)

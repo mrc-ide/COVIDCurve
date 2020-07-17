@@ -11,13 +11,12 @@ test_that("serology likelihood accurate", {
   infxns$infxns <- sig(timevec) * 5e3 + runif(n = nrow(infxns),
                                               min = -25,
                                               max = 50)
-  sum(infxns$infxns < 0)
 
   # make up fatality data
   fatalitydata <- data.frame(Strata = c("ma1", "ma2", "ma3"),
                              IFR = c(0.05, 0.2, 0.5),
-                             Rho = c(0.4, 0.4, 0.2),
-                             Ne = c(0.1, 0.4, 0.5))
+                             Rho = c(1, 1, 1),
+                             Ne = c(1, 1, 1))
   # make up demography data
   demog <- data.frame(Strata = c("ma1", "ma2", "ma3"),
                       popN = c(1500000, 2250000, 1250000))
@@ -32,8 +31,7 @@ test_that("serology likelihood accurate", {
     demog = demog,
     m_od = 18.8,
     s_od = 0.45,
-    curr_day = 200,
-    level = "Time-Series",
+    curr_day = 150,
     infections = infxns$infxns,
     simulate_seroprevalence = TRUE,
     sens = 0.85,
@@ -71,7 +69,7 @@ test_that("serology likelihood accurate", {
                            "r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
-                           "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
+                           "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
                            "sens" = 0.85, "spec" = 0.95, "sero_rate" = 10,
                            "sero_day1" = 110, "sero_day2" = 135)
 
@@ -81,7 +79,6 @@ test_that("serology likelihood accurate", {
                                                   param_i = 1,
                                                   data = datinput,
                                                   misc = misc_list)
-  morelikely$LogLik
 
 
   # random
