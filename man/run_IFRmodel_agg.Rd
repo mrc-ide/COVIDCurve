@@ -9,6 +9,7 @@ run_IFRmodel_agg(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
+  reparamSpec = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
@@ -28,6 +29,8 @@ run_IFRmodel_agg(
 \item{reparamInfxn}{logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately}
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately}
+
+\item{reparamSpec}{logical; Whether Specificity should be reparameterized or inferred seperately. It is inferred relative to the MaxMa, and thus the user must also reparameterize the IFRs to consider this option}
 
 \item{burnin}{the number of burn-in iterations.}
 
@@ -60,4 +63,6 @@ Run Aggregate Model
 }
 \details{
 Wraps the Metropolic-Coupled MCMC Framework from Dr. Jacoby
+
+Within the model fitting, the mean delay of seroconversion is always considered as a scale of the mean delay of the onset-to-death for the gamma distribution
 }

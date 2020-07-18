@@ -5,9 +5,11 @@
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
+#' @param reparamSpec logical; Whether Specificity should be reparameterized or inferred seperately. It is inferred relative to the MaxMa, and thus the user must also reparameterize the IFRs to consider this option
+#' @details Within the model fitting, the mean delay of seroconversion is always considered as a scale of the mean delay of the onset-to-death for the gamma distribution
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
+run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSpec = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -87,8 +89,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSpec = reparamSpec)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSpec = reparamSpec)
 
   #..................
   # make misc
@@ -131,6 +133,14 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                                 silent = silent,
                                 cluster = cluster
   )
+
+  if (reparamSpec) { # need this before potential reparam IFR since maxMa is affected
+    #..................
+    # account for potential reparam of MaxMa from Spec
+    #..................
+    maxMa <- IFRmodel$maxMa
+    mcmcout$output[, maxMa] <- mcmcout$output[, maxMa] * (1/mcmcout$output[, "spec"]) # user has to name this spec
+  }
 
   if (reparamIFR) {
     #..................
@@ -185,6 +195,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     reparamIFR = reparamIFR,
     reparamInfxn = reparamInfxn,
     reparamKnots = reparamKnots,
+    reparamSpec = reparamSpec,
     burnin = burnin,
     samples = samples,
     chains = chains)

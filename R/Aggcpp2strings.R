@@ -145,9 +145,10 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn, "-", reparamSpec), # reparatmerization of specificity is relative to the maxMA as well
          "TRUE-TRUE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars) + 1, "*log(", maxMa, ") +"),
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       "log(1/spec) +",
                        paste0("log(", IFRmodel$modparam, ");"))
          },
 
@@ -175,8 +176,9 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
          "TRUE-FALSE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars)+1, "*log(", maxMa, ") +"),
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       "log(1/spec) +",
                        paste0("log(", IFRmodel$modparam, ");"))
          },
 
@@ -189,7 +191,8 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
          "TRUE-FALSE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars)+1, "*log(", maxMa, ") +"),
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       "log(1/spec) +",
                        paste0("log(", IFRmodel$modparam, ");"))
          },
 
@@ -202,8 +205,9 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
          "TRUE-TRUE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars)+1, "*log(", maxMa, ") +"),
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       "log(1/spec) +",
                        paste0("log(", IFRmodel$modparam, ");"))
          },
 
@@ -436,7 +440,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   # liftover specificity
   #......................
   if (reparamSpec) {
-    specreparam <- paste0("spec = spec *", maxMa, ";")
+    specreparam <- paste0(maxMa, " = 1/spec *", maxMa, ";")
   } else {
     specreparam <- ""
   }
@@ -463,8 +467,8 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
            storageitems,
            node_xvec,
            node_yvec,
+           specreparam, # must be before mavec to account for potential reparam/scalar of Ma relative to Spec
            mavec,
-           specreparam,
            loglike,
            "return Rcpp::wrap(loglik);",
            "}"

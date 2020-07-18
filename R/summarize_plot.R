@@ -128,8 +128,14 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
     )
 }
 
+#' @title Log-Sum-Exp trick
+#' @param logpost numeric; log-posterior
+#' @noRD
+#' @export
 
-
+convert_post_probs <- function(logpost) {
+  exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
+}
 
 #' @title Draw posterior results from the Infection Curve (Cubic Spline)
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
@@ -156,10 +162,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
   probs <- convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
@@ -175,7 +177,8 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE,
+                                                        reparamSpec = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -453,10 +456,6 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
   probs <- convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
@@ -472,7 +471,8 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE,
+                                                        reparamSpec = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -581,7 +581,7 @@ draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = 
 }
 
 
-#' ' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
+#' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
@@ -606,10 +606,6 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
   probs <- convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
@@ -625,7 +621,8 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE,
+                                                        reparamSpec = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)

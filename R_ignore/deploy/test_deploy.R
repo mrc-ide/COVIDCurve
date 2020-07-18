@@ -35,7 +35,7 @@ sero_days <- c(135, 160)
 dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
-  m_od = 14.2,
+  m_od = 14.26,
   s_od = 0.79,
   curr_day = 200,
   infections = infxns$infxns,
@@ -84,10 +84,10 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
                                 min =   c(0.83,     0.8,    0,           135,         160),
-                                init =  c(0.85,     0.95,   0.5,         135,         160),
+                                init =  c(0.85,     0.95,   0.7,         135,         160),
                                 max =   c(0.87,     1.00,   1,           135,         160),
-                                dsc1 =  c(8500,     10,     50,          130,         155),
-                                dsc2 =  c(1500,     3,      50,          140,         165))
+                                dsc1 =  c(8500.5,     95.5,     70,          130,         155),
+                                dsc2 =  c(1500.5,     5.5,      30,          140,         165))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -98,9 +98,9 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
 
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
                                min  = c(10,    0.01),
-                               init = c(18,    0.45),
-                               max =  c(25,    1.00),
-                               dsc1 = c(2.9,   -0.78),
+                               init = c(14,    0.7),
+                               max =  c(20,    1.00),
+                               dsc1 = c(2.7,   -0.23),
                                dsc2 = c(0.05,   0.05))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
@@ -134,6 +134,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
+                                       reparamSpec = TRUE,
                                        burnin = 1e3,
                                        samples = 1e3,
                                        chains = 1,
