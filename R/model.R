@@ -61,16 +61,16 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                        # assert data
                                        assert_list(data)
-                                       assert_eq(names(data), c("obs_deaths", "obs_serology"))
+                                       assert_in(names(data), c("obs_deaths", "obs_serology"))
                                        assert_dataframe(data$obs_deaths)
-                                       assert_eq(x = colnames(data$obs_deaths), y = c("Strata", "ObsDay", "Deaths"))
+                                       assert_in(x = colnames(data$obs_deaths), y = c("Strata", "ObsDay", "Deaths"))
                                        assert_numeric(data$obs_deaths$ObsDay)
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
                                        assert_dataframe(data$obs_serology)
-                                       assert_eq(colnames(data$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
-                                       assert_eq(data$obs_serology$SeroDay, Serodayparams)
-                                       assert_eq(data$obs_serology$Strata, IFRparams)
+                                       assert_in(colnames(data$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
+                                       assert_in(data$obs_serology$SeroDay, Serodayparams)
+                                       assert_in(data$obs_serology$Strata, IFRparams)
                                        assert_bounded(data$obs_serology$SeroPrev, left = 0, right = 1)
                                        #assert params
                                        assert_string(modparam)
@@ -105,8 +105,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
 
                                        # demography
                                        assert_dataframe(demog)
-                                       assert_eq(colnames(demog), c("Strata", "popN"))
-                                       assert_eq(demog$Strata, IFRparams)
+                                       assert_in(colnames(demog), c("Strata", "popN"))
+                                       assert_in(demog$Strata, IFRparams)
                                        assert_string(demog$strata)
                                        assert_pos_int(demog$popN)
 
@@ -274,7 +274,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_increasing(val$obs_deaths$ObsDay)
                                      assert_numeric(val$obs_deaths$Deaths)
                                      assert_dataframe(val$obs_serology)
-                                     assert_eq(colnames(val$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
+                                     assert_in(colnames(val$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
                                      assert_in(val$obs_serology$SeroDay, self$Serodayparams)
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
                                      assert_bounded(val$obs_serology$SeroPrev, left = 0, right = 1)
@@ -331,9 +331,9 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        stop("Must specificy IFR parameters prior to specifying demography data")
                                      }
                                      assert_dataframe(val)
-                                     assert_eq(colnames(val), c("Strata", "popN"))
+                                     assert_in(colnames(val), c("Strata", "popN"))
                                      assert_string(val$Strata)
-                                     assert_eq(val$Strata, self$IFRparams)
+                                     assert_in(val$Strata, self$IFRparams)
                                      assert_pos_int(val$popN)
                                      self$demog <- val
                                    },
