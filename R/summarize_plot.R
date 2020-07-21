@@ -645,7 +645,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                               for (int j = 0; j < stratlen; j++) {
                                 // loop through and split infection curve by strata and by number of seroconversion study period
                                 // note this cumulative, so loop through previous days
-                                for (int d = 0; d < days_obsd; d++) {
+                                for (int d = 0; d <= i; d++) {
                                   int time_elapsed = days_obsd - d - 1;
                                   full_sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
                                 }
