@@ -709,8 +709,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
       dplyr::select(c("ObsDay", dplyr::everything()))
 
 
-    ret <- list(inf_sero_con_num = inf_sero_con_num,
-                RG_sero_con_num = RG_sero_con_num)
+    ret <- dplyr::left_join(inf_sero_con_num, RG_sero_con_num, by = "ObsDay")
     return(ret)
 
   }
