@@ -210,17 +210,13 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
 
-      // get exp deaths per age group
-      std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
-      for (int  i = 0; i < days_obsd; i++) {
-        for (int a = 0; a < stratlen; a++) {
-          expd[i][a] = auc[i] * ne[a] * ma[a];
-        }
-      }
 
+      std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
       // get log-likelihood over all days
       for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
+          // get exp deaths per age group
+          expd[i][a] = auc[i] * ne[a] * ma[a];
           // a+1 to account for 1-based dates
           if ((a+1) < rcensor_day) {
             if (obsd[i][a] != -1) {
