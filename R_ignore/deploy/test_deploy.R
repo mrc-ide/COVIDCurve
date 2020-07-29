@@ -19,13 +19,13 @@ sum(infxns$infxns < 0)
 fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                                IFR = c(0.05, 0.2, 0.5),
                                Rho = 1/3,
-                               Ne = c(0.1, 0.4, 0.5))
+                               Ne = 1)
 demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
 # pick serology date
-sero_days <- c(135, 160)
-
+#sero_days <- c(135, 160)
+sero_days <- 160
 #..............................................................
 # AGGREGATE
 #..............................................................
@@ -52,9 +52,9 @@ obs_serology <- dat$seroprev %>%
     SeroDay = event_obs_day,
     SeroPrev = ObsPrev) %>%
   dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
-  dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1",
-                                 ifelse(SeroDay == 160, "sero_day2", NA))) %>%
-  dplyr::arrange(SeroDay)
+  dplyr::mutate(SeroDay = "sero_day1") %>%
+  dplyr::arrange(SeroDay) %>%
+  dplyr::ungroup(.)
 
 datinput <- list(obs_deaths = dat$AggDat,
                  obs_serology = obs_serology)
@@ -82,26 +82,28 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 max =  c(0.33, 0.66, 0.99, 200),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.8,    0,           135,         160),
-                                init =  c(0.85,     0.95,   0.5,         135,         160),
-                                max =   c(0.87,     1.00,   1,           135,         160),
-                                dsc1 =  c(8500,     10,     50,          130,         155),
-                                dsc2 =  c(1500,     3,      50,          140,         165))
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1"),
+                                min =   c(0.83,     0.8,    0,           160),
+                                init =  c(0.85,     0.95,   0.9,         160),
+                                max =   c(0.87,     1.00,   1,           160),
+                                dsc1 =  c(8500,     950,    90,          150),
+                                dsc2 =  c(1500,     50,     10,          170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
-                                 min  = rep(0, 3),
-                                 init = rep(0.5, 3),
-                                 max = rep(10, 3),
+                                 min  = rep(1, 3),
+                                 init = rep(1, 3),
+                                 max = rep(1, 3),
                                  dsc1 = rep(0, 3),
                                  dsc2 = rep(10, 3))
 
+# onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
-                               min  = c(10,    0.01),
-                               init = c(18,    0.45),
-                               max =  c(25,    1.00),
-                               dsc1 = c(2.9,   -0.78),
-                               dsc2 = c(0.05,   0.05))
+                               min  = c(10,     0.01),
+                               init = c(14,     0.7),
+                               max =  c(20,     1.00),
+                               dsc1 = c(2.657,  -0.236),
+                               dsc2 = c(0.01,   0.01))
+
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
 
@@ -118,7 +120,7 @@ mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
 mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
-mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
+mod1$set_Serodayparams(c("sero_day1"))
 mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
@@ -154,7 +156,6 @@ plot_par(modout$mcmcout, "spec")
 plot_par(modout$mcmcout, "mod")
 plot_par(modout$mcmcout, "sero_rate")
 plot_par(modout$mcmcout, "sero_day1")
-plot_par(modout$mcmcout, "sero_day2")
 plot_par(modout$mcmcout, "y1", rung = 1)
 plot_par(modout$mcmcout, "y2", rung = 1)
 plot_par(modout$mcmcout, "y3", rung = 1)
@@ -207,6 +208,7 @@ summary(rung9)
 curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
                                                         whichrung = paste0("rung", 1),
                                                         by_chain = T,
+                                                        by_strata = T,
                                                         dwnsmpl = 1e3)
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
