@@ -113,6 +113,14 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0
                                                   prob = Pinfxnsero)
   }
 
+  # Aside: tidy this for out
+  tidy_expected_inf.strt.day <- expected_inf.strt.day %>%
+    t(.) %>%
+    tibble::as_tibble(., .name_repair = c("minimal")) %>%
+    magrittr::set_colnames(paste0("infxns_", as.character(fatalitydata$Strata))) %>%
+    dplyr::mutate(ObsDay = min_day:curr_day) %>%
+    dplyr::select(c("ObsDay", dplyr::everything(.)))
+
   # draw deaths among Infected
   t_death <- matrix(NA, nrow = nrow(expected_inf.strt.day), ncol = ncol(expected_inf.strt.day))
   for (i in 1:nrow(expected_inf.strt.day)) {
@@ -173,8 +181,9 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0
 
   if (simulate_seroprevalence) {
     ret <- list(
-      AggDat = death_line_list,
-      seroprev = seroprev)
+      AggDeath = death_line_list,
+      SeroPrev = seroprev,
+      AggInfxns = tidy_expected_inf.strt.day)
     return(ret)
   } else {
     return(death_line_list)
