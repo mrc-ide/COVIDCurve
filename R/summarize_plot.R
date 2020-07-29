@@ -138,7 +138,8 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 #' @importFrom magrittr %>%
 #' @export
 
-draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl, by_chain = TRUE) {
+draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl,
+                                               by_chain = TRUE, by_strata = FALSE) {
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
@@ -243,92 +244,198 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # tidy
   #......................
   # keep params around for convenience
-  if (by_chain) {
-    plotdat <- mcmcout.nodes %>%
-      dplyr::select(c("chain",
-                      IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "infxncurves")) %>%
-      dplyr::group_by(chain) %>%
-      dplyr::mutate(sim = 1:dplyr::n()) %>%
-      dplyr::ungroup(chain) %>%
-      tidyr::unnest(cols = "infxncurves") %>%
-      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
-
-    plotObj <- ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
-                         lwd = 0.5, color = "#d9d9d9") +
-      ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
-      ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-      ggplot2::facet_wrap(. ~ chain) +
-      ggplot2::theme_minimal() +
-      ggplot2::theme(
-        plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-        axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-        axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-        panel.background =  ggplot2::element_blank(),
-        plot.background =  ggplot2::element_blank(),
-        axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
-        legend.position = "none")
-
-    if (IFRmodel_inf$inputs$IFRmodel$rcensor_day < IFRmodel_inf$inputs$IFRmodel$maxObsDay) {
-      plotObj <- plotObj +
-        ggplot2::geom_vline(xintercept = IFRmodel_inf$inputs$IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
-    }
+  switch(paste0(by_chain, "-", by_strata),
+         # by chain and by strata
+         "TRUE-TRUE"={
+           plotdat <- mcmcout.nodes %>%
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                             "infxncurves")) %>%
+             dplyr::group_by(chain) %>%
+             dplyr::mutate(sim = 1:dplyr::n()) %>%
+             dplyr::ungroup(chain) %>%
+             tidyr::unnest(cols = "infxncurves")
+           # downsize for what is needed in ggplot vs. returrn
+           plotdat_sm <- plotdat %>%
+             dplyr::select(c("chain", "time", "sim", dplyr::starts_with("infxns_"))) %>%
+             magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
+             tidyr::gather(., key = "Strata", value = "infxns", 4:ncol(.))
+           if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
+             # set up dictionary key to be ageband, regions, etc.
+             IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
+             colnames(IFRdictkey)[which(colnames(IFRdictkey) != "Strata")] <- "stratavar"
+             plotdat_sm <- plotdat_sm %>%
+               dplyr::left_join(., IFRdictkey, by = "Strata")
+           } else {
+             plotdat_sm <- plotdat_sm %>%
+               dplyr::rename(stratavar = Strata)
+           }
 
 
-  } else {
-    # keep params around for convenience
-    plotdat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "infxncurves")) %>%
-      dplyr::mutate(sim = 1:dplyr::n()) %>%
-      tidyr::unnest(cols = "infxncurves") %>%
-      dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+           plotObj <- ggplot2::ggplot() +
+             ggplot2::geom_line(data = plotdat_sm,
+                                mapping =  ggplot2::aes(x = time, y = infxns, group = sim), alpha = 0.25,
+                                lwd = 0.5, color = "#d9d9d9") +
+             ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+             ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+             ggplot2::facet_wrap(stratavar ~ chain) +
+             ggplot2::theme_minimal() +
+             ggplot2::theme(
+               plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+               axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+               axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+               panel.background =  ggplot2::element_blank(),
+               plot.background =  ggplot2::element_blank(),
+               axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
+               legend.position = "none")
+         },
+         # by chain but not by strata
+         "TRUE-FALSE"={
+           plotdat <- mcmcout.nodes %>%
+             plotdat <- mcmcout.nodes %>%
+               dplyr::select(c("chain",
+                               IFRmodel_inf$inputs$IFRmodel$modparam,
+                               IFRmodel_inf$inputs$IFRmodel$sodparam,
+                               IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                               IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                               IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                               IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                               IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                               IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                               "infxncurves")) %>%
+               dplyr::group_by(chain) %>%
+               dplyr::mutate(sim = 1:dplyr::n()) %>%
+               dplyr::ungroup(chain) %>%
+               tidyr::unnest(cols = "infxncurves") %>%
+               dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
 
-    plotObj <-  ggplot2::ggplot() +
-      ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
-                         lwd = 0.5, color = "#d9d9d9") +
-      ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
-      ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-      ggplot2::theme_minimal() +
-      ggplot2::theme(
-        plot.title = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        plot.subtitle = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-        axis.title = ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-        axis.text.x = ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-        axis.text.y = ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-        panel.background = ggplot2::element_blank(),
-        plot.background = ggplot2::element_blank(),
-        axis.line = ggplot2::element_line(color = "#000000", size = 1.2),
-        legend.position = "none")
+             plotObj <- ggplot2::ggplot() +
+               ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+                                  lwd = 0.5, color = "#d9d9d9") +
+               ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+               ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+               ggplot2::facet_wrap(. ~ chain) +
+               ggplot2::theme_minimal() +
+               ggplot2::theme(
+                 plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+                 plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+                 axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+                 axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+                 axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+                 panel.background =  ggplot2::element_blank(),
+                 plot.background =  ggplot2::element_blank(),
+                 axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
+                 legend.position = "none")
+         },
+         # not by chain but by strata
+         "FALSE-TRUE"={
+           plotdat <- mcmcout.nodes %>%
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                             "infxncurves")) %>%
+             dplyr::group_by(chain) %>%
+             dplyr::mutate(sim = 1:dplyr::n()) %>%
+             dplyr::ungroup(chain) %>%
+             tidyr::unnest(cols = "infxncurves")
+           # downsize for what is needed in ggplot vs. returrn
+           plotdat_sm <- plotdat %>%
+             dplyr::select(c("time", "sim", dplyr::starts_with("infxns_"))) %>%
+             magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
+             tidyr::gather(., key = "Strata", value = "infxns", 3:ncol(.))
+           if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
+             # set up dictionary key to be ageband, regions, etc.
+             IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
+             colnames(IFRdictkey)[which(colnames(IFRdictkey) != "Strata")] <- "stratavar"
+             plotdat_sm <- plotdat_sm %>%
+               dplyr::left_join(., IFRdictkey, by = "Strata")
+           } else {
+             plotdat_sm <- plotdat_sm %>%
+               dplyr::rename(stratavar = Strata)
+           }
 
-    if (IFRmodel_inf$inputs$IFRmodel$rcensor_day < IFRmodel_inf$inputs$IFRmodel$maxObsDay) {
-      plotObj <- plotObj +
-        ggplot2::geom_vline(xintercept = IFRmodel_inf$inputs$IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
-    }
+           plotObj <- ggplot2::ggplot() +
+             ggplot2::geom_line(data = plotdat_sm,
+                                mapping =  ggplot2::aes(x = time, y = infxns, group = sim), alpha = 0.25,
+                                lwd = 0.5, color = "#d9d9d9") +
+             ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+             ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+             ggplot2::facet_wrap(stratavar ~ .) +
+             ggplot2::theme_minimal() +
+             ggplot2::theme(
+               plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+               axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+               axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+               panel.background =  ggplot2::element_blank(),
+               plot.background =  ggplot2::element_blank(),
+               axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
+               legend.position = "none")
+
+         },
+
+         # not by chain, not by strata
+         "FALSE-FALSE"={
+           plotdat <- mcmcout.nodes %>%
+             dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                             "infxncurves")) %>%
+             dplyr::mutate(sim = 1:dplyr::n()) %>%
+             tidyr::unnest(cols = "infxncurves") %>%
+             dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+
+           plotObj <-  ggplot2::ggplot() +
+             ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+                                lwd = 0.5, color = "#d9d9d9") +
+             ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+             ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+             ggplot2::theme_minimal() +
+             ggplot2::theme(
+               plot.title = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               plot.subtitle = ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               axis.title = ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+               axis.text.x = ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+               axis.text.y = ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+               panel.background = ggplot2::element_blank(),
+               plot.background = ggplot2::element_blank(),
+               axis.line = ggplot2::element_line(color = "#000000", size = 1.2),
+               legend.position = "none")
+
+         })
+
+  # check to see if censoring was applied
+  if (IFRmodel_inf$inputs$IFRmodel$rcensor_day < IFRmodel_inf$inputs$IFRmodel$maxObsDay) {
+    plotObj <- plotObj +
+      ggplot2::geom_vline(xintercept = IFRmodel_inf$inputs$IFRmodel$rcensor_day, linetype = "dashed", size = 1.2, color = "#de2d26")
   }
 
   #......................
   # out
   #......................
   ret <- list(
-    plotdata = plotdat,
+    curvedata = plotdat,
     plotObj = plotObj
   )
   return(ret)
@@ -428,158 +535,6 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
 }
 
 
-#' @title Draw the Putative Observed Seroprevalnces using the Rogan-Gladen Estimator
-#' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
-#' @inheritParams get_cred_intervals
-#' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
-#' @importFrom magrittr %>%
-#' @export
-
-draw_posterior_RGobserved_seroprevalences <- function(IFRmodel_inf, whichrung = "rung1", dwnsmpl, by_chain = TRUE) {
-  assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
-  assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
-  assert_pos_int(dwnsmpl)
-  assert_string(whichrung)
-  assert_logical(by_chain)
-  #......................
-  # fitler to sampling and by rung
-  #......................
-  mcmcout.nodes <-  IFRmodel_inf$mcmcout$output %>%
-    dplyr::filter(stage == "sampling" & rung == whichrung)
-
-  #......................
-  # sample by CI limit and make infxn curves
-  #......................
-  mcmcout.nodes <- mcmcout.nodes %>%
-    dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
-  probs <- convert_post_probs(mcmcout.nodes$logposterior)
-  # downsample
-  dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
-                         prob = probs)
-  dwnsmpl_rows <- sort(dwnsmpl_rows)
-  mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
-
-  #......................
-  # get natural cubic gradients
-  #......................
-  # internal function, liftover cpp likelihood to get infxn curve
-  # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
-                                                        reparamIFR = FALSE,
-                                                        reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
-  # pull out pieces I need
-  fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
-  fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_replace(fitcurve_curve, "if \\(cum_infxn_check <= popN\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double sero_loglik = 0.0;", n = 2)[,1]
-  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> obs_prev_mat(n_sero_obs, std::vector<double>(stratlen));
-                            for (int i = 0; i < n_sero_obs; i++) {
-                              for (int j = 0; j < stratlen; j++) {
-                                obs_prev_mat[i][j] = (sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
-                              }
-                            }",
-                           "Rcpp::List ret = Rcpp::List::create(obs_prev_mat); return ret;}",
-                           collapse = "")
-  Rcpp::cppFunction(fitcurve_string)
-
-  #......................
-  # inputs needed for cpp function
-  #......................
-  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
-                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
-                   days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
-                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
-
-  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
-
-
-  #......................
-  # split, run, recombine
-  #......................
-  cpp_function_wrapper <- function(params, data, misc) {
-    paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                                IFRmodel_inf$inputs$IFRmodel$sodparam,
-                                IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                                IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                                IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                                IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
-
-
-    seroprev_strata <- loglike(params = paramsin,
-                               param_i = 1,
-                               data = datin,
-                               misc = misc_list)[[1]]
-    seroprev <- seroprev_strata %>%
-      do.call("rbind.data.frame", .)
-
-    colnames(seroprev) <- paste0("seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)
-    ret <- cbind.data.frame(SeroDay = IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                            seroprev)
-    return(ret)
-
-  }
-
-  mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
-  mcmcout.nodes$seroprev <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                       data = datin, misc = misc_list)
-
-  #......................
-  # tidy
-  #......................
-  # keep params around for convenience
-  if (by_chain) {
-    dat <- mcmcout.nodes %>%
-      dplyr::select(c("chain",
-                      IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
-      dplyr::group_by(chain) %>%
-      dplyr::mutate(sim = 1:dplyr::n()) %>%
-      dplyr::ungroup(chain) %>%
-      tidyr::unnest(cols = "seroprev")
-
-
-  } else {
-    # keep params around for convenience
-    dat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
-      dplyr::mutate(sim = 1:dplyr::n()) %>%
-      tidyr::unnest(cols = "seroprev")
-  }
-
-  #......................
-  # out
-  #......................
-  return(dat)
-}
-
 
 #' ' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
@@ -618,7 +573,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   mcmcout.nodes <- mcmcout.nodes[dwnsmpl_rows, ]
 
   #......................
-  # get natural cubic gradients
+  # get serocurves
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
