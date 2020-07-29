@@ -182,7 +182,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     // get cumulative infection spline
     double cum_infxn_check = 0.0;
     for (int i = 0; i < days_obsd; i++) {
-      cum_infxn_check += infxn_spline[i];
+      for (int a = 0; a < stratlen; a++) {
+        cum_infxn_check += ne[a] * infxn_spline[i];
+      }
     }
 
     // check if total infections exceed population denominator
