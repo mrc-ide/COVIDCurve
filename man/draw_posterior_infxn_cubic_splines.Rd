@@ -8,7 +8,8 @@ draw_posterior_infxn_cubic_splines(
   IFRmodel_inf,
   whichrung = "rung1",
   dwnsmpl,
-  by_chain = TRUE
+  by_chain = TRUE,
+  by_strata = FALSE
 )
 }
 \arguments{

@@ -3,7 +3,6 @@
 S3method(print,IFRmodel)
 S3method(summary,IFRmodel)
 export(Aggsim_infxn_2_death)
-export(draw_posterior_RGobserved_seroprevalences)
 export(draw_posterior_infxn_cubic_splines)
 export(draw_posterior_sero_curves)
 export(get_cred_intervals)
