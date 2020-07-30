@@ -176,7 +176,8 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE,
+                                                        reparamSeroRate = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -453,7 +454,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
   # draw infection curves
   #......................
   postdat <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf, whichrung = whichrung,
-                                                            dwnsmpl = dwnsmpl, by_chain = by_chain)$plotdat
+                                                            dwnsmpl = dwnsmpl, by_chain = by_chain)$curvedata
   # split infection data for looping through later
   postdat.sims <- split(postdat, factor(postdat$sim))
 
@@ -580,7 +581,8 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE,
+                                                        reparamSeroRate = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
