@@ -42,11 +42,11 @@ test_that("serology likelihood accurate", {
   #......................
   # input data
   #......................
-  obs_serology <- dat$seroprev %>%
+  obs_serology <- dat$SeroPrev  %>%
     dplyr::filter(event_obs_day %in% sero_days) %>%
     dplyr::arrange(event_obs_day, Strata)
 
-  datinput <- list(obs_deaths = dat$AggDat$Deaths,
+  datinput <- list(obs_deaths = dat$AggDeath$Deaths,
                    obs_serology = obs_serology$ObsPrev)
 
   #..................

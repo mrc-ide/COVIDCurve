@@ -18,14 +18,14 @@ sum(infxns$infxns < 0)
 # make up fatality data
 fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                                IFR = c(0.05, 0.2, 0.5),
-                               Rho = 1/3,
+                               Rho = 1,
                                Ne = 1)
 demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
 # pick serology date
-#sero_days <- c(135, 160)
-sero_days <- 160
+sero_days <- c(135, 160)
+
 #..............................................................
 # AGGREGATE
 #..............................................................
@@ -42,21 +42,21 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   simulate_seroprevalence = TRUE,
   sens = 0.85,
   spec = 0.95,
-  sero_delay_rate = 10
+  sero_delay_rate = 13
 )
 
-obs_serology <- dat$seroprev %>%
+obs_serology <- dat$SeroPrev %>%
   dplyr::group_by(Strata) %>%
   dplyr::filter(event_obs_day %in% sero_days) %>%
   dplyr::rename(
     SeroDay = event_obs_day,
     SeroPrev = ObsPrev) %>%
   dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
-  dplyr::mutate(SeroDay = "sero_day1") %>%
+  dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
   dplyr::arrange(SeroDay) %>%
   dplyr::ungroup(.)
 
-datinput <- list(obs_deaths = dat$AggDat,
+datinput <- list(obs_deaths = dat$AggDeath,
                  obs_serology = obs_serology)
 
 #..................
@@ -82,12 +82,12 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 max =  c(0.33, 0.66, 0.99, 200),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1"),
-                                min =   c(0.83,     0.8,    0,           160),
-                                init =  c(0.85,     0.95,   0.9,         160),
-                                max =   c(0.87,     1.00,   1,           160),
-                                dsc1 =  c(8500,     950,    90,          150),
-                                dsc2 =  c(1500,     50,     10,          170))
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
+                                min =   c(0.83,     0.8,    0,           135,        160),
+                                init =  c(0.85,     0.95,   0.9,         135,        160),
+                                max =   c(0.87,     1.00,   1,           135,        160),
+                                dsc1 =  c(8500,     950,    90,          130,        150),
+                                dsc2 =  c(1500,     50,     10,          140,        170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(1, 3),
@@ -120,7 +120,7 @@ mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
 mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
-mod1$set_Serodayparams(c("sero_day1"))
+mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
 mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
@@ -136,6 +136,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
+                                       reparamSeroRate = TRUE,
                                        burnin = 1e3,
                                        samples = 1e3,
                                        chains = 1,
