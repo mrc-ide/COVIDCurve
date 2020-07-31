@@ -6,6 +6,7 @@
 devtools::load_all()
 set.seed(1234)
 library(drjacoby)
+library(tidyverse)
 # sigmoidal function
 infxns <- data.frame(time = 1:200)
 sig <- function(x){1 / (1 +  exp(-x))}
@@ -65,153 +66,128 @@ datinput <- list(obs_deaths = dat$AggDeath,
 ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3"),
                                min  = rep(0, 3),
                                init = rep(0.5, 3),
-                               max = rep(1, 3),
-                               dsc1 = rep(0, 3),
-                               dsc2 = rep(1, 3))
+                               max = rep(1, 3))
 
 infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
-                                 min  = rep(0, 5),
-                                 init = c(rep(0.5, 4), 5),
-                                 max =  c(rep(1, 4), 10),
-                                 dsc1 = rep(0, 5),
-                                 dsc2 = c(rep(1, 4), 10))
+                                 min  = c(1, 1, 1, 1, 1),
+                                 init = c(5, 5, 5, 5, 5),
+                                 max =  c(14,14,14,14,14))
 
 knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-                                min  = c(0,    0.33, 0.66, 175),
-                                init = c(0.05, 0.40, 0.75, 185),
-                                max =  c(0.33, 0.66, 0.99, 200),
-                                dsc1 = c(0,    0.33, 0.66, 175),
-                                dsc2 = c(0.33, 0.66, 0.99, 200))
+                                min  = c(0,    66, 120, 175),
+                                init = c(10, 80, 150, 185),
+                                max =  c(66, 120, 175, 200))
+
+
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
                                 min =   c(0.83,     0.8,    0,           130,        150),
-                                init =  c(0.85,     0.95,   0.9,         135,        160),
-                                max =   c(0.87,     1.00,   1,           140,        170),
-                                dsc1 =  c(8500,     950,    90,          130,        150),
-                                dsc2 =  c(1500,     50,     10,          140,        170))
+                                init =  c(0.85,     0.95,   13,         135,        160),
+                                max =   c(0.87,     1.00,   15,           140,        170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
                                  init = c(1, 4, 6),
-                                 max = rep(10, 3),
-                                 dsc1 = rep(0, 3),
-                                 dsc2 = rep(10, 3))
+                                 max = rep(10, 3))
 
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
                                min  = c(10,     0.01),
                                init = c(14,     0.7),
-                               max =  c(20,     1.00),
-                               dsc1 = c(2.657,  -0.236),
-                               dsc2 = c(0.01,   0.01))
+                               max =  c(20,     1.00))
 
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
 
+
 #......................
-# make mode
+# pull out bits from model
 #......................
-mod1 <- make_IFRmodel_agg$new()
-mod1$set_MeanTODparam("mod")
-mod1$set_CoefVarOnsetTODparam("sod")
-mod1$set_IFRparams(c("ma1", "ma2", "ma3"))
-mod1$set_maxMa("ma3")
-mod1$set_Knotparams(paste0("x", 1:4))
-mod1$set_relKnot("x4")
-mod1$set_Infxnparams(paste0("y", 1:5))
-mod1$set_relInfxn("y5")
-mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
-mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
-mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
-mod1$set_data(datinput)
-mod1$set_demog(demog)
-mod1$set_paramdf(df_params)
-mod1$set_rho(rep(1, 3))
-mod1$set_rcensor_day(.Machine$integer.max)
+misc_list = list(rho = rep(1, 3),
+                 demog = demog$popN,
+                 rcensor_day = .Machine$integer.max,
+                 days_obsd = max(mod1$data$obs_deaths$ObsDay),
+                 n_knots = 5,
+                 n_sero_obs = 2)
+
+datin <- list("obs_deaths" = mod1$data$obs_deaths$Deaths,
+              "obs_serology" = mod1$data$obs_serology$SeroPrev)
+
 
 #..................
-# run model
+# get items for model
 #..................
-start <- Sys.time()
-modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
-                                       reparamIFR = TRUE,
-                                       reparamInfxn = TRUE,
-                                       reparamKnot = TRUE,
-                                       reparamSeroRate = TRUE,
-                                       burnin = 1e3,
-                                       samples = 1e3,
-                                       chains = 1,
-                                       silent = FALSE)
-Sys.time() - start
-modout
-(ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "IFRparams", by_chain = F))
-(sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "Serotestparams", by_chain = F))
-plot_par(modout$mcmcout, "sero_day1")
-plot_par(modout$mcmcout, "sero_day2")
 
-plot_par(modout$mcmcout, "ma1", rung = 1)
-plot_par(modout$mcmcout, "ma2", rung = 1)
-plot_par(modout$mcmcout, "ma3", rung = 1)
-plot_par(modout$mcmcout, "sens")
-plot_par(modout$mcmcout, "spec")
-plot_par(modout$mcmcout, "mod")
-plot_par(modout$mcmcout, "sero_rate")
-plot_par(modout$mcmcout, "sero_day1")
-plot_par(modout$mcmcout, "y1", rung = 1)
-plot_par(modout$mcmcout, "y2", rung = 1)
-plot_par(modout$mcmcout, "y3", rung = 1)
-plot_par(modout$mcmcout, "y4", rung = 1)
-plot_par(modout$mcmcout, "y5", rung = 1)
-plot_par(modout$mcmcout, "x1", rung = 1)
-plot_par(modout$mcmcout, "x2", rung = 1)
-plot_par(modout$mcmcout, "x3", rung = 1)
-plot_par(modout$mcmcout, "x4", rung = 1)
-plot_par(modout$mcmcout, "ne1", rung = 1)
-plot_par(modout$mcmcout, "ne2", rung = 1)
-plot_par(modout$mcmcout, "ne3", rung = 1)
+flatprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc){ return Rcpp::wrap(-10.0); }"
+source("R_ignore/test_cpp/play_loglike.R")
 
-summary(modout$mcmcout$output$loglikelihood)
-summary(modout$mcmcout$output$logprior)
-modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$output$loglikelihood), ]
+
+modout <- drjacoby::run_mcmc(data = datin,
+                             df_params = df_params[,1:4],
+                             loglike = cpp_loglike,
+                             logprior = flatprior,
+                             misc = misc_list,
+                             chains = 1,
+                             burnin = 1e3,
+                             samples = 1e3,
+                             rungs = 1,
+                             silent = F)
+
+
+summary(modout$output$loglikelihood)
+summary(modout$output$logprior)
 
 
 
-plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
-plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
 
-plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
-plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
-plot_cor(modout$mcmcout, "ma1", "ma3", rung = 1)
+plot_par(modout, "ma1", rung = 1)
+plot_par(modout, "ma2", rung = 1)
+plot_par(modout, "ma3", rung = 1)
+
+plot_par(modout, "sens")
+plot_par(modout, "spec")
+
+plot_par(modout, "mod")
+plot_par(modout, "sero_rate")
+
+plot_par(modout, "sero_day1")
+plot_par(modout, "sero_day2")
+
+plot_par(modout, "y1", rung = 1)
+plot_par(modout, "y2", rung = 1)
+plot_par(modout, "y3", rung = 1)
+plot_par(modout, "y4", rung = 1)
+plot_par(modout, "y5", rung = 1)
+plot_par(modout, "x1", rung = 1)
+plot_par(modout, "x2", rung = 1)
+plot_par(modout, "x3", rung = 1)
+plot_par(modout, "x4", rung = 1)
+plot_par(modout, "ne1", rung = 1)
+plot_par(modout, "ne2", rung = 1)
+plot_par(modout, "ne3", rung = 1)
+
+summary(modout$output$loglikelihood)
+summary(modout$output$logprior)
+modout$output[modout$output$loglikelihood == max(modout$output$loglikelihood), ]
 
 
 
-plot_mc_acceptance(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 2)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 3)
+plot_cor(modout, "ne1", "ne2", rung = 1)
+plot_cor(modout, "ne2", "ne3", rung = 1)
 
-rung9 <- modout$mcmcout$output[modout$mcmcout$output$rung == "rung9", ]
-summary(rung9)
-
-(ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "IFRparams", by_chain = F))
-
-(knotspost <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                             what = "Knotparams", by_chain = F))
-(infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                         what = "Infxnparams", by_chain = F))
-(sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                        what = "Serotestparams", by_chain = F))
+plot_cor(modout, "y3", "spec", rung = 1)
+plot_cor(modout, "y3", "ma3", rung = 1)
+plot_cor(modout, "ma1", "ma3", rung = 1)
 
 
-curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
-                                                        whichrung = paste0("rung", 1),
-                                                        by_chain = T,
-                                                        by_strata = T,
-                                                        dwnsmpl = 1e3)
+
+plot_mc_acceptance(modout)
+drjacoby::plot_rung_loglike(modout)
+drjacoby::plot_rung_loglike(modout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
+drjacoby::plot_rung_loglike(modout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
+drjacoby::plot_rung_loglike(modout, x_axis_type = 2, y_axis_type = 2)
+drjacoby::plot_rung_loglike(modout, x_axis_type = 2, y_axis_type = 3)
+
+
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
