@@ -265,8 +265,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
-          // Rogan-Gladen Estimator
-          double obs_prev = (sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
+          // Gelman Estimator for numerical stability
+          double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]))
           int posint = round(obs_prev * demog[j]);
           sero_loglik += R::dbinom(posint, demog[j], datpos[i][j], true);
         }

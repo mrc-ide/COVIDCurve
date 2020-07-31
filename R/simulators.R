@@ -49,7 +49,7 @@ sim_seroprev <- function(seroinfxns,
     dplyr::mutate(event_obs_day = as.numeric(as.character(event_obs_day)), # protect against factor and min_day > 1
                   TrueSeroCount = cumsum(day_seros),
                   TruePrev = TrueSeroCount/popN,
-                  ObsPrev = TruePrev * (spec + (sens - 1)) - (spec-1)) %>%
+                  ObsPrev = sens*TruePrev + (1-spec)*(1-TruePrev)) %>%
     dplyr::ungroup(.)
 }
 
