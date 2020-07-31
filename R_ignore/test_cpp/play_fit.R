@@ -17,12 +17,12 @@ infxns$infxns <- sig(timevec) * 5e3 + runif(n = nrow(infxns),
 sum(infxns$infxns < 0)
 
 # make up fatality data
-fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
-                               IFR = c(0.05, 0.2, 0.5),
+fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3", "ma4", "ma5", "ma6"),
+                               IFR = c(0.05, 0.1, 0.1, 0.15, 0.2, 0.5),
                                Rho = 1,
-                               Ne = c(10,5,2))
-demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
-                        popN = c(1500000, 2250000, 1250000))
+                               Ne = c(10, 5, 2, 3, 4, 5))
+demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3", "ma4", "ma5", "ma6"),
+                        popN = c(1500000, 1500000, 1500000, 1500000, 2250000, 1250000))
 
 # pick serology date
 sero_days <- c(135, 160)
@@ -63,10 +63,10 @@ datinput <- list(obs_deaths = dat$AggDeath,
 #..................
 # make model
 #..................
-ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3"),
-                               min  = rep(0, 3),
-                               init = rep(0.5, 3),
-                               max = rep(1, 3))
+ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3", "ma4", "ma5",  "ma6"),
+                               min  = rep(0, 6),
+                               init = rep(0.5, 6),
+                               max = rep(1, 6))
 
 infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  min  = c(1, 1, 1, 1, 1),
@@ -84,10 +84,10 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day
                                 init =  c(0.85,     0.95,   13,         135,        160),
                                 max =   c(0.87,     1.00,   15,           140,        170))
 
-noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
-                                 min  = rep(0, 3),
-                                 init = c(1, 4, 6),
-                                 max = rep(10, 3))
+noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3", "ne4", "ne5", "ne6"),
+                                 min  = rep(0, 6),
+                                 init = c(1, 4, 6, 8, 9, 7),
+                                 max = rep(10, 6))
 
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
@@ -102,15 +102,15 @@ df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_
 #......................
 # pull out bits from model
 #......................
-misc_list = list(rho = rep(1, 3),
+misc_list = list(rho = rep(1, 6),
                  demog = demog$popN,
                  rcensor_day = .Machine$integer.max,
-                 days_obsd = max(mod1$data$obs_deaths$ObsDay),
+                 days_obsd = 200,
                  n_knots = 5,
                  n_sero_obs = 2)
 
-datin <- list("obs_deaths" = mod1$data$obs_deaths$Deaths,
-              "obs_serology" = mod1$data$obs_serology$SeroPrev)
+datinput <- list("obs_deaths" = datinput$obs_deaths$Deaths,
+                 "obs_serology" = datinput$obs_serology$SeroPrev)
 
 
 #..................
@@ -121,7 +121,7 @@ flatprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List 
 source("R_ignore/test_cpp/play_loglike.R")
 
 
-modout <- drjacoby::run_mcmc(data = datin,
+modout <- drjacoby::run_mcmc(data = datinput,
                              df_params = df_params[,1:4],
                              loglike = cpp_loglike,
                              logprior = flatprior,
@@ -142,6 +142,10 @@ summary(modout$output$logprior)
 plot_par(modout, "ma1", rung = 1)
 plot_par(modout, "ma2", rung = 1)
 plot_par(modout, "ma3", rung = 1)
+plot_par(modout, "ma4", rung = 1)
+plot_par(modout, "ma5", rung = 1)
+plot_par(modout, "ma6", rung = 1)
+
 
 plot_par(modout, "sens")
 plot_par(modout, "spec")

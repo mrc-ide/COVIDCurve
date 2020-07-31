@@ -33,13 +33,19 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   double y4 = params[\"y4\"];
   double y5 = params[\"y5\"];
   // extract IFR parameters
-  double ma3 = params[\"ma3\"];
-  double ma2 = params[\"ma2\"];
   double ma1 = params[\"ma1\"];
+  double ma2 = params[\"ma2\"];
+  double ma3 = params[\"ma3\"];
+  double ma4 = params[\"ma4\"];
+  double ma5 = params[\"ma5\"];
+  double ma6 = params[\"ma6\"];
   // extract noise parameters
   double ne1 = params[\"ne1\"];
   double ne2 = params[\"ne2\"];
   double ne3 = params[\"ne3\"];
+  double ne4 = params[\"ne4\"];
+  double ne5 = params[\"ne5\"];
+  double ne6 = params[\"ne6\"];
   // death delay params
   double mod = params[\"mod\"];
   double sod = params[\"sod\"];
@@ -64,9 +70,15 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   ma[0] = ma1;
   ma[1] = ma2;
   ma[2] = ma3;
+  ma[3] = ma4;
+  ma[4] = ma5;
+  ma[5] = ma6;
   ne[0] = ne1;
-  ne[1] = ne2;
-  ne[2] = ne3;
+  ne[1] = ne2 * ne1;
+  ne[2] = ne3 * ne1;
+  ne[3] = ne4 * ne1;
+  ne[4] = ne5 * ne1;
+  ne[5] = ne6 * ne1;
 
   //........................................................
   // Lookup Items
@@ -260,7 +272,7 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
           // Rogan-Gladen Estimator
-          double obs_prev = (sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
+          double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
           int posint = round(obs_prev * demog[j]);
           sero_loglik += R::dbinom(posint, demog[j], datpos[i][j], true);
         }
