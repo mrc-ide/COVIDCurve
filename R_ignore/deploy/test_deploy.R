@@ -45,7 +45,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   sero_delay_rate = 13
 )
 
-obs_serology <- dat$SeroPrev %>%
+obs_serology <- dat$AggSeroPrev %>%
   dplyr::group_by(Strata) %>%
   dplyr::filter(event_obs_day %in% sero_days) %>%
   dplyr::rename(
