@@ -39,10 +39,12 @@ sim_seroprev <- function(seroinfxns,
   #..................
   # Tidy up so that we observe deaths on a daily time step
   #..................
-  sero_line_list %>%
+  sero_line_list <- sero_line_list %>%
     dplyr::mutate(event_obs_day = cut(tosc, breaks = c((min_day-1), min_day:curr_day),
                                       labels = min_day:curr_day)) %>%
-    dplyr::filter(!is.na(event_obs_day)) %>%   # drop "future" deaths
+    dplyr::filter(!is.na(event_obs_day))   # drop "future" deaths
+
+  sero_agg <- sero_line_list %>%
     dplyr::group_by(Strata, event_obs_day, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
     dplyr::left_join(., demog, by = "Strata") %>%
@@ -51,6 +53,11 @@ sim_seroprev <- function(seroinfxns,
                   TruePrev = TrueSeroCount/popN,
                   ObsPrev = sens*TruePrev + (1-spec)*(1-TruePrev)) %>%
     dplyr::ungroup(.)
+
+  # out
+  out <- list(sero_line_list = sero_line_list,
+              sero_agg = sero_agg)
+  return(out)
 }
 
 
@@ -153,11 +160,19 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0
     dplyr::select(c("strata", "tod")) %>%
     dplyr::mutate(obs_day = cut(tod, breaks = c((min_day-1), min_day:curr_day),
                                 labels = min_day:curr_day)) %>%
-    dplyr::filter(!is.na(obs_day)) %>% # drop "future" deaths
-    dplyr::group_by(obs_day, strata, .drop = F) %>%
+    dplyr::filter(!is.na(obs_day)) %>%  # drop "future" deaths
+    dplyr::rename(
+      ObsDay = obs_day,
+      Strata = strata)
+
+  death_agg <- death_line_list %>%
+    dplyr::group_by(ObsDay, Strata, .drop = F) %>%
     dplyr::summarise(
       day_deaths = dplyr::n()) %>%
-    dplyr::ungroup(obs_day, strata)
+    dplyr::ungroup(ObsDay, Strata) %>%
+    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDay))) %>% # protect against factor and min_day > 1
+    dplyr::rename(Deaths = day_deaths)
+
 
   #..................
   # run seroprev
@@ -171,22 +186,24 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0
   # out
   #..................
 
-  death_line_list <- death_line_list %>%
-    dplyr::mutate(obs_day = as.numeric(as.character(obs_day))) %>% # protect against factor and min_day > 1
-    dplyr::rename(
-      ObsDay = obs_day,
-      Strata = strata,
-      Deaths = day_deaths)
-
-
   if (simulate_seroprevalence) {
+
     ret <- list(
-      AggDeath = death_line_list,
-      SeroPrev = seroprev,
-      AggInfxns = tidy_expected_inf.strt.day)
+      AggDeath = death_agg,
+      AggSeroPrev = seroprev$sero_agg,
+      AggInfxns = tidy_expected_inf.strt.day,
+      LineListDeath = death_line_list,
+      LineListSero = seroprev$sero_line_list)
     return(ret)
+
   } else {
-    return(death_line_list)
+
+    ret <- list(
+      AggDeath = death_agg,
+      AggInfxns = tidy_expected_inf.strt.day,
+      LineListDeath = death_line_list)
+
+    return(ret)
   }
 }
 
