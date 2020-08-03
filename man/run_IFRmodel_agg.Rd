@@ -9,9 +9,11 @@ run_IFRmodel_agg(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
+  reparamSeroRate = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
+  thinning = 0,
   rungs = 1,
   GTI_pow = 3,
   coupling_on = TRUE,
@@ -29,6 +31,8 @@ run_IFRmodel_agg(
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately}
 
+\item{reparamSeroRate}{logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately}
+
 \item{burnin}{the number of burn-in iterations.}
 
 \item{samples}{the number of sampling iterations.}
@@ -36,6 +40,8 @@ run_IFRmodel_agg(
 \item{chains}{the number of independent replicates of the MCMC chain to run.
 If a \code{cluster} object is defined then these chains are run in
 parallel, otherwise they are run in serial.}
+
+\item{thinning}{integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).}
 
 \item{rungs}{the number of temperature rungs used in Metropolis coupling (see
 \code{coupling_on}).}

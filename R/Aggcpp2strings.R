@@ -150,18 +150,18 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "TRUE-TRUE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(knotscalars), "*log(", relKnot, ") +"))
+                       paste0(length(knotscalars), "*log(", relKnot, ");"))
          },
 
          "TRUE-FALSE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ") +"))
+                       paste0(length(ifrscalars), "*log(", maxMa, ");"))
          },
 
          "TRUE-FALSE-TRUE-TRUE" = {
@@ -174,7 +174,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
          "TRUE-FALSE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "TRUE-FALSE-FALSE-TRUE" = {
@@ -217,12 +217,12 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
          "FALSE-TRUE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "FALSE-FALSE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
          },
 
          "FALSE-FALSE-FALSE-FALSE" = {
