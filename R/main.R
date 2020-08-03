@@ -6,10 +6,11 @@
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
 #' @param reparamSeroRate logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately
+#' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
 run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeroRate = TRUE,
-                             burnin = 1e3, samples = 1e3, chains = 3,
+                             burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
   #..................
@@ -133,6 +134,16 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                                 silent = silent,
                                 cluster = cluster
   )
+
+  # apply thinning
+  if (thinning > 0) {
+    keepiters <- seq(from = thinning, to = (burnin+samples), by = thinning)
+    modout$mcmcout$output <- modout$mcmcout$output %>%
+      dplyr::group_by(chain, rung) %>%
+      dplyr::filter(iteration %in% keepiters) %>%
+      dplyr::ungroup(.)
+  }
+
 
   if (reparamIFR) {
     #..................
