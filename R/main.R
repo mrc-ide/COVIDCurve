@@ -138,7 +138,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   # apply thinning
   if (thinning > 0) {
     keepiters <- seq(from = thinning, to = (burnin+samples), by = thinning)
-    modout$mcmcout$output <- modout$mcmcout$output %>%
+    mcmcout$output <- mcmcout$output %>%
       dplyr::group_by(chain, rung) %>%
       dplyr::filter(iteration %in% keepiters) %>%
       dplyr::ungroup(.)
@@ -154,7 +154,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #..................
     IFRparams <- IFRmodel$IFRparams
     maxMa <- IFRmodel$maxMa
-    scalars <- IFRparams$name[IFRparams$name != maxMa]
+    scalars <- IFRparams[IFRparams != maxMa]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars
     liftovercols.list <- mcmcout$output[, liftovercols]
@@ -168,7 +168,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #..................
     Knotparams <- IFRmodel$Knotparams
     relKnot <- IFRmodel$relKnot
-    scalars <- Knotparams$name[Knotparams$name != relKnot]
+    scalars <- Knotparams[Knotparams != relKnot]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars
     liftovercols.list <- mcmcout$output[, liftovercols]
@@ -182,7 +182,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #..................
     Infxnparams <- IFRmodel$Infxnparams
     relInfxn <- IFRmodel$relInfxn
-    scalars <- Infxnparams$name[Infxnparams$name != relInfxn]
+    scalars <- Infxnparams[Infxnparams != relInfxn]
 
     liftovercols <- colnames(mcmcout$output) %in% scalars
     liftovercols.list <- mcmcout$output[, liftovercols]
