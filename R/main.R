@@ -5,11 +5,11 @@
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
-#' @param reparamSeroRate logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately
+#' @param reparamSeros logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
 #' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeroRate = TRUE,
+run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeros = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -20,7 +20,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamSeroRate)
+  assert_logical(reparamSeros)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -90,8 +90,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeroRate = reparamSeroRate)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeroRate = reparamSeroRate)
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros)
 
   #..................
   # make misc
@@ -143,13 +143,16 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
       dplyr::filter(iteration %in% keepiters) %>%
       dplyr::ungroup(.)
   }
-
+  #..................
+  # account for noise vector reparam
+  #..................
+  Noiseparams <- IFRmodel$Noiseparams
 
   if (reparamIFR) {
     #..................
     # account for ifr reparam
     #..................
-    IFRparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$IFRparams, ]
+    IFRparams <- IFRmodel$IFRparams
     maxMa <- IFRmodel$maxMa
     scalars <- IFRparams$name[IFRparams$name != maxMa]
 
@@ -163,7 +166,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #..................
     # account for knots (infxn X position) reparam
     #..................
-    Knotparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$Knotparams, ]
+    Knotparams <- IFRmodel$Knotparams
     relKnot <- IFRmodel$relKnot
     scalars <- Knotparams$name[Knotparams$name != relKnot]
 
@@ -177,7 +180,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #..................
     # account for Infxn Y position reparam
     #..................
-    Infxnparams <- IFRmodel$paramdf[IFRmodel$paramdf$name %in% IFRmodel$Infxnparams, ]
+    Infxnparams <- IFRmodel$Infxnparams
     relInfxn <- IFRmodel$relInfxn
     scalars <- Infxnparams$name[Infxnparams$name != relInfxn]
 
@@ -187,12 +190,23 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
 
-  if (reparamSeroRate) {
+  if (reparamSeros) {
     #......................
-    # reparameterize sero_rate
+    # reparameterize serology params
     #......................
-    mcmcout$output$sero_rate <- mcmcout$output[, IFRmodel$modparam] * mcmcout$output$sero_rate
+    mcmcout$output[, IFRmodel$modparam] <- mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam]
+    mcmcout$output[, Noiseparams[1]] <- mcmcout$output[, "spec"] * mcmcout$output[, Noiseparams[1]]
+    mcmcout$output$sero_rate <- mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output$sero_rate
   }
+
+  #......................
+  # reparameterize noise parameters
+  # NB, must do this after potential recasting by reparam seros
+  #......................
+  liftovercols <- Noiseparams[2:length(Noiseparams)]
+  liftovercols.list <- mcmcout$output[, liftovercols]
+  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
 
   # store input along with Dr.Jacoby output for later use
   inputs <- list(

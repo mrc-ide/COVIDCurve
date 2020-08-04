@@ -83,10 +83,10 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.8,    0,           130,        150),
-                                init =  c(0.85,     0.95,   0.9,         135,        160),
+                                min =   c(0.83,     0.8,    0,           120,        150),
+                                init =  c(0.85,     0.95,   0.9,         125,        165),
                                 max =   c(0.87,     1.00,   1,           140,        170),
-                                dsc1 =  c(8500,     950,    90,          130,        150),
+                                dsc1 =  c(8500,     950,    90,          120,        150),
                                 dsc2 =  c(1500,     50,     10,          140,        170))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
@@ -137,9 +137,10 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
                                        reparamSeroRate = TRUE,
-                                       burnin = 1e3,
-                                       samples = 1e3,
-                                       chains = 1,
+                                       burnin = 1e2,
+                                       samples = 1e2,
+                                       chains = 2,
+                                       rungs = 5,
                                        silent = FALSE)
 Sys.time() - start
 modout
