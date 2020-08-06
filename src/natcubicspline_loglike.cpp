@@ -77,11 +77,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   //........................................................
   // Lookup Items
   //........................................................
-  // reparameterize Ne
-  for (int i = 1; i < stratlen; i++) {
-    ne[i] = ne[i] * ne[0];
-  }
-
   // rescale ne by attack rate
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i] * rho[i];
