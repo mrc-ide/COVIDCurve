@@ -1,4 +1,4 @@
-cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+cpp_loglike <- "Rcpp::List loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]);
@@ -39,6 +39,10 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   double ma4 = params[\"ma4\"];
   double ma5 = params[\"ma5\"];
   double ma6 = params[\"ma6\"];
+  double ma7 = params[\"ma7\"];
+  double ma8 = params[\"ma8\"];
+  double ma9 = params[\"ma9\"];
+  double ma10 = params[\"ma10\"];
   // extract noise parameters
   double ne1 = params[\"ne1\"];
   double ne2 = params[\"ne2\"];
@@ -46,6 +50,10 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   double ne4 = params[\"ne4\"];
   double ne5 = params[\"ne5\"];
   double ne6 = params[\"ne6\"];
+  double ne7 = params[\"ne7\"];
+  double ne8 = params[\"ne8\"];
+  double ne9 = params[\"ne9\"];
+  double ne10 = params[\"ne10\"];
   // death delay params
   double mod = params[\"mod\"];
   double sod = params[\"sod\"];
@@ -58,27 +66,41 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   std::vector<double> node_y(n_knots);
   // fill storage
   node_x[0] = 1;
-  node_x[1] = x1;
-  node_x[2] = x2;
-  node_x[3] = x3;
+  node_x[1] = x1 * x4;
+  node_x[2] = x2 * x4;
+  node_x[3] = x3 * x4;
   node_x[4] = x4;
-  node_y[0] = y1;
-  node_y[1] = y2;
+  node_y[0] = y1 * y3;
+  node_y[1] = y2 * y3;
   node_y[2] = y3;
-  node_y[3] = y4;
-  node_y[4] = y5;
+  node_y[3] = y4 * y3;
+  node_y[4] = y5 * y3;
   ma[0] = ma1;
-  ma[1] = ma2;
-  ma[2] = ma3;
-  ma[3] = ma4;
-  ma[4] = ma5;
-  ma[5] = ma6;
+  ma[1] = ma2 * ma1;
+  ma[2] = ma3* ma1;
+  ma[3] = ma4* ma1;
+  ma[4] = ma5* ma1;
+  ma[5] = ma6* ma1;
+  ma[6] = ma7* ma1;
+  ma[7] = ma8* ma1;
+  ma[8] = ma9* ma1;
+  ma[9] = ma10* ma1;
+  // break more correlation
+  mod = mod * 1/spec;
+  ne1 = ne1 * spec;
+
+  sero_rate = mod*sero_rate;
+
   ne[0] = ne1;
   ne[1] = ne2 * ne1;
   ne[2] = ne3 * ne1;
   ne[3] = ne4 * ne1;
   ne[4] = ne5 * ne1;
   ne[5] = ne6 * ne1;
+  ne[6] = ne7 * ne1;
+  ne[7] = ne8 * ne1;
+  ne[8] = ne9 * ne1;
+  ne[9] = ne10 * ne1;
 
   //........................................................
   // Lookup Items
@@ -114,7 +136,7 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
       nodex_pass = false;
     }
   }
-  if (nodex_pass) {
+  //if (nodex_pass) {
     //.............................
     // natural cubic spline
     //.............................
@@ -194,7 +216,7 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
     }
 
     // check if total infections exceed population denominator
-    if (cum_infxn_check <= popN) {
+    //if (cum_infxn_check <= popN) {
 
       // loop through days and TOD integral
       std::vector<double> auc(days_obsd);
@@ -269,11 +291,12 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
         }
       }
 
+      std::vector<std::vector<double>> obs_prev(n_sero_obs, std::vector<double>(stratlen));
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
           // Rogan-Gladen Estimator
-          double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
-          int posint = round(obs_prev * demog[j]);
+          obs_prev[i][j] = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
+          int posint = round(obs_prev[i][j] * demog[j]);
           sero_loglik += R::dbinom(posint, demog[j], datpos[i][j], true);
         }
       }
@@ -287,10 +310,11 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
       }
 
       // end cumulative vs. popN check
-    }
+    //}
     // end node_x check
-  }
+  //}
 
   // return as sexp
-    return Rcpp::wrap(loglik);
+  Rcpp::List ret = Rcpp::List::create(loglik, death_loglik, sero_loglik, sero_con_num, obs_prev, infxn_spline);
+  return ret;
 }"

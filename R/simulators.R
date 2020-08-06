@@ -28,6 +28,7 @@ sim_seroprev <- function(seroinfxns,
   sero_line_list <- split(sero.df, 1:nrow(sero.df))
   sero_line_list <- lapply(sero_line_list, df_expand) %>%
     dplyr::bind_rows(.) %>%
+    dplyr::select(-c("infxncount")) %>%
     tibble::as_tibble(.)
 
   # draw time to seroconversion
