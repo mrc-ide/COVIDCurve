@@ -6,10 +6,11 @@
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
 #' @param reparamSeros logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
+#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeros = TRUE,
+run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeros = TRUE, reparamNe = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -21,6 +22,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
   assert_logical(reparamSeros)
+  assert_logical(reparamNe)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -90,8 +92,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros)
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros, reparamNe = reparamNe)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros, reparamNe = reparamNe)
 
   #..................
   # make misc
@@ -199,14 +201,14 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output[, "sero_rate"]))
   }
 
-  # #......................
-  # # reparameterize noise parameters
-  # # NB, must do this after potential recasting by reparam seros
-  # #......................
-  # liftovercols <- Noiseparams[2:length(Noiseparams)]
-  # liftovercols.list <- mcmcout$output[, liftovercols]
-  # liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-  # mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
+  #......................
+  # reparameterize noise parameters
+  # NB, must do this after potential recasting by reparam seros
+  #......................
+  liftovercols <- Noiseparams[2:length(Noiseparams)]
+  liftovercols.list <- mcmcout$output[, liftovercols]
+  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
 
   # store input along with Dr.Jacoby output for later use
   inputs <- list(

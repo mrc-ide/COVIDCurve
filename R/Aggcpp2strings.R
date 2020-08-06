@@ -4,13 +4,20 @@
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
 #' @param reparamSeroRate logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately
+#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros) {
+make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros, reparamNe) {
   #..................
   # assertsions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
+  assert_logical(reparamIFR)
+  assert_logical(reparamInfxn)
+  assert_logical(reparamKnots)
+  assert_logical(reparamSeros)
+  assert_logical(reparamNe)
+
   #..................
   # setup
   #..................
@@ -137,103 +144,253 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   #..................
   extractparams <- c(IFRextractparams, Knotextractparams, Infxnextractparams, Serotestextractparams, Serodayextractparams, Noiseextractparams, TODextractparams)
   # account for reparam
-  switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn, "-", reparamSeros),
-         "TRUE-TRUE-TRUE-TRUE" = {
+  switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn, "-", reparamSeros, "-", reparamNe),
+         "TRUE-TRUE-TRUE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
          },
 
-         "TRUE-TRUE-TRUE-FALSE" = {
+         "TRUE-TRUE-TRUE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
          },
 
-         "TRUE-TRUE-FALSE-FALSE" = {
+         "TRUE-TRUE-TRUE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(knotscalars), "*log(", relKnot, ");"))
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
          },
 
-         "TRUE-FALSE-FALSE-FALSE" = {
+         "TRUE-TRUE-TRUE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");")
+           )
+         },
+
+         "TRUE-TRUE-FALSE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-TRUE-FALSE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
+         },
+
+         "TRUE-TRUE-FALSE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-TRUE-FALSE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(knotscalars), "*log(", relKnot, ");")
+           )
+         },
+
+         "TRUE-FALSE-TRUE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-FALSE-TRUE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
+         },
+
+         "TRUE-FALSE-TRUE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-FALSE-TRUE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");")
+           )
+         },
+
+         "TRUE-FALSE-FALSE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-FALSE-FALSE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
+         },
+
+         "TRUE-FALSE-FALSE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "TRUE-FALSE-FALSE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ");"))
          },
 
-         "TRUE-FALSE-TRUE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "TRUE-FALSE-TRUE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
-         },
-
-         "TRUE-FALSE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "FALSE-FALSE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "TRUE-TRUE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(ifrscalars), "*log(", maxMa, ") +"),
-                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "FALSE-FALSE-TRUE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "FALSE-TRUE-FALSE-TRUE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
-         },
-
-         "FALSE-TRUE-TRUE-TRUE" = {
+         "FALSE-TRUE-TRUE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
                        paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
-                      paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"))
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
          },
 
-         "FALSE-TRUE-TRUE-FALSE" = {
+         "FALSE-TRUE-TRUE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
          },
 
-         "FALSE-FALSE-TRUE-FALSE" = {
+         "FALSE-TRUE-TRUE-FALSE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"))
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
          },
 
-         "FALSE-FALSE-FALSE-FALSE" = {
-           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors)
+         "FALSE-TRUE-TRUE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"),
+           )
          },
+
+         "FALSE-TRUE-FALSE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-TRUE-FALSE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
+         },
+
+         "FALSE-TRUE-FALSE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(knotscalars), "*log(", relKnot, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-TRUE-FALSE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(knotscalars), "*log(", relKnot, ");")
+           )
+         },
+
+         "FALSE-FALSE-TRUE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-FALSE-TRUE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
+           )
+         },
+
+         "FALSE-FALSE-TRUE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ") +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-FALSE-TRUE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");"),
+           )
+         },
+
+         "FALSE-FALSE-FALSE-TRUE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec) +"),
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-FALSE-FALSE-TRUE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"),
+           )
+         },
+
+         "FALSE-FALSE-FALSE-FALSE-TRUE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       paste0((length(Noiseextractparams)-1), "*log(", Noiseparams$name[1], ");")
+           )
+         },
+
+         "FALSE-FALSE-FALSE-FALSE-FALSE" = {
+           priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makeSerodaypriors, makenoisepriors, maketodpriors,
+                       ";")
+         },
+
 
          {
            stop("Prior option not correctly specified during make priors")
          }
   )
 
+  # out
   ret <- c("SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) {",
            extractparams,
            priors,
@@ -252,11 +409,17 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 #' @inheritParams make_user_Agg_logprior
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros) {
+make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros, reparamNe) {
   #..................
   # assertsions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
+  assert_logical(reparamIFR)
+  assert_logical(reparamInfxn)
+  assert_logical(reparamKnots)
+  assert_logical(reparamSeros)
+  assert_logical(reparamNe)
+
   #..................
   # setup
   #..................
@@ -272,7 +435,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); int stratlen = rho.size(); std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"];"
 
   #..................
-  # extract inputs with the exception of the noise vector (given automatic recasting)
+  # extract inputs with the exception of the noise vector (given automatic recasting to Ne -- user can't change)
   #..................
   params <- sapply(paramdf$name[!paramdf$name %in% Noiseparams], function(param){
     paste0("double ", param, " = params[\"",  param, "\"];")
@@ -281,9 +444,19 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #......................
   # extract out noise params and put in vec
   #......................
-  noisevec <- mapply(function(x, y){
-    paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
-  }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
+  if (reparamNe) {
+    noisevec_p1 <- paste0("ne[0] = params[\"",  Noiseparams[1], "\"];")
+    noisevec_p2 <- mapply(function(x, y){
+      paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"] * ne[0];")
+    }, x = paramdf$name[paramdf$name %in% Noiseparams[2:length(Noiseparams)]], y = 2:length(Noiseparams))
+    # bring together
+    noisevec <- c(noisevec_p1, noisevec_p2)
+
+  } else {
+    noisevec <- mapply(function(x, y){
+      paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
+    }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
+  }
 
   noisevec <- c("std::vector<double>ne(stratlen);",
                 noisevec)
