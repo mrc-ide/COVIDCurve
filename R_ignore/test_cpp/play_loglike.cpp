@@ -4,19 +4,17 @@ using namespace Rcpp;
 //------------------------------------------------
 // Log-Likelihood for Aggregate Expected Deaths with a Natural Cubic Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
-  std::vector<double> pgmms = Rcpp::as< std::vector<double> >(misc["pgmms"]);
-  bool level = misc["level"];
+  std::vector<int> demog = Rcpp::as< std::vector<int> >(misc["demog"]);
   int n_knots = misc["n_knots"];
   int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
 
   // extract serology items
-  int popN = misc["popN"];
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
@@ -30,7 +28,7 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
     sero_day[i] =  std::floor(sero_day_raw[i]);
   }
 
-  // extract free parameters
+  // extract free spline parameters
   double x1 = params["x1"];
   double x2 = params["x2"];
   double x3 = params["x3"];
@@ -40,13 +38,22 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   double y3 = params["y3"];
   double y4 = params["y4"];
   double y5 = params["y5"];
+  // extract IFR parameters
   double ma3 = params["ma3"];
   double ma2 = params["r2"];
   double ma1 = params["r1"];
+  // extract noise parameters
+  double ne1 = params["ne1"];
+  double ne2 = params["ne2"];
+  double ne3 = params["ne3"];
+  // death delay params
+  double mod = params["mod"];
+  double sod = params["sod"];
 
   // storage items
   int stratlen = rho.size();
   std::vector<double>ma(stratlen);
+  std::vector<double>ne(stratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
   // fill storage
@@ -63,6 +70,29 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
   ma[0] = ma1;
   ma[1] = ma2;
   ma[2] = ma3;
+  ne[0] = ne1;
+  ne[1] = ne2;
+  ne[2] = ne3;
+
+  //........................................................
+  // Lookup Items
+  //........................................................
+  // rescale ne by attack rate
+  for (int i = 0; i < stratlen; i++) {
+    ne[i] = ne[i] * rho[i];
+  }
+
+  // get popN for catch
+  int popN = 0;
+  for (int i = 0; i < stratlen; i++) {
+    popN += demog[i];
+  }
+
+  // gamma look up table
+  std::vector<double> pgmms(days_obsd + 1);
+  for (int i = 0; i < (days_obsd+1); i++) {
+    pgmms[i] = R::pgamma(i, 1/pow(sod,2), mod*pow(sod,2), true, false);
+  }
 
   //........................................................
   // Deaths Section
@@ -145,23 +175,25 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
     }
 
     // exponentiate infxn spline out of log space
-    for (int i = 0; i < infxn_spline.size(); i++) {
+    for (int i = 0; i < days_obsd; i++) {
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
     // get cumulative infection spline
-    std::vector<double> cumm_infxn_spline(infxn_spline.size());
-    cumm_infxn_spline[0] = infxn_spline[0];
-    for (int i = 1; i < cumm_infxn_spline.size(); i++) {
-      cumm_infxn_spline[i] = infxn_spline[i] + cumm_infxn_spline[i-1];
+    double cum_infxn_check = 0.0;
+    for (int i = 0; i < days_obsd; i++) {
+      for (int a = 0; a < stratlen; a++) {
+        cum_infxn_check += ne[a] * infxn_spline[i];
+      }
     }
 
-    if (cumm_infxn_spline[cumm_infxn_spline.size() - 1] <= popN) {
+    // check if total infections exceed population denominator
+    if (cum_infxn_check <= popN) {
 
       // loop through days and TOD integral
-      std::vector<double> auc(infxn_spline.size());
-      for (int i = 0; i < infxn_spline.size(); i++) {
-        for (int j = i+1; j < (infxn_spline.size() + 1); j++) {
+      std::vector<double> auc(days_obsd);
+      for (int i = 0; i < days_obsd; i++) {
+        for (int j = i+1; j < (days_obsd + 1); j++) {
           int delta = j - i - 1;
           auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
         }
@@ -169,61 +201,28 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
 
       // Expectation
       double death_loglik = 0.0;
-      // True is for Cumulative Calculation
-      if (level) {
-
-        // extract data
-        std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-
-        // sum up to current day
-        double aucsum = 0;
-        for (int i = 0; i < auc.size(); i++) {
-          aucsum += auc[i];
+      // get data in right format
+      std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
+      std::vector<std::vector<int>> obsd(days_obsd, std::vector<int>(stratlen));
+      int iter = 0;
+      for (int i = 0; i < days_obsd; i++) {
+        for (int j = 0; j < stratlen; j++) {
+          obsd[i][j] = raw[iter];
+          iter++;
         }
-        // get exp deaths per age group
-        std::vector<double>expd(stratlen);
+      }
+
+
+      std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
+      // get log-likelihood over all days
+      for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
-          expd[a] = aucsum * rho[a] * ma[a];
-        }
-        // get log-likelihood over all days
-        for (int a = 0; a < stratlen; a++) {
+          // get exp deaths per age group
+          expd[i][a] = auc[i] * ne[a] * ma[a];
           // a+1 to account for 1-based dates
           if ((a+1) < rcensor_day) {
-            if (obsd[a] != -1) {
-              death_loglik += R::dpois(obsd[a], expd[a], true);
-            }
-          }
-        }
-
-      } else {
-        // False is for Time-Series Calculation
-        // get data in right format
-        std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-        std::vector<std::vector<int>> obsd(infxn_spline.size(), std::vector<int>(stratlen));
-        int iter = 0;
-        for (int i = 0; i < infxn_spline.size(); i++) {
-          for (int j = 0; j < stratlen; j++) {
-            obsd[i][j] = raw[iter];
-            iter++;
-          }
-        }
-
-        // get exp deaths per age group
-        std::vector<std::vector<double>> expd(infxn_spline.size(), std::vector<double>(stratlen));
-        for (int  i = 0; i < infxn_spline.size(); i++) {
-          for (int a = 0; a < stratlen; a++) {
-            expd[i][a] = auc[i] * rho[a] * ma[a];
-          }
-        }
-
-        // get log-likelihood over all days
-        for (int  i = 0; i < infxn_spline.size(); i++) {
-          for (int a = 0; a < stratlen; a++) {
-            // a+1 to account for 1-based dates
-            if ((a+1) < rcensor_day) {
-              if (obsd[i][a] != -1) {
-                death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
-              }
+            if (obsd[i][a] != -1) {
+              death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
             }
           }
         }
@@ -234,27 +233,43 @@ Rcpp::List NatCubic_SplineGrowth_loglike_cubicspline(Rcpp::NumericVector params,
       //........................................................
       // account for serology delay -- cumulative hazard of seroconversion on given day look up table
       // days are 1-based
-      std::vector<double> sero_con_num(n_sero_obs);
-      for (int i = 0; i< n_sero_obs; i++) {
+      std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
+      for (int i = 0; i < n_sero_obs; i++) {
+        // get cumulative hazard for each study date
         std::vector<double> cum_hazard(sero_day[i]);
-        cum_hazard[0] = 0.0;
-        for (int j = 1; j < sero_day[i]; j++) {
-          cum_hazard[j] = (1-exp((-j/sero_rate)));
+        for (int d = 0; d < sero_day[i]; d++) {
+          cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
         }
-
-        for (int j = 0; j < sero_day[i]; j++) {
-          int time_elapsed = sero_day[i] - j - 1;
-          sero_con_num[i] += infxn_spline[j] * cum_hazard[time_elapsed];
+        // loop through and split infection curve by strata and by number of seroconversion study dates
+        for (int j = 0; j < stratlen; j++) {
+          // go to the "end" of the day
+          for (int d = 0; d < sero_day[i]; d++) {
+            int time_elapsed = sero_day[i] - d - 1;
+            sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+          }
         }
       }
 
       // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
       double sero_loglik = 0.0;
-      std::vector<double> datpos = Rcpp::as< std::vector<double> >(data["obs_serologyrate"]);
+      std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serology"]);
+      // recast datpos
+      std::vector<std::vector<double>> datpos(n_sero_obs, std::vector<double>(stratlen));
+      int seroiter = 0;
       for (int i = 0; i < n_sero_obs; i++) {
-        double obs_prev = (sero_con_num[i]/popN) * (spec + (sens-1)) - (spec-1);
-        int posint = round(obs_prev * popN);
-        sero_loglik += R::dbinom(posint, popN, datpos[i], true);
+        for (int j = 0; j < stratlen; j++) {
+          datpos[i][j] = datpos_raw[seroiter];
+          seroiter++;
+        }
+      }
+
+      for (int i = 0; i < n_sero_obs; i++) {
+        for (int j = 0; j < stratlen; j++) {
+          // Rogan-Gladen Estimator
+          double obs_prev = (sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
+          int posint = round(obs_prev * demog[j]);
+          sero_loglik += R::dbinom(posint, demog[j], datpos[i][j], true);
+        }
       }
 
       // bring together

@@ -9,12 +9,15 @@ run_IFRmodel_agg(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
+  reparamSeroRate = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
+  thinning = 0,
   rungs = 1,
   GTI_pow = 3,
   coupling_on = TRUE,
+  cluster = NULL,
   pb_markdown = FALSE,
   silent = TRUE
 )
@@ -28,6 +31,8 @@ run_IFRmodel_agg(
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately}
 
+\item{reparamSeroRate}{logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately}
+
 \item{burnin}{the number of burn-in iterations.}
 
 \item{samples}{the number of sampling iterations.}
@@ -35,6 +40,8 @@ run_IFRmodel_agg(
 \item{chains}{the number of independent replicates of the MCMC chain to run.
 If a \code{cluster} object is defined then these chains are run in
 parallel, otherwise they are run in serial.}
+
+\item{thinning}{integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).}
 
 \item{rungs}{the number of temperature rungs used in Metropolis coupling (see
 \code{coupling_on}).}
@@ -44,6 +51,9 @@ method.}
 
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}
+
+\item{cluster}{option to pass in a cluster environment, allowing chains to be
+run in parallel (see package "parallel").}
 
 \item{pb_markdown}{whether to run progress bars in markdown mode, meaning
 they are only updated when they reach 100% to avoid large amounts of output
