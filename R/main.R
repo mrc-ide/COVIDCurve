@@ -199,14 +199,14 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output[, "sero_rate"]))
   }
 
-  #......................
-  # reparameterize noise parameters
-  # NB, must do this after potential recasting by reparam seros
-  #......................
-  liftovercols <- Noiseparams[2:length(Noiseparams)]
-  liftovercols.list <- mcmcout$output[, liftovercols]
-  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
+  # #......................
+  # # reparameterize noise parameters
+  # # NB, must do this after potential recasting by reparam seros
+  # #......................
+  # liftovercols <- Noiseparams[2:length(Noiseparams)]
+  # liftovercols.list <- mcmcout$output[, liftovercols]
+  # liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
+  # mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
 
   # store input along with Dr.Jacoby output for later use
   inputs <- list(
