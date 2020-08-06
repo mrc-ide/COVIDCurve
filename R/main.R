@@ -194,9 +194,9 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     #......................
     # reparameterize serology params
     #......................
-    mcmcout$output[, IFRmodel$modparam] <- unname(unlist(mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam]))
-    mcmcout$output[, Noiseparams[1]] <- unname(unlist(mcmcout$output[, "spec"] * mcmcout$output[, Noiseparams[1]]))
-    mcmcout$output$sero_rate <- unname(unlist(mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output$sero_rate))
+    mcmcout$output[, IFRmodel$modparam] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam]))
+    mcmcout$output[, Noiseparams[1]] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, Noiseparams[1]]))
+    mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output[, "sero_rate"]))
   }
 
   #......................

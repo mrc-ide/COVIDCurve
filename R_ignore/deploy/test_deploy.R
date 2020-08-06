@@ -136,18 +136,29 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       reparamSeroRate = TRUE,
+                                       reparamSeros = TRUE,
                                        burnin = 1e2,
                                        samples = 1e2,
-                                       chains = 2,
-                                       rungs = 5,
+                                       chains = 1,
+                                       rungs = 1,
+                                       thinning = 0,
                                        silent = FALSE)
 Sys.time() - start
 modout
+
+
+#............................................................
+# various outputs
+#...........................................................
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
 (sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "Serotestparams", by_chain = F))
+(knotspost <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                             what = "Knotparams", by_chain = F))
+(infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                         what = "Infxnparams", by_chain = F))
+
 plot_par(modout$mcmcout, "sero_day1")
 plot_par(modout$mcmcout, "sero_day2")
 
@@ -177,42 +188,18 @@ summary(modout$mcmcout$output$logprior)
 modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$output$loglikelihood), ]
 
 
-
-plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
-plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
-
-plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
-plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
-plot_cor(modout$mcmcout, "ma1", "ma3", rung = 1)
-
-
-
-plot_mc_acceptance(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 2)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 3)
-
-rung9 <- modout$mcmcout$output[modout$mcmcout$output$rung == "rung9", ]
-summary(rung9)
-
-(ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "IFRparams", by_chain = F))
-
-(knotspost <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                             what = "Knotparams", by_chain = F))
-(infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                         what = "Infxnparams", by_chain = F))
-(sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
-                                        what = "Serotestparams", by_chain = F))
-
-
+#............................................................
+# curves and posteriors
+#...........................................................
 curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
                                                         whichrung = paste0("rung", 1),
                                                         by_chain = T,
                                                         by_strata = T,
                                                         dwnsmpl = 1e3)
+serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = modout,
+                                                    whichrung = paste0("rung", 1),
+                                                    by_chain = T,
+                                                    dwnsmpl = 1e3)
 # plot out
 jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
 library(ggplot2)
@@ -261,11 +248,35 @@ graphics.off()
 
 
 
+#............................................................
+# look at corr
+#...........................................................
+
+plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
+plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
+
+plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
+plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
+plot_cor(modout$mcmcout, "ma1", "ma3", rung = 1)
 
 
 #............................................................
-# look at rungs
+# look at MCoupling
 #...........................................................
+plot_mc_acceptance(modout$mcmcout)
+drjacoby::plot_rung_loglike(modout$mcmcout)
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 2)
+drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 3)
+
+
+
+
+
+#.....................
+# look at rungs
+#.....................
 COVIDCurve::get_cred_intervals(IFRmodel = mod1,
                                mcmcout = modout,
                                whichrung = "rung50",
@@ -294,61 +305,3 @@ if (minloglike < -1.796e306 & minloglike > -1.8e306) {
   sum(rungdf$logpost == minloglike)/nrow(rungdf)
 }
 
-#............................................................
-# are the problem ones the rungs that are inf?
-#...........................................................
-rungdf %>%
-  dplyr::filter(logpost > -1.8e306) %>%
-  dplyr::select_at(c("chain", "r1", "r2", "ma3")) %>%
-  tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
-  dplyr::group_by_at("param") %>%
-  dplyr::summarise(
-    min = min(est),
-    LCI = quantile(est, 0.025),
-    median = median(est),
-    mean = mean(est),
-    UCI = quantile(est, 0.975),
-    max = max(est),
-    ESS = coda::effectiveSize(coda::as.mcmc(est)),
-    GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
-    GewekeP = dnorm(GewekeZ)
-  )
-
-
-
-
-
-
-
-
-
-
-
-#......................
-# cumulative
-#......................
-dat <- COVIDCurve::Aggsim_infxn_2_death(
-  casefat = casefat,
-  m_od = 18.8,
-  s_od = 0.45,
-  curr_day = 150,
-  level = "Cumulative",
-  infections = infxns$infxns
-)
-
-mod1 <- make_modinf_agg$new()
-mod1$set_level("Cumulative")
-mod1$set_data(dat)
-mod1$set_IFRparams(c("r1", "r2", "ma3"))
-mod1$set_Infxnparams(c("y1", "y2", "y3", "y4", "y5", "y6"))
-mod1$set_paramdf(df_params)
-mod1$set_pa(c(1/3, 1/3, 1/3))
-mod1$set_MeanOnset(18.8)
-mod1$set_CoefVarOnset(0.45)
-mod1$set_knots(c(1, 30, 60, 90, 120, 150))
-r_mcmc_out.cumm <- COVIDCurve::run_modinf_agg(modinf = mod1, reparamIFR = T, rungs = 10)
-plot_par(r_mcmc_out.cumm, "y1")
-
-
-
-# sanity
