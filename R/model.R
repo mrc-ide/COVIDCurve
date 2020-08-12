@@ -71,7 +71,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_in(colnames(data$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
                                        assert_in(data$obs_serology$SeroDay, Serodayparams)
                                        assert_in(data$obs_serology$Strata, IFRparams)
-                                       assert_bounded(data$obs_serology$SeroPrev, left = 0, right = 1)
+                                       assert_bounded(data$obs_serology$SeroPrev[data$obs_serology$SeroPrev != -1],
+                                                      left = 0, right = 1)
                                        #assert params
                                        assert_string(modparam)
                                        assert_string(sodparam)
@@ -277,7 +278,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_in(colnames(val$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
                                      assert_in(val$obs_serology$SeroDay, self$Serodayparams)
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
-                                     assert_bounded(val$obs_serology$SeroPrev, left = 0, right = 1)
+                                     assert_bounded(val$obs_serology$SeroPrev[val$obs_serology$SeroPrev != -1],
+                                                    left = 0, right = 1)
 
                                      if (unique(length(val$obs_deaths$ObsDay)) == 1) {
                                        stop("Time-Series data but only one observation specified")
