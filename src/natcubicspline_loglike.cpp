@@ -13,20 +13,15 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
+  std::vector<int> serodays_range = Rcpp::as< std::vector<int> >(misc["serodays_range"]);
+  std::vector<int> max_serodays = Rcpp::as< std::vector<int> >(misc["max_serodays"]);
+  int max_seroday_range = misc["max_seroday_range"];
+  int max_seroday_obsd = misc["max_seroday_obsd"];
 
   // extract serology items
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-  double sero_day1_raw = params["sero_day1"];
-  double sero_day2_raw = params["sero_day2"];
-  std::vector<double> sero_day_raw(n_sero_obs);
-  sero_day_raw[0] = sero_day1_raw;
-  sero_day_raw[1] = sero_day2_raw;
-  std::vector<int> sero_day(n_sero_obs);
-  for (int i = 0; i < n_sero_obs; i++) {
-    sero_day[i] =  std::floor(sero_day_raw[i]);
-  }
 
   // extract free spline parameters
   double x1 = params["x1"];
@@ -231,22 +226,40 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       //........................................................
       // Serology Section
       //........................................................
-      // account for serology delay -- cumulative hazard of seroconversion on given day look up table
-      // days are 1-based
+      // get cumulative hazard for each day up to the latest serology observation date
+      // i.e. cumulative hazard of seroconversion on given day look up table
+      std::vector<double> cum_hazard(max_seroday_obsd);
+      for (int d = 0; d < sero_day[i]; d++) {
+        cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+      }
+      // store number of seroconversions for each day in serostudy period with respect to the different serodays
+      std::vector<std::vector<std::vector<double>>> sero_con_num_full(n_sero_obs, std::vector<std::vector<double>>(max_seroday_range), std::vector<double>(stratlen));
+      // for each serology study time-period
+      for (int i = 0; i < n_sero_obs; i++) {
+        // for every day within the serology study time-period
+        for (int j = 0; j < serodays_range[i]; j++) {
+          // loop through and split infection curve by strata and by number of seroconversion study dates
+          for (int a = 0; a < stratlen; a++) {
+            // go to the "end" of the day
+            for (int d = 0; d < (max_serodays[i] - j); d++) {
+              int time_elapsed = (max_serodays[i] - j) - d - 1;
+              // N.B. the j-vector is "backwards", which doesn't matter given it is "summed" out
+              sero_con_num_full[i][j][a] += infxn_spline[d] * ne[a] * cum_hazard[time_elapsed];
+            }
+          }
+        }
+      }
+
+      // average over seroconversions with respect to the different serodays during the serostudy period
       std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
       for (int i = 0; i < n_sero_obs; i++) {
-        // get cumulative hazard for each study date
-        std::vector<double> cum_hazard(sero_day[i]);
-        for (int d = 0; d < sero_day[i]; d++) {
-          cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
-        }
-        // loop through and split infection curve by strata and by number of seroconversion study dates
-        for (int j = 0; j < stratlen; j++) {
-          // go to the "end" of the day
-          for (int d = 0; d < sero_day[i]; d++) {
-            int time_elapsed = sero_day[i] - d - 1;
-            sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+        for (int a = 0; a < stratlen; j++) {
+          for (int j = 0; j < serodays_range[i]; j++) {
+            // "sum" out j (seroday range)
+            sero_con_num[i][a] += sero_con_num_full[i][j][a];
           }
+          // now average
+          sero_con_num[i][a] = sero_con_num[i][a]/serodays_range[i];
         }
       }
 
