@@ -250,26 +250,28 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
 
-      // update now for sensitivity and false positives; -1 for day to being 1-based to a 0-based call
+      // unpack serology observed data
       double sero_loglik = 0.0;
-      std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serology"]);
+      std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serologypos"]);
+      std::vector<double> datn_raw = Rcpp::as< std::vector<double> >(data["obs_serologyn"]);
       // recast datpos
       std::vector<std::vector<double>> datpos(n_sero_obs, std::vector<double>(stratlen));
+      std::vector<std::vector<double>> datn(n_sero_obs, std::vector<double>(stratlen));
       int seroiter = 0;
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
           datpos[i][j] = datpos_raw[seroiter];
+          datn[i][j] = datn_raw[seroiter];
           seroiter++;
         }
       }
-
+      // loop through sero likelihood
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
-          if (datpos[i][j] != -1) {
+          if (datpos[i][j] != -1 | datn[i][j] != -1 ) {
             // Gelman Estimator for numerical stability
             double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
-            int posint = round(obs_prev * demog[j]);
-            sero_loglik += R::dbinom(posint, demog[j], datpos[i][j], true);
+            sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
           }
         }
       }
