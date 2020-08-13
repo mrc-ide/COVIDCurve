@@ -10,23 +10,17 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
   std::vector<int> demog = Rcpp::as< std::vector<int> >(misc["demog"]);
   int n_knots = misc["n_knots"];
-  int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
+  int n_sero_obs = misc["n_sero_obs"];
+  std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc["sero_survey_start"]);
+  std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc["sero_survey_end"]);
+  int max_seroday_obsd = misc["max_seroday_obsd"];
 
   // extract serology items
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-  double sero_day1_raw = params["sero_day1"];
-  double sero_day2_raw = params["sero_day2"];
-  std::vector<double> sero_day_raw(n_sero_obs);
-  sero_day_raw[0] = sero_day1_raw;
-  sero_day_raw[1] = sero_day2_raw;
-  std::vector<int> sero_day(n_sero_obs);
-  for (int i = 0; i < n_sero_obs; i++) {
-    sero_day[i] =  std::floor(sero_day_raw[i]);
-  }
 
   // extract free spline parameters
   double x1 = params["x1"];
@@ -40,8 +34,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double y5 = params["y5"];
   // extract IFR parameters
   double ma3 = params["ma3"];
-  double ma2 = params["r2"];
-  double ma1 = params["r1"];
+  double ma2 = params["ma2"];
+  double ma1 = params["ma1"];
   // extract noise parameters
   double ne1 = params["ne1"];
   double ne2 = params["ne2"];
@@ -231,22 +225,36 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       //........................................................
       // Serology Section
       //........................................................
-      // account for serology delay -- cumulative hazard of seroconversion on given day look up table
-      // days are 1-based
+      // get cumulative hazard for each day up to the latest serology observation date
+      // i.e. cumulative hazard of seroconversion on given day look up table
+      std::vector<double> cum_hazard(max_seroday_obsd);
+      for (int d = 0; d < max_seroday_obsd; d++) {
+        cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+      }
+
+      // seroconversion by strata look up table
+      std::vector<std::vector<double>> sero_con_num_full(max_seroday_obsd, std::vector<double>(stratlen));
+      // loop through and split infection curve by strata and by number of seroconversion study dates
+      for (int a = 0; a < stratlen; a++) {
+        for (int i = 0; i < max_seroday_obsd; i++) {
+          // go to the "end" of the day
+          for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
+            int time_elapsed = j - i - 1;
+            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
+          }
+        }
+      }
+
+      // get average over serostudy data
       std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
       for (int i = 0; i < n_sero_obs; i++) {
-        // get cumulative hazard for each study date
-        std::vector<double> cum_hazard(sero_day[i]);
-        for (int d = 0; d < sero_day[i]; d++) {
-          cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
-        }
-        // loop through and split infection curve by strata and by number of seroconversion study dates
         for (int j = 0; j < stratlen; j++) {
-          // go to the "end" of the day
-          for (int d = 0; d < sero_day[i]; d++) {
-            int time_elapsed = sero_day[i] - d - 1;
-            sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+          for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
+            // days are 1 based
+            sero_con_num[i][j] += sero_con_num_full[k-1][j];
           }
+          // now get average
+          sero_con_num[i][j] =  sero_con_num[i][j]/(sero_survey_end[i] - sero_survey_start[i] + 1);
         }
       }
 
@@ -275,7 +283,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           }
         }
       }
-
       // bring together
       loglik = death_loglik + sero_loglik;
 
