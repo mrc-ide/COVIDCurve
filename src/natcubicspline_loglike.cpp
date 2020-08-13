@@ -10,9 +10,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
   std::vector<int> demog = Rcpp::as< std::vector<int> >(misc["demog"]);
   int n_knots = misc["n_knots"];
-  int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
+  int n_sero_obs = misc["n_sero_obs"];
   std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc["sero_survey_start"]);
   std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc["sero_survey_end"]);
   int max_seroday_obsd = misc["max_seroday_obsd"];
@@ -34,8 +34,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double y5 = params["y5"];
   // extract IFR parameters
   double ma3 = params["ma3"];
-  double ma2 = params["r2"];
-  double ma1 = params["r1"];
+  double ma2 = params["ma2"];
+  double ma1 = params["ma1"];
   // extract noise parameters
   double ne1 = params["ne1"];
   double ne2 = params["ne2"];
@@ -240,7 +240,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           // go to the "end" of the day
           for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
             int time_elapsed = j - i - 1;
-            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[j] * cum_hazard[time_elapsed];
+            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
           }
         }
       }
@@ -250,7 +250,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
           for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
-            sero_con_num[i][j] += sero_con_num[k][j];
+            // days are 1 based
+            sero_con_num[i][j] += sero_con_num_full[k-1][j];
           }
           // now get average
           sero_con_num[i][j] =  sero_con_num[i][j]/(sero_survey_end[i] - sero_survey_start[i] + 1);
@@ -280,7 +281,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           }
         }
       }
-
       // bring together
       loglik = death_loglik + sero_loglik;
 

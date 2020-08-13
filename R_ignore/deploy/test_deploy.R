@@ -49,15 +49,35 @@ obs_serology <- dat$AggSeroPrev %>%
   dplyr::group_by(Strata) %>%
   dplyr::filter(event_obs_day %in% sero_days) %>%
   dplyr::rename(
-    SeroDay = event_obs_day,
     SeroPrev = ObsPrev) %>%
-  dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
-  dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
-  dplyr::arrange(SeroDay) %>%
+  dplyr::mutate(SeroStartSurvey = c(130, 155),
+                SeroEndSurvey = c(140, 165)) %>%
+  dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPrev")) %>%
+  dplyr::arrange(SeroStartSurvey, Strata) %>%
   dplyr::ungroup(.)
 
 datinput <- list(obs_deaths = dat$AggDeath,
                  obs_serology = obs_serology)
+
+
+# obs_serology <- dat$AggSeroPrev %>%
+#   dplyr::group_by(Strata) %>%
+#   dplyr::filter(event_obs_day %in% sero_days) %>%
+#   dplyr::mutate(
+#     SeroPos = round(ObsPrev * popN),
+#     SeroN = popN ) %>%
+#   dplyr::rename(
+#     SeroDay = event_obs_day,
+#     SeroPrev = ObsPrev) %>%
+#   dplyr::select(c("SeroDay", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
+#   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
+#   dplyr::arrange(SeroDay) %>%
+#   dplyr::ungroup(.)
+#
+# datinput <- list(obs_deaths = dat$AggDeath,
+#                  obs_serology = obs_serology)
+
+
 
 #..................
 # make model
@@ -82,12 +102,12 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 max =  c(0.33, 0.66, 0.99, 200),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate", "sero_day1", "sero_day2"),
-                                min =   c(0.83,     0.8,    0,           120,        150),
-                                init =  c(0.85,     0.95,   0.9,         125,        165),
-                                max =   c(0.87,     1.00,   1,           140,        170),
-                                dsc1 =  c(8500,     950,    90,          120,        150),
-                                dsc2 =  c(1500,     50,     10,          140,        170))
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate"),
+                                min =   c(0.83,     0.8,    10),
+                                init =  c(0.85,     0.95,   15),
+                                max =   c(0.87,     1.00,   30),
+                                dsc1 =  c(8500,     950,    2.8),
+                                dsc2 =  c(1500,     50,     0.25))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0, 3),
@@ -102,7 +122,7 @@ tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
                                init = c(14,     0.7),
                                max =  c(20,     1.00),
                                dsc1 = c(2.657,  -0.236),
-                               dsc2 = c(0.01,   0.01))
+                               dsc2 = c(0.05,   0.05))
 
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
@@ -120,7 +140,6 @@ mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
 mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
-mod1$set_Serodayparams(c("sero_day1", "sero_day2"))
 mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
@@ -136,7 +155,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       reparamSeros = TRUE,
+                                       reparamSeros = FALSE,
                                        reparamNe = TRUE,
                                        burnin = 1e2,
                                        samples = 1e2,

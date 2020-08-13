@@ -68,7 +68,7 @@ test_that("serology likelihood accurate", {
   # liftover to Rcpp list
 
   morelikely.paramsin <- c("mod" = 17.8, "sod" = 0.45,
-                           "r1" = 0.05, "r2" = 0.2, "ma3" = 0.5,
+                           "ma1" = 0.05, "ma2" = 0.2, "ma3" = 0.5,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
@@ -84,7 +84,7 @@ test_that("serology likelihood accurate", {
 
   # random
   lesslikely.paramsin <-  c("mod" = 17.8, "sod" = 0.45,
-                            "r1" = 0.1, "r2" = 0.39, "ma3" = 0.98,
+                            "ma1" = 0.1, "ma2" = 0.39, "ma3" = 0.98,
                             "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
                             "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
                             "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,

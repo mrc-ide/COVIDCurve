@@ -34,13 +34,9 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    Noiseparams = NULL,
                                    paramdf = NULL,
                                    rho = NULL,
-                                   # sero items
-                                   Serodayparams = NULL,
                                    Serotestparams = NULL,
                                    demog = NULL,
-                                   # censoring items
                                    rcensor_day = NULL,
-                                   # user item
                                    IFRdictkey = NULL,
 
                                    initialize = function(data = NULL, maxObsDay = NULL, rho = NULL,
@@ -48,7 +44,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                                          IFRparams = NULL, maxMa = NULL,
                                                          Infxnparams = NULL, relInfxn = NULL,
                                                          Knotparams = NULL, relKnot = NULL,
-                                                         Serotestparams = NULL, Serodayparams = NULL,
+                                                         Serotestparams = NULL,
                                                          Noiseparams = NULL,
                                                          paramdf = NULL,
                                                          demog = NULL,
@@ -57,7 +53,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      #......................
                                      # assertions and checks
                                      #......................
-                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, paramdf, rho, modparam, sodparam, demog)
+                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, paramdf, rho, modparam, sodparam, demog)
                                      if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                        # assert data
                                        assert_list(data)
@@ -68,11 +64,13 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
                                        assert_dataframe(data$obs_serology)
-                                       assert_in(colnames(data$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
-                                       assert_in(data$obs_serology$SeroDay, Serodayparams)
+                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPrev"))
                                        assert_in(data$obs_serology$Strata, IFRparams)
                                        assert_bounded(data$obs_serology$SeroPrev[data$obs_serology$SeroPrev != -1],
                                                       left = 0, right = 1)
+                                       assert_pos_int(data$obs_serology$SeroStartSurvey)
+                                       assert_pos_int(data$obs_serology$SeroEndSurvey)
+
                                        #assert params
                                        assert_string(modparam)
                                        assert_string(sodparam)
@@ -85,8 +83,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_string(Serotestparams)
                                        assert_unique(Serotestparams)
                                        assert_in(Serotestparams, c("sens", "spec", "sero_rate"))
-                                       assert_string(Serodayparams)
-                                       assert_unique(Serodayparams)
                                        assert_string(Noiseparams)
                                        assert_unique(Noiseparams)
                                        assert_same_length(Noiseparams, IFRparams)
@@ -96,8 +92,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_in(x = colnames(paramdf), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
                                        assert_string(paramdf$name)
                                        assert_unique(paramdf$name)
-                                       assert_in(paramdf$name, c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, Noiseparams))
-                                       assert_in(c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Serodayparams, Noiseparams), paramdf$name)
+                                       assert_in(paramdf$name, c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams))
+                                       assert_in(c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams), paramdf$name)
                                        assert_numeric(paramdf$init)
                                        assert_numeric(paramdf$min)
                                        assert_numeric(paramdf$max)
@@ -114,8 +110,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        # censoring
                                        if (!is.null(rcensor_day)) {
                                          assert_pos_int(rcensor_day)
-                                         assert_gr(rcensor_day, max(paramdf$max[paramdf$name %in% Serodayparams]),
-                                                   message = "Day of censoring must be after maximum serology date")
                                        }
 
                                        # rho
@@ -165,7 +159,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      }
 
                                      self$Serotestparams <- Serotestparams
-                                     self$Serodayparams <- Serodayparams
                                      self$Noiseparams <- Noiseparams
                                      self$demog <- demog
                                      self$paramdf <- paramdf
@@ -244,12 +237,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$Serotestparams <- val
                                    },
 
-                                   set_Serodayparams = function(val) {
-                                     assert_string(val)
-                                     assert_unique(val)
-                                     self$Serodayparams <- val
-                                   },
-
                                    set_Noiseparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
@@ -261,9 +248,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    },
 
                                    set_data = function(val) {
-                                     if (is.null(self$Serodayparams)) {
-                                       stop("Must specify serology day parameters before specifying data")
-                                     }
                                      if (is.null(self$IFRparams)) {
                                        stop("Must specify IFR parameters before specifying data")
                                      }
@@ -275,11 +259,12 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_increasing(val$obs_deaths$ObsDay)
                                      assert_numeric(val$obs_deaths$Deaths)
                                      assert_dataframe(val$obs_serology)
-                                     assert_in(colnames(val$obs_serology), c("SeroDay", "Strata", "SeroPrev"))
-                                     assert_in(val$obs_serology$SeroDay, self$Serodayparams)
+                                     assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPrev"))
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
                                      assert_bounded(val$obs_serology$SeroPrev[val$obs_serology$SeroPrev != -1],
                                                     left = 0, right = 1)
+                                     assert_pos_int(val$obs_serology$SeroStartSurvey)
+                                     assert_pos_int(val$obs_serology$SeroEndSurvey)
 
                                      if (unique(length(val$obs_deaths$ObsDay)) == 1) {
                                        stop("Time-Series data but only one observation specified")
@@ -292,14 +277,14 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    },
 
                                    set_paramdf = function(val) {
-                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Serotestparams) == 0 | length(self$Serodayparams) == 0 | length(self$Noiseparams) == 0 | length(self$modparam) == 0 | length(self$sodparam) == 0) {
-                                       stop("Must specify modparam, sodparam, IFRparams, Knotparams, Infxnparams, Serotestparams, Serodayparams, and Noiseparams before specifying the param dataframe")
+                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Serotestparams) == 0 | length(self$Noiseparams) == 0 | length(self$modparam) == 0 | length(self$sodparam) == 0) {
+                                       stop("Must specify modparam, sodparam, IFRparams, Knotparams, Infxnparams, Serotestparams, and Noiseparams before specifying the param dataframe")
                                      }
                                      assert_dataframe(val)
                                      assert_in(x = colnames(val), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
                                      assert_string(val$name)
                                      assert_unique(val$name)
-                                     assert_in(val$name, c(self$modparam, self$sodparam, self$IFRparams, self$Knotparams, self$Infxnparams, self$Serotestparams, self$Serodayparams, self$Noiseparams))
+                                     assert_in(val$name, c(self$modparam, self$sodparam, self$IFRparams, self$Knotparams, self$Infxnparams, self$Serotestparams, self$Noiseparams))
                                      assert_numeric(val$init)
                                      assert_numeric(val$min)
                                      assert_numeric(val$max)
@@ -310,15 +295,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
 
 
                                    set_rcensor_day = function(val) {
-                                     if (is.null(self$paramdf)) {
-                                       stop("Must specificy parameter dataframe prior to specifying day to right censor from")
-                                     }
-                                     if (is.null(self$Serodayparams)) {
-                                       stop("Must specificy serology day parameters prior to specifying day to right censor from")
-                                     }
                                      assert_pos_int(val)
-                                     assert_gr(val, max(self$paramdf$max[self$paramdf$name %in% self$Serodayparams]),
-                                               message = "Day of censoring must be after maximum serology date")
                                      self$rcensor_day <- val
                                    },
 

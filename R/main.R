@@ -38,7 +38,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$paramdf)
   assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
-  assert_non_null(IFRmodel$Serodayparams)
   assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$modparam)
   assert_non_null(IFRmodel$sodparam)
@@ -102,7 +101,10 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
-                   n_sero_obs = length(IFRmodel$Serodayparams),
+                   n_sero_obs = length(unique(IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel$data$obs_serology$SeroEndSurvey),
                    demog = IFRmodel$demog$popN)
   #..................
   # make data list
