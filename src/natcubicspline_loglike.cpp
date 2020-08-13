@@ -13,9 +13,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   int n_sero_obs = misc["n_sero_obs"];
   int rcensor_day = misc["rcensor_day"];
   int days_obsd = misc["days_obsd"];
-  std::vector<int> serodays_range = Rcpp::as< std::vector<int> >(misc["serodays_range"]);
-  std::vector<int> max_serodays = Rcpp::as< std::vector<int> >(misc["max_serodays"]);
-  int max_seroday_range = misc["max_seroday_range"];
+  std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc["sero_survey_start"]);
+  std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc["sero_survey_end"]);
   int max_seroday_obsd = misc["max_seroday_obsd"];
 
   // extract serology items
@@ -229,37 +228,32 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       // get cumulative hazard for each day up to the latest serology observation date
       // i.e. cumulative hazard of seroconversion on given day look up table
       std::vector<double> cum_hazard(max_seroday_obsd);
-      for (int d = 0; d < sero_day[i]; d++) {
+      for (int d = 0; d < max_seroday_obsd; d++) {
         cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
       }
-      // store number of seroconversions for each day in serostudy period with respect to the different serodays
-      std::vector<std::vector<std::vector<double>>> sero_con_num_full(n_sero_obs, std::vector<std::vector<double>>(max_seroday_range), std::vector<double>(stratlen));
-      // for each serology study time-period
-      for (int i = 0; i < n_sero_obs; i++) {
-        // for every day within the serology study time-period
-        for (int j = 0; j < serodays_range[i]; j++) {
-          // loop through and split infection curve by strata and by number of seroconversion study dates
-          for (int a = 0; a < stratlen; a++) {
-            // go to the "end" of the day
-            for (int d = 0; d < (max_serodays[i] - j); d++) {
-              int time_elapsed = (max_serodays[i] - j) - d - 1;
-              // N.B. the j-vector is "backwards", which doesn't matter given it is "summed" out
-              sero_con_num_full[i][j][a] += infxn_spline[d] * ne[a] * cum_hazard[time_elapsed];
-            }
+
+      // seroconversion by strata look up table
+      std::vector<std::vector<double>> sero_con_num_full(max_seroday_obsd, std::vector<double>(stratlen));
+      // loop through and split infection curve by strata and by number of seroconversion study dates
+      for (int a = 0; a < stratlen; a++) {
+        for (int i = 0; i < max_seroday_obsd; i++) {
+          // go to the "end" of the day
+          for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
+            int time_elapsed = j - i - 1;
+            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[j] * cum_hazard[time_elapsed];
           }
         }
       }
 
-      // average over seroconversions with respect to the different serodays during the serostudy period
+      // get average over serostudy data
       std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
       for (int i = 0; i < n_sero_obs; i++) {
-        for (int a = 0; a < stratlen; j++) {
-          for (int j = 0; j < serodays_range[i]; j++) {
-            // "sum" out j (seroday range)
-            sero_con_num[i][a] += sero_con_num_full[i][j][a];
+        for (int j = 0; j < stratlen; j++) {
+          for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
+            sero_con_num[i][j] += sero_con_num[k][j];
           }
-          // now average
-          sero_con_num[i][a] = sero_con_num[i][a]/serodays_range[i];
+          // now get average
+          sero_con_num[i][j] =  sero_con_num[i][j]/(sero_survey_end[i] - sero_survey_start[i] + 1);
         }
       }
 
