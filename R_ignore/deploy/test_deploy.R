@@ -45,19 +45,39 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   sero_delay_rate = 13
 )
 
+# obs_serology <- dat$AggSeroPrev %>%
+#   dplyr::group_by(Strata) %>%
+#   dplyr::filter(event_obs_day %in% sero_days) %>%
+#   dplyr::rename(
+#     SeroDay = event_obs_day,
+#     SeroPrev = ObsPrev) %>%
+#   dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
+#   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
+#   dplyr::arrange(SeroDay) %>%
+#   dplyr::ungroup(.)
+#
+# datinput <- list(obs_deaths = dat$AggDeath,
+#                  obs_serology = obs_serology)
+
+
 obs_serology <- dat$AggSeroPrev %>%
   dplyr::group_by(Strata) %>%
   dplyr::filter(event_obs_day %in% sero_days) %>%
+  dplyr::mutate(
+    SeroPos = round(ObsPrev * popN),
+    SeroN = popN ) %>%
   dplyr::rename(
     SeroDay = event_obs_day,
     SeroPrev = ObsPrev) %>%
-  dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
+  dplyr::select(c("SeroDay", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
   dplyr::arrange(SeroDay) %>%
   dplyr::ungroup(.)
 
 datinput <- list(obs_deaths = dat$AggDeath,
                  obs_serology = obs_serology)
+
+
 
 #..................
 # make model
