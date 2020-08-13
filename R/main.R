@@ -112,7 +112,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
   data_list <- unname(unlist(data_list))
   data_list <- list(obs_deaths = data_list,
-                    obs_serology = IFRmodel$data$obs_serology$SeroPrev)
+                    obs_serologypos = IFRmodel$data$obs_serology$SeroPos,
+                    obs_serologyn = IFRmodel$data$obs_serology$SeroN)
 
   #..................
   # make df param

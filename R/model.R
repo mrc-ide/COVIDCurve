@@ -64,8 +64,10 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
                                        assert_dataframe(data$obs_serology)
-                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPrev"))
+                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos, "SeroN", "SeroPrev"))
                                        assert_in(data$obs_serology$Strata, IFRparams)
+                                       assert_pos_int(data$obs_serology$SeroPos[data$obs_serology$SeroPos != -1])
+                                       assert_pos_int(data$obs_serology$SeroN[data$obs_serology$SeroN != -1])
                                        assert_bounded(data$obs_serology$SeroPrev[data$obs_serology$SeroPrev != -1],
                                                       left = 0, right = 1)
                                        assert_pos_int(data$obs_serology$SeroStartSurvey)
@@ -259,8 +261,10 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_increasing(val$obs_deaths$ObsDay)
                                      assert_numeric(val$obs_deaths$Deaths)
                                      assert_dataframe(val$obs_serology)
-                                     assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPrev"))
+                                     assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
+                                     assert_pos_int(val$obs_serology$SeroPos[val$obs_serology$SeroPos != -1])
+                                     assert_pos_int(val$obs_serology$SeroN[val$obs_serology$SeroN != -1])
                                      assert_bounded(val$obs_serology$SeroPrev[val$obs_serology$SeroPrev != -1],
                                                     left = 0, right = 1)
                                      assert_pos_int(val$obs_serology$SeroStartSurvey)
