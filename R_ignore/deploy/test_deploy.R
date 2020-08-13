@@ -68,12 +68,12 @@ obs_serology <- dat$AggSeroPrev %>%
     SeroN = popN ) %>%
   dplyr::rename(
     SeroPrev = ObsPrev) %>%
-
   dplyr::mutate(SeroStartSurvey = c(130, 155),
                 SeroEndSurvey = c(140, 165)) %>%
   dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
 
-  dplyr::ungroup(.)
+  dplyr::ungroup(.) %>%
+  dplyr::arrange(SeroStartSurvey, Strata)
 
 datinput <- list(obs_deaths = dat$AggDeath,
                  obs_serology = obs_serology)

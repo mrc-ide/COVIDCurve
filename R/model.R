@@ -64,7 +64,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
                                        assert_dataframe(data$obs_serology)
-                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos, "SeroN", "SeroPrev"))
+                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
                                        assert_in(data$obs_serology$Strata, IFRparams)
                                        assert_pos_int(data$obs_serology$SeroPos[data$obs_serology$SeroPos != -1])
                                        assert_pos_int(data$obs_serology$SeroN[data$obs_serology$SeroN != -1])
