@@ -80,21 +80,16 @@ cpp_loglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List
   node_y[2] = y3;
   node_y[3] = y4 * y3;
   node_y[4] = y5 * y3;
-  ma[0] = ma1;
-  ma[1] = ma2 * ma1;
-  ma[2] = ma3* ma1;
-  ma[3] = ma4* ma1;
-  ma[4] = ma5* ma1;
-  ma[5] = ma6* ma1;
-  ma[6] = ma7* ma1;
-  ma[7] = ma8* ma1;
-  ma[8] = ma9* ma1;
-  ma[9] = ma10* ma1;
-  // break more correlation
-  mod = mod * 1/spec;
-  ne1 = ne1 * 1/spec;
-
-  sero_rate = mod*sero_rate;
+  ma[0] = ma1 * ma10;
+  ma[1] = ma2 * ma10;
+  ma[2] = ma3* ma10;
+  ma[3] = ma4* ma10;
+  ma[4] = ma5* ma10;
+  ma[5] = ma6* ma10;
+  ma[6] = ma7* ma10;
+  ma[7] = ma8* ma10;
+  ma[8] = ma9* ma10;
+  ma[9] = ma10;
 
   ne[0] = ne1;
   ne[1] = ne2 * ne1;

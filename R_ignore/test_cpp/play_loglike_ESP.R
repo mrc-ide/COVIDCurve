@@ -85,18 +85,7 @@ cpp_loglike <- "Rcpp::List loglike(Rcpp::NumericVector params, int param_i, Rcpp
   ma[7] = ma8;
   ma[8] = ma9;
   ma[9] = ma10;
-  // break more correlation
-  ne1 = ne1 * spec;
-  ne[0] = ne1;
-  ne[1] = ne2 * ne1;
-  ne[2] = ne3 * ne1;
-  ne[3] = ne4 * ne1;
-  ne[4] = ne5 * ne1;
-  ne[5] = ne6 * ne1;
-  ne[6] = ne7 * ne1;
-  ne[7] = ne8 * ne1;
-  ne[8] = ne9 * ne1;
-  ne[9] = ne10 * ne1;
+
 
   //........................................................
   // Lookup Items
