@@ -76,12 +76,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     ne[i] = ne[i] * rho[i];
   }
 
-  // get popN for catch
-  int popN = 0;
-  for (int i = 0; i < stratlen; i++) {
-    popN += demog[i];
-  }
-
   // gamma look up table
   std::vector<double> pgmms(days_obsd + 1);
   for (int i = 0; i < (days_obsd+1); i++) {
@@ -174,15 +168,26 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     }
 
     // get cumulative infection spline
-    double cum_infxn_check = 0.0;
+    std::vector<double> cum_infxn_check(stratlen);
     for (int i = 0; i < days_obsd; i++) {
       for (int a = 0; a < stratlen; a++) {
-        cum_infxn_check += ne[a] * infxn_spline[i];
+        cum_infxn_check[a] += ne[a] * infxn_spline[i];
       }
     }
 
-    // check if total infections exceed population denominator
-    if (cum_infxn_check <= popN) {
+
+    //.............................
+    // popN/size catch
+    //.............................
+    // check if startified infections exceed stratified population denominator
+    bool popN_pass = true;
+    for (int a = 0; a < stratlen; a++) {
+      if (cum_infxn_check[a] > demog[a]) {
+        popN_pass = false;
+      }
+    }
+
+    if (popN_pass) {
 
       // loop through days and TOD integral
       std::vector<double> auc(days_obsd);
