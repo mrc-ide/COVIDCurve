@@ -8,7 +8,6 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(object$Serotestparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Day Parameters: "), paste(object$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Total Population Size: "), sum(object$demog$popN), "\n")
 }
 
@@ -23,13 +22,12 @@ print.IFRmodel <- function(x, ...){
   cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Day Parameters: "), paste(x$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Total Population Size: "), sum(x$demog$popN), "\n")
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
 #' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Serodayparams"
+#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
@@ -39,7 +37,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams", "TODparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Noiseparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -82,15 +80,6 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
          },
 
-         "Serodayparams-TRUE"={
-           groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
-         },
-         "Serodayparams-FALSE"={
-           groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
-         },
-
          "Noiseparams-TRUE"={
            groupingvar <- c("chain", "param")
            params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
@@ -98,15 +87,6 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Noiseparams-FALSE"={
            groupingvar <- "param"
            params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
-         },
-
-         "TODparams-TRUE"={
-           groupingvar <- c("chain", "param")
-           params <- c("chain", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
-         },
-         "TODparams-FALSE"={
-           groupingvar <- "param"
-           params <- c("iteration", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
          }
   )
 
@@ -183,7 +163,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double cum_infxn_check = 0.0;", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "bool popN_pass = true;", n = 2)[,1]
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
                            "std::vector<std::vector<double>> infxn_spline_strata(days_obsd, std::vector<double>(stratlen));
                             for (int i = 0; i < days_obsd; i++) {
@@ -198,17 +178,22 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # inputs needed for cpp function
   #......................
+  # misc list
   misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
-                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
-
-  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
-
-
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
+                   n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+  # data in
+  datin <- split(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))
+  datin <- unname(unlist(datin))
+  datin <- list(obs_deaths = datin,
+                obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
   #......................
   # split, run, recombine
   #......................
@@ -219,7 +204,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
     # run efficient cpp code
@@ -257,7 +241,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                              IFRmodel_inf$inputs$IFRmodel$Knotparams,
                              IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                              IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                              IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                              "infxncurves")) %>%
              dplyr::group_by(chain) %>%
@@ -311,7 +294,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                               IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                                "infxncurves")) %>%
                dplyr::group_by(chain) %>%
@@ -348,7 +330,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                              IFRmodel_inf$inputs$IFRmodel$Knotparams,
                              IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                              IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                              IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                              "infxncurves")) %>%
              dplyr::group_by(chain) %>%
@@ -401,7 +382,6 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                              IFRmodel_inf$inputs$IFRmodel$Knotparams,
                              IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                              IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                              IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                              "infxncurves")) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
@@ -589,53 +569,54 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_replace(fitcurve_curve, "if \\(cum_infxn_check <= popN\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<std::vector<double>> sero_con_num\\(n_sero_obs, std::vector<double>\\(stratlen\\)\\);", n = 2)[,1]
-  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> full_sero_con_num(days_obsd, std::vector<double>(stratlen));
-                            std::vector<std::vector<double>> RGfull_sero_con_num(days_obsd, std::vector<double>(stratlen));
-                            // get cumulative hazard for study period
-                            std::vector<double> cum_hazard(days_obsd);
-                            for (int d = 0; d < days_obsd; d++) {
-                              cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
-                            }
+  fitcurve_curve <- stringr::str_replace(fitcurve_curve, "  if \\(popN_pass\\) \\{", "")
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<std::vector<double>> sero_con_num_full\\(max_seroday_obsd, std::vector<double>\\(stratlen\\)\\);", n = 2)[,1]
 
-                            for (int i = 0; i < days_obsd; i++) {
-                              for (int j = 0; j < stratlen; j++) {
-                                // loop through and split infection curve by strata and by number of seroconversion study period
-                                // note this cumulative, so loop through previous days
-                                for (int d = 0; d <= i; d++) {
-                                  int time_elapsed = days_obsd - d - 1;
-                                  full_sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+  # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
+  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
+                           "std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
+                            for (int a = 0; a < stratlen; a++) {
+                              for (int i = 0; i < days_obsd; i++) {
+                                for (int j = i+1; j < (days_obsd + 1); j++) {
+                                  int time_elapsed = j - i - 1;
+                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
                                 }
                               }
                             }
-
-                            // correct for spec/sens
+                           std::vector<std::vector<double>> crude_seroprev(days_obsd, std::vector<double>(stratlen));
+                           std::vector<std::vector<double>> RG_seroprev(days_obsd, std::vector<double>(stratlen));
+                           // correct for spec/sens
                             for (int i = 0; i < days_obsd; i++) {
                               for (int j = 0; j < stratlen; j++) {
-                                // Rogan-Gladen Estimator
-                                double obs_prev = (full_sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
-                                RGfull_sero_con_num[i][j] = round(obs_prev * demog[j]);
+                                // Crude Calculation
+                                crude_seroprev[i][j] = (sero_con_num_full[i][j]/demog[j]);
+                                // Rogan-Gladen Estimator (gelman numeric stability)
+                                RG_seroprev[i][j] = sens*crude_seroprev[i][j] + (1-spec)*(1-crude_seroprev[i][j]);
                               }
                             }",
-                           "Rcpp::List ret = Rcpp::List::create(full_sero_con_num,  RGfull_sero_con_num); return ret;}",
+                           "Rcpp::List ret = Rcpp::List::create(crude_seroprev,  RG_seroprev); return ret;}",
                            collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
   #......................
   # inputs needed for cpp function
   #......................
+  # misc list
   misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
-                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
-
-  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
-
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
+                   n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+  # data in
+  datin <- split(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))
+  datin <- unname(unlist(datin))
+  datin <- list(obs_deaths = datin,
+                obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
 
   #......................
   # split, run, recombine
@@ -647,7 +628,6 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
                                 IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
     seroprev_lists <- loglike(params = paramsin,
@@ -655,20 +635,20 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                               data = datin,
                               misc = misc_list)
 
-    inf_sero_con_num <- seroprev_lists[[1]] %>%
+    crude_seroprev <- seroprev_lists[[1]] %>%
       do.call("rbind.data.frame", .) %>%
-      magrittr::set_colnames(paste0("inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      magrittr::set_colnames(paste0("crude_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
-    RG_sero_con_num <- seroprev_lists[[2]] %>%
+    RG_seroprev <- seroprev_lists[[2]] %>%
       do.call("rbind.data.frame", .) %>%
-      magrittr::set_colnames(paste0("RG_inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      magrittr::set_colnames(paste0("RG_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
 
-    ret <- dplyr::left_join(inf_sero_con_num, RG_sero_con_num, by = "ObsDay")
+    ret <- dplyr::left_join(crude_seroprev, RG_seroprev, by = "ObsDay")
     return(ret)
 
   }
@@ -690,7 +670,6 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                       IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "seroprev")) %>%
       dplyr::group_by(chain) %>%
@@ -708,7 +687,6 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                       IFRmodel_inf$inputs$IFRmodel$Knotparams,
                       IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                       IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
                       IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                       "seroprev")) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%

@@ -167,20 +167,18 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
-    // get cumulative infection spline
+    //.............................
+    // popN/size catch
+    //.............................
+    // check if startified infections exceed stratified population denominator
+    bool popN_pass = true;
     std::vector<double> cum_infxn_check(stratlen);
     for (int i = 0; i < days_obsd; i++) {
       for (int a = 0; a < stratlen; a++) {
         cum_infxn_check[a] += ne[a] * infxn_spline[i];
       }
     }
-
-
-    //.............................
-    // popN/size catch
-    //.............................
-    // check if startified infections exceed stratified population denominator
-    bool popN_pass = true;
+    
     for (int a = 0; a < stratlen; a++) {
       if (cum_infxn_check[a] > demog[a]) {
         popN_pass = false;
