@@ -17,7 +17,7 @@ sim_seroprev <- function(seroinfxns,
   sero.df <- cbind.data.frame(fatalitydata$Strata, seroinfxns)
   colnames(sero.df) <- c("Strata", min_day:curr_day)
   sero.df <- sero.df %>%
-    tidyr::gather(., key = "ObsDay", value = "infxncount", 2:ncol(.)) %>%
+    tidyr::pivot_longer(cols = -c("Strata"), names_to = "ObsDay", values_to = "infxncount") %>%
     dplyr::mutate(ObsDay = as.numeric(ObsDay)) # coercing character to numeric
 
   # expand this out to line-list
@@ -140,8 +140,10 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.2, s_od = 0
   # expand out the death grid
   t_death.df <- cbind.data.frame(strata = fatalitydata$Strata, t_death)
   colnames(t_death.df)[2:ncol(t_death.df)] <- min_day:(curr_day)
+
+
   t_death.df <- t_death.df %>%
-    tidyr::gather(., key = "day", value = "deathcount", 2:ncol(.))
+    tidyr::pivot_longer(cols = -c("strata"), names_to = "day", values_to = "deathcount")
 
   df_expand <- function(datrow){
     datrow <- datrow[rep(1, times = datrow$deathcount), ]
