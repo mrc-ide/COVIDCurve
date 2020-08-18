@@ -97,10 +97,11 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
 
-  maketodpriors <- mapply(function(param, d1, d2){
-    paste0("R::dlnorm(", param, ",", d1, ",", d2, ",", "true) +")
-  }, param = TODparams$name, d1 = TODparams$dsc1, d2 = TODparams$dsc2)
-
+  modparams <- TODparams[grepl("mod", TODparams$name), ]
+  maketodpriors_mod <- paste0("R::dlnorm(", modparams$name, ",", modparams$dsc1, ",", modparams$dsc2, ",", "true) +")
+  sodparams <- TODparams[grepl("sod", TODparams$name), ]
+  maketodpriors_sod <- paste0("R::dbeta(", sodparams$name, ",", sodparams$dsc1, ",", sodparams$dsc2, ",", "true) +")
+  maketodpriors <- c(maketodpriors_mod, maketodpriors_sod)
 
   #......................
   # Serology test priors
