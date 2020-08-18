@@ -3,11 +3,11 @@
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
-#' @param reparamSeros logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
+#' @param reparamDelays logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
 #' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros, reparamNe) {
+make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertsions
   #..................
@@ -15,7 +15,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamSeros)
+  assert_logical(reparamDelays)
   assert_logical(reparamNe)
 
   #..................
@@ -134,7 +134,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   #..................
   extractparams <- c(IFRextractparams, Knotextractparams, Infxnextractparams, Serotestextractparams, Noiseextractparams, TODextractparams)
   # account for reparam
-  switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn, "-", reparamSeros, "-", reparamNe),
+  switch(paste0(reparamIFR, "-", reparamKnots, "-", reparamInfxn, "-", reparamDelays, "-", reparamNe),
          "TRUE-TRUE-TRUE-TRUE-TRUE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makenoisepriors, maketodpriors,
                        paste0(length(ifrscalars), "*log(", maxMa, ") +"),
@@ -399,7 +399,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 #' @inheritParams make_user_Agg_logprior
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros, reparamNe) {
+make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertions
   #..................
@@ -407,7 +407,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamSeros)
+  assert_logical(reparamDelays)
   assert_logical(reparamNe)
 
   #..................
@@ -536,11 +536,10 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
 
   #......................
   # liftover for highly correlated serology parameters, including:
-  #  mean offset (gamma) for sero rate (exp); attack rates (ne) and Spec
+  #  mean offset (gamma) for sero rate (exp) and Spec
   #......................
-  if (reparamSeros) {
-    seroscorrlftovr <- c("ne[0] = ne[0] * 1/spec;",
-                         paste0(IFRmodel$modparam, "= ", IFRmodel$modparam, "* 1/spec;"),
+  if (reparamDelays) {
+    seroscorrlftovr <- c(paste0(IFRmodel$modparam, "= ", IFRmodel$modparam, "* 1/spec;"),
                          paste0("sero_rate = sero_rate * ", IFRmodel$modparam, ";"))
   } else {
     seroscorrlftovr <- ""
@@ -562,12 +561,12 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   # end loglike and now out
   ret <- c("SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {",
            extmisc,
-           params,
-           noisevec,
            storageitems,
+           fixedparams,
            node_xvec,
            node_yvec,
            mavec,
+           noisevec,
            seroscorrlftovr,
            loglike,
            "return Rcpp::wrap(loglik);",
