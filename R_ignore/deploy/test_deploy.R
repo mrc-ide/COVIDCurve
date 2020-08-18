@@ -136,11 +136,11 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
 
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
-                               min  = c(10,     0.01),
+                               min  = c(10,     0),
                                init = c(14,     0.7),
                                max =  c(20,     1.00),
-                               dsc1 = c(2.657,  -0.236),
-                               dsc2 = c(0.05,   0.05))
+                               dsc1 = c(2.657,  50),
+                               dsc2 = c(0.05,   50))
 
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
