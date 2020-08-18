@@ -570,11 +570,15 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_replace(fitcurve_curve, "  if \\(popN_pass\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<std::vector<double>> sero_con_num_full\\(max_seroday_obsd, std::vector<double>\\(stratlen\\)\\);", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
 
   # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
+                           "std::vector<double> cum_hazard(days_obsd);
+                           for (int d = 0; d < days_obsd; d++) {
+                             cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+                           }
+                           std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
                             for (int a = 0; a < stratlen; a++) {
                               for (int i = 0; i < days_obsd; i++) {
                                 for (int j = i+1; j < (days_obsd + 1); j++) {
@@ -585,16 +589,13 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                             }
                            std::vector<std::vector<double>> crude_seroprev(days_obsd, std::vector<double>(stratlen));
                            std::vector<std::vector<double>> RG_seroprev(days_obsd, std::vector<double>(stratlen));
-                           // correct for spec/sens
                             for (int i = 0; i < days_obsd; i++) {
                               for (int j = 0; j < stratlen; j++) {
-                                // Crude Calculation
                                 crude_seroprev[i][j] = (sero_con_num_full[i][j]/demog[j]);
-                                // Rogan-Gladen Estimator (gelman numeric stability)
                                 RG_seroprev[i][j] = sens*crude_seroprev[i][j] + (1-spec)*(1-crude_seroprev[i][j]);
                               }
                             }",
-                           "Rcpp::List ret = Rcpp::List::create(crude_seroprev,  RG_seroprev); return ret;}",
+                           "Rcpp::List ret = Rcpp::List::create(sero_con_num_full, crude_seroprev,  RG_seroprev); return ret;}",
                            collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
@@ -637,11 +638,17 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
 
     crude_seroprev <- seroprev_lists[[1]] %>%
       do.call("rbind.data.frame", .) %>%
+      magrittr::set_colnames(paste0("serocounts_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
+      dplyr::select(c("ObsDay", dplyr::everything()))
+
+    crude_seroprev <- seroprev_lists[[2]] %>%
+      do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("crude_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
-    RG_seroprev <- seroprev_lists[[2]] %>%
+    RG_seroprev <- seroprev_lists[[3]] %>%
       do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("RG_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
