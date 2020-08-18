@@ -401,7 +401,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
 make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamSeros, reparamNe) {
   #..................
-  # assertsions
+  # assertions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
   assert_logical(reparamIFR)
@@ -420,20 +420,103 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   Noiseparams <- IFRmodel$Noiseparams
 
   #..................
-  # extract misc
+  # extract misc and storage items
   #..................
   extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); int stratlen = rho.size(); std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"]; std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc[\"sero_survey_start\"]); std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc[\"sero_survey_end\"]); int max_seroday_obsd = misc[\"max_seroday_obsd\"];"
-
-
-  #..................
-  # extract inputs with the exception of the noise vector (given automatic recasting to Ne -- user can't change)
-  #..................
-  params <- sapply(paramdf$name[!paramdf$name %in% Noiseparams], function(param){
-    paste0("double ", param, " = params[\"",  param, "\"];")
-  })
+  storageitems <- "std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots); std::vector<double>ma(stratlen); std::vector<double>ne(stratlen);"
 
   #......................
-  # extract out noise params and put in vec
+  # extract fixed parameters
+  #......................
+  fixedparams <- "double sens = params[\"sens\"]; double spec = params[\"spec\"]; double sero_rate = params[\"sero_rate\"]; double mod = params[\"mod\"]; double sod = params[\"sod\"];"
+
+
+  #..................
+  # Extract and potentially liftover knotreparam vars for Knots -- Infxn Xpositions
+  # NB, "raw" here because we take in a double and need to convert it to an integer day later
+  #.................
+  if (reparamKnots) {
+    assert_non_null(IFRmodel$relKnot, message = "Reparameterization requires relative knot to be indicated (i.e. relKnot)")
+    knotparamdf <- paramdf[paramdf$name %in% Knotparams, ]
+    relKnot <- IFRmodel$relKnot
+    knotscalars <- knotparamdf$name[knotparamdf$name != relKnot]
+    node_xvec <- rep(NA, length(Knotparams))
+    # determine which relative position in our knot vector
+    relnodex_pos <- which(relKnot == Knotparams)
+    nodex_counter <- 1
+    for (i in 1:length(node_xvec)) {
+      if (i == relnodex_pos) {
+        node_xvec[i] <- paste0("node_x[", i, "] = params[\"", relKnot, "\"];")
+      } else {
+        node_xvec[i] <- paste0("node_x[", i, "] = params[\"", knotscalars[nodex_counter], "\"] * params[\"", relKnot, "\"];")
+        nodex_counter <- nodex_counter + 1
+      }
+    }
+  } else {
+    node_xvec <- rep(NA, length(Knotparams))
+    for (i in 1:length(Knotparams)){
+      node_xvec[i] <- paste0("node_x[", i, "] = params[\"", Knotparams[i], "\"];")
+    }
+  }
+  # account for internal knot at position 1
+  node_xvec <- c("node_x[0] = 1.0;", node_xvec)
+
+  #..................
+  # Extract and potentially liftover infxnreparam vars to Infxn Ypositions
+  #.................
+  if (reparamInfxn) {
+    assert_non_null(IFRmodel$relInfxn, message = "Reparameterization requires relative infection points to be indicated (i.e. relInfxn)")
+    infxnparamdf <- paramdf[paramdf$name %in% Infxnparams, ]
+    relInfxn <- IFRmodel$relInfxn
+    infxnscalars <- infxnparamdf$name[infxnparamdf$name != relInfxn]
+    node_yvec <- rep(NA, length(Infxnparams))
+    # determine which relative position in our node-y vector
+    relnodey_pos <- which(relInfxn == Infxnparams)
+    nodey_counter <- 1
+    for (i in 1:length(node_yvec)) {
+      if (i == relnodey_pos) {
+        node_yvec[i] <- paste0("node_y[", i-1, "] = params[\"", relInfxn, "\"];")
+      } else {
+        node_yvec[i] <- paste0("node_y[", i-1, "] = params[\"", infxnscalars[nodey_counter], "\"] * params[\"", relInfxn, "\"];")
+        nodey_counter <- nodey_counter + 1
+      }
+    }
+  } else {
+    node_yvec <- rep(NA, length(Infxnparams))
+    for (i in 1:length(Infxnparams)){
+      node_yvec[i] <- paste0("node_y[", i-1, "] = params[\"", Infxnparams[i],  "\"];")
+    }
+  }
+
+  #..................
+  # Extract and liftover ifrreparam vars to Mas
+  #.................
+  if (reparamIFR) {
+    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
+    ifrparamdf <- paramdf[paramdf$name %in% IFRparams, ]
+    maxMa <- IFRmodel$maxMa
+    ifrscalars <- ifrparamdf$name[ifrparamdf$name != maxMa]
+    mavec <- rep(NA, length(IFRparams))
+    # determine which relative position in our ma vector
+    mamax_pos <- which(maxMa == IFRparams)
+    ma_counter <- 1
+    for (i in 1:length(mavec)) {
+      if (i == mamax_pos) {
+        mavec[i] <- paste0("ma[", i-1, "] = params[\"", maxMa, "\"];")
+      } else {
+        mavec[i] <- paste0("ma[", i-1, "] = params[\"", ifrscalars[ma_counter], "\"] * params[\"", maxMa, "\"];")
+        ma_counter <- ma_counter + 1
+      }
+    }
+  } else {
+    mavec <- rep(NA, length(IFRparams))
+    for (i in 1:length(IFRparams)){
+      mavec[i] <- paste0("ma[", i-1, "] = params[\"", IFRparams[i], "\"];")
+    }
+  }
+
+  #......................
+  # extract out noise params and potentially liftover
   #......................
   if (reparamNe) {
     noisevec_p1 <- paste0("ne[0] = params[\"",  Noiseparams[1], "\"];")
@@ -449,98 +532,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
     }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
   }
 
-  noisevec <- c("std::vector<double>ne(stratlen);",
-                noisevec)
 
-
-  #..................
-  # storage items
-  #..................
-  storageitems <- "std::vector<double>ma(stratlen); std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots);"
-
-  #..................
-  # liftover knotreparam vars for Knots -- Infxn Xpositions
-  # NB, "raw" here because we take in a double and need to convert it to an integer day later
-  #.................
-  if (reparamKnots) {
-    assert_non_null(IFRmodel$relKnot, message = "Reparameterization requires relative knot to be indicated (i.e. relKnot)")
-    knotparamdf <- paramdf[paramdf$name %in% Knotparams, ]
-    relKnot <- IFRmodel$relKnot
-    knotscalars <- knotparamdf$name[knotparamdf$name != relKnot]
-    node_xvec <- rep(NA, length(Knotparams))
-    # determine which relative position in our knot vector
-    relnodex_pos <- which(relKnot == Knotparams)
-    nodex_counter <- 1
-    for (i in 1:length(node_xvec)) {
-      if (i == relnodex_pos) {
-        node_xvec[i] <- paste0("node_x[", i, "] = ", relKnot, ";")
-      } else {
-        node_xvec[i] <- paste0("node_x[", i, "] = ", knotscalars[nodex_counter], "*", relKnot, ";")
-        nodex_counter <- nodex_counter + 1
-      }
-    }
-  } else {
-    node_xvec <- rep(NA, length(Knotparams))
-    for (i in 1:length(Knotparams)){
-      node_xvec[i] <- paste0("node_x[", i, "]", " = ", Knotparams[i], ";")
-    }
-  }
-  # account for internal knot at position 1
-  node_xvec <- c("node_x[0] = 1.0;", node_xvec)
-
-  #..................
-  # liftover infxnreparam vars to Infxn Ypositions
-  #.................
-  if (reparamInfxn) {
-    assert_non_null(IFRmodel$relInfxn, message = "Reparameterization requires relative infection points to be indicated (i.e. relInfxn)")
-    infxnparamdf <- paramdf[paramdf$name %in% Infxnparams, ]
-    relInfxn <- IFRmodel$relInfxn
-    infxnscalars <- infxnparamdf$name[infxnparamdf$name != relInfxn]
-    node_yvec <- rep(NA, length(Infxnparams))
-    # determine which relative position in our node-y vector
-    relnodey_pos <- which(relInfxn == Infxnparams)
-    nodey_counter <- 1
-    for (i in 1:length(node_yvec)) {
-      if (i == relnodey_pos) {
-        node_yvec[i] <- paste0("node_y[", i-1, "] = ", relInfxn, ";")
-      } else {
-        node_yvec[i] <- paste0("node_y[", i-1, "] = ", infxnscalars[nodey_counter], "*", relInfxn, ";")
-        nodey_counter <- nodey_counter + 1
-      }
-    }
-  } else {
-    node_yvec <- rep(NA, length(Infxnparams))
-    for (i in 1:length(Infxnparams)){
-      node_yvec[i] <- paste0("node_y[", i-1, "]", " = ", Infxnparams[i], ";")
-    }
-  }
-
-  #..................
-  # liftover ifrreparam vars to Mas
-  #.................
-  if (reparamIFR) {
-    assert_non_null(IFRmodel$maxMa, message = "Reparameterization requires expected max mortaltiy group to be indicated (i.e. maxMa)")
-    ifrparamdf <- paramdf[paramdf$name %in% IFRparams, ]
-    maxMa <- IFRmodel$maxMa
-    ifrscalars <- ifrparamdf$name[ifrparamdf$name != maxMa]
-    mavec <- rep(NA, length(IFRparams))
-    # determine which relative position in our ma vector
-    mamax_pos <- which(maxMa == IFRparams)
-    ma_counter <- 1
-    for (i in 1:length(mavec)) {
-      if (i == mamax_pos) {
-        mavec[i] <- paste0("ma[", i-1, "] = ", maxMa, ";")
-      } else {
-        mavec[i] <- paste0("ma[", i-1, "] = ", ifrscalars[ma_counter], "*", maxMa, ";")
-        ma_counter <- ma_counter + 1
-      }
-    }
-  } else {
-    mavec <- rep(NA, length(IFRparams))
-    for (i in 1:length(IFRparams)){
-      mavec[i] <- paste0("ma[", i-1, "]", " = ", IFRparams[i], ";")
-    }
-  }
 
   #......................
   # liftover for highly correlated serology parameters, including:

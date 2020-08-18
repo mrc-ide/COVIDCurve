@@ -21,25 +21,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double sens = params["sens"];
   double spec = params["spec"];
   double sero_rate = params["sero_rate"];
-
-  // extract free spline parameters
-  double x1 = params["x1"];
-  double x2 = params["x2"];
-  double x3 = params["x3"];
-  double x4 = params["x4"];
-  double y1 = params["y1"];
-  double y2 = params["y2"];
-  double y3 = params["y3"];
-  double y4 = params["y4"];
-  double y5 = params["y5"];
-  // extract IFR parameters
-  double ma3 = params["ma3"];
-  double ma2 = params["ma2"];
-  double ma1 = params["ma1"];
-  // extract noise parameters
-  double ne1 = params["ne1"];
-  double ne2 = params["ne2"];
-  double ne3 = params["ne3"];
   // death delay params
   double mod = params["mod"];
   double sod = params["sod"];
@@ -50,28 +31,28 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   std::vector<double>ne(stratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
-  // fill storage
+  // fill storage with parameters
   node_x[0] = 1;
-  node_x[1] = x1;
-  node_x[2] = x2;
-  node_x[3] = x3;
-  node_x[4] = x4;
-  node_y[0] = y1;
-  node_y[1] = y2;
-  node_y[2] = y3;
-  node_y[3] = y4;
-  node_y[4] = y5;
-  ma[0] = ma1;
-  ma[1] = ma2;
-  ma[2] = ma3;
-  ne[0] = ne1;
-  ne[1] = ne2;
-  ne[2] = ne3;
+  node_x[1] = params["x1"];
+  node_x[2] = params["x2"];
+  node_x[3] = params["x3"];
+  node_x[4] = params["x4"];
+  node_y[0] = params["y1"];
+  node_y[1] = params["y2"];
+  node_y[2] = params["y3"];
+  node_y[3] = params["y4"];
+  node_y[4] = params["y5"];
+  ma[0] = params["ma1"];
+  ma[1] = params["ma2"];
+  ma[2] = params["ma3"];
+  ne[0] = params["ne1"];
+  ne[1] = params["ne2"];
+  ne[2] = params["ne3"];
 
   //........................................................
   // Lookup Items
   //........................................................
-  // rescale ne by attack rate
+  // rescale Ne by attack rate
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i] * rho[i];
   }
@@ -178,7 +159,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         cum_infxn_check[a] += ne[a] * infxn_spline[i];
       }
     }
-    
+
     for (int a = 0; a < stratlen; a++) {
       if (cum_infxn_check[a] > demog[a]) {
         popN_pass = false;
