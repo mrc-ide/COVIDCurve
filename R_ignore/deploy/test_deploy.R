@@ -6,6 +6,7 @@
 devtools::load_all()
 set.seed(1234)
 library(drjacoby)
+library(tidyverse)
 # sigmoidal function
 infxns <- data.frame(time = 1:200)
 sig <- function(x){1 / (1 +  exp(-x))}
@@ -136,11 +137,11 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
 
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
-                               min  = c(10,     0),
+                               min  = c(0,     0),
                                init = c(14,     0.7),
-                               max =  c(20,     1.00),
-                               dsc1 = c(2.657,  50),
-                               dsc2 = c(0.05,   50))
+                               max =  c(40,     1.00),
+                               dsc1 = c(14.5,  50),
+                               dsc2 = c(1,   50))
 
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
@@ -173,7 +174,7 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       reparamSeros = FALSE,
+                                       reparamDelays = FALSE,
                                        reparamNe = TRUE,
                                        burnin = 1e2,
                                        samples = 1e2,

@@ -98,7 +98,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   })
 
   modparams <- TODparams[grepl("mod", TODparams$name), ]
-  maketodpriors_mod <- paste0("R::dlnorm(", modparams$name, ",", modparams$dsc1, ",", modparams$dsc2, ",", "true) +")
+  maketodpriors_mod <- paste0("R::dnorm(", modparams$name, ",", modparams$dsc1, ",", modparams$dsc2, ",", "true) +")
   sodparams <- TODparams[grepl("sod", TODparams$name), ]
   maketodpriors_sod <- paste0("R::dbeta(", sodparams$name, ",", sodparams$dsc1, ",", sodparams$dsc2, ",", "true) +")
   maketodpriors <- c(maketodpriors_mod, maketodpriors_sod)
@@ -429,7 +429,6 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   # extract fixed parameters
   #......................
   fixedparams <- "double sens = params[\"sens\"]; double spec = params[\"spec\"]; double sero_rate = params[\"sero_rate\"]; double mod = params[\"mod\"]; double sod = params[\"sod\"];"
-
 
   #..................
   # Extract and potentially liftover knotreparam vars for Knots -- Infxn Xpositions
