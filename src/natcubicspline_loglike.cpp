@@ -198,7 +198,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           // get exp deaths per age group
           expd[i][a] = auc[i] * ne[a] * ma[a];
           // a+1 to account for 1-based dates
-          if ((a+1) < rcensor_day) {
+          if ((i+1) < rcensor_day) {
             if (obsd[i][a] != -1) {
               death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
             }
