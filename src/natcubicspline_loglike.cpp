@@ -49,10 +49,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   }
 
   // storage items
-  int malen = (agestratlen * rgnstratlen);
-  std::vector<double>rawma(malen);
-  std::vector<double>Ane(agestratlen);
-  std::vector<double>Rne(rgnstratlen);
+  std::vector<double> ma(agestratlen);
+  std::vector<double> Ane(agestratlen);
+  std::vector<double> Rne(rgnstratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
   // fill storage with parameters
@@ -66,12 +65,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   node_y[2] = params["y3"];
   node_y[3] = params["y4"];
   node_y[4] = params["y5"];
-  rawma[0] = params["ma1"];
-  rawma[1] = params["ma2"];
-  rawma[2] = params["ma3"];
-  //rawma[3] = params["ma4"];
-  //rawma[4] = params["ma5"];
-  //rawma[5] = params["ma6"];
+  ma[0] = params["ma1"];
+  ma[1] = params["ma2"];
+  ma[2] = params["ma3"];
   Ane[0] = params["Ane1"];
   Ane[1] = params["Ane2"];
   Ane[2] = params["Ane3"];
@@ -84,15 +80,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     pgmms[i] = R::pgamma(i, 1/pow(sod,2), mod*pow(sod,2), true, false);
   }
 
-  // liftover ma
-  std::vector<std::vector<double>> ma(agestratlen, std::vector<double>(rgnstratlen));
-  int maiter = 0;
-  for (int a = 0; a < agestratlen; a++) {
-    for (int r = 0; r < rgnstratlen; r++) {
-      ma[a][r] = rawma[maiter];
-      maiter++;
-    }
-  }
 
   //........................................................
   // L1 -- Deaths Shape Section
@@ -218,9 +205,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       for (int i = 0; i < days_obsd; i++) {
         for (int r = 0; r < rgnstratlen; r++) {
           for (int a = 0; a < agestratlen; a++) {
-            gdexpd[i] += auc[i] * Ane[a] * Rne[r] * ma[a][r];
+            gdexpd[i] += auc[i] * Ane[a] * Rne[r] * ma[a];
             // also store stratified deaths for marginal later
-            strata_death[i][a][r] = auc[i] * Ane[a] * Rne[r] * ma[a][r];
+            strata_death[i][a][r] = auc[i] * Ane[a] * Rne[r] * ma[a];
           }
         }
         // also store global cumulative deaths for marginal later
