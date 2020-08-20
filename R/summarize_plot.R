@@ -157,7 +157,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
-                                                        reparamSeros = FALSE,
+                                                        reparamDelays = FALSE,
                                                         reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
@@ -563,7 +563,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
-                                                        reparamSeros = FALSE,
+                                                        reparamDelays = FALSE,
                                                         reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
