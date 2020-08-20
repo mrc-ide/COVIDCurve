@@ -49,9 +49,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   }
 
   // storage items
-  int malen = (agestratlen * rgnstratlen);
+  int malen = (agestratlen);
   std::vector<double>rawma(malen);
-  std::vector<double>Ane(agestratlen);
+  //std::vector<double>Ane(agestratlen);
   std::vector<double>Rne(rgnstratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
@@ -66,15 +66,15 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   node_y[2] = params["y3"];
   node_y[3] = params["y4"];
   node_y[4] = params["y5"];
-  rawma[0] = params["ma1"];
+  rawma[0] = params["ma1"];  //?ask Nick what these lines do.
   rawma[1] = params["ma2"];
   rawma[2] = params["ma3"];
   //rawma[3] = params["ma4"];
   //rawma[4] = params["ma5"];
   //rawma[5] = params["ma6"];
-  Ane[0] = params["Ane1"];
-  Ane[1] = params["Ane2"];
-  Ane[2] = params["Ane3"];
+  //Ane[0] = params["Ane1"];
+  //Ane[1] = params["Ane2"];
+  //Ane[2] = params["Ane3"];
   Rne[0] = params["Rne1"];
   //Rne[0] = params["Rne2"];
 
@@ -85,13 +85,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   }
 
   // liftover ma
-  std::vector<std::vector<double>> ma(agestratlen, std::vector<double>(rgnstratlen));
-  int maiter = 0;
+  std::vector<std::vector<double>> ma(agestratlen);
   for (int a = 0; a < agestratlen; a++) {
-    for (int r = 0; r < rgnstratlen; r++) {
-      ma[a][r] = rawma[maiter];
-      maiter++;
-    }
+      ma[a] = rawma[maiter];
   }
 
   //........................................................
@@ -184,20 +180,16 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     //.............................
     // check if stratified infections exceed stratified population denominator
     bool popN_pass = true;
-    std::vector<std::vector<double>> cum_infxn_check(agestratlen, std::vector<double>(rgnstratlen));
+    std::vector<std::vector<double>> cum_infxn_check(rgnstratlen);
     for (int i = 0; i < days_obsd; i++) {
       for (int r = 0; r < rgnstratlen; r++) {
-        for (int a = 0; a < agestratlen; a++) {
-          cum_infxn_check[a][r] += Ane[a] * Rne[r] * infxn_spline[i];
-        }
+          cum_infxn_check[r] += Rne[r] * infxn_spline[i];
       }
     }
 
     for (int r = 0; r < rgnstratlen; r++) {
-      for (int a = 0; a < agestratlen; a++) {
-        if (cum_infxn_check[a][r] > demog[a][r]) {
-          popN_pass = false;
-        }
+      if (cum_infxn_check[r] > demog[r]) {
+        popN_pass = false;
       }
     }
 
@@ -218,9 +210,11 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       for (int i = 0; i < days_obsd; i++) {
         for (int r = 0; r < rgnstratlen; r++) {
           for (int a = 0; a < agestratlen; a++) {
-            gdexpd[i] += auc[i] * Ane[a] * Rne[r] * ma[a][r];
-            // also store stratified deaths for marginal later
-            strata_death[i][a][r] = auc[i] * Ane[a] * Rne[r] * ma[a][r];
+            // store stratified deaths for marginal later
+            // seroprev_region * demog[a][r] = number of infections in this region and age group
+            strata_death[i][a][r] = (auc[i] * Rne[r])/count_marg_Rdemog * demog[a][r] * ma[a];
+            // add up over age, allowing for demography in the region.
+            gdexpd[i] += strata_death[i][a][r];
           }
         }
         // also store global cumulative deaths for marginal later
@@ -258,10 +252,20 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
 
       // Expectation
       double L2cum_age_marg_deaths_loglik = 0.0;
-      // extract observed data
-      std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_age_obs_deaths"]);
+
+      // expected proportion of deaths per age group out of total deaths
+      std::vector<double> paexpd(agestratlen);
       for (int a = 0; a < agestratlen; a++) {
-        L2cum_age_marg_deaths_loglik += R::dbinom(round(cum_age_marg_deaths[a]), round(gdeaths), paobsd[a], true);
+        paexpd[a] = cum_age_marg_deaths[a]/gdeaths;
+      }
+
+      // switch to probability of seeing data, given modelled probability
+      // extract observed data - TODO enter these quantities into data if not currently there.
+      std::vector<int> naobsd = Rcpp::as< std::vector<int> >(data["n_age_obs_deaths"]);
+      // check syntax below - not sure how to write the reading in of one integer.
+      int nobstotd = Rcpp::as<int>(data["n_tot_obs_deaths"]);
+      for (int a = 0; a < agestratlen; a++) {
+        L2cum_age_marg_deaths_loglik += R::dbinom(round(naobsd[a]), nobstotd, paexpd[a], true);
       }
 
 
@@ -281,12 +285,23 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
 
+      // expected proportion of deaths per region out of total deaths
+      std::vector<double> prexpd(rgnstratlen);
+      for (int r = 0; r < rgnstratlen; r++) {
+        prexpd[a] = cum_rgn_marg_deaths[r]/gdeaths;
+      }
+
+      // switch to probability of seeing data, given modelled probability
+      // extract observed data - TODO enter these quantities into data if not currently there.
+      // TODO - ok as int or better to read in as double?
+      std::vector<int> nrobsd = Rcpp::as< std::vector<int> >(data["n_rgn_obs_deaths"]);
+
       // Expectation
       double L3cum_rgn_marg_deaths_loglik = 0.0;
       // extract observed data
       std::vector<double> probsd = Rcpp::as< std::vector<double> >(data["prop_rgn_obs_deaths"]);
       for (int r = 0; r < rgnstratlen; r++) {
-        L3cum_rgn_marg_deaths_loglik += R::dbinom(round(cum_rgn_marg_deaths[r]), round(gdeaths), probsd[r], true);
+        L3cum_rgn_marg_deaths_loglik += R::dbinom(round(n_rgn_obs_deaths[r]), nobstotd, prexpd[r], true);
       }
 
       //........................................................
@@ -300,79 +315,34 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       }
 
       // // seroconversion by strata look up table
-      std::vector<std::vector<std::vector<double>>> sero_con_num_full(max_seroday_obsd, std::vector<std::vector<double>>(agestratlen, std::vector<double>(rgnstratlen)));
+      std::vector<std::vector<std::vector<double>>> sero_con_num_full(max_seroday_obsd, std::vector<std::vector<double>>(rgnstratlen);
       // // loop through and split infection curve by strata and by number of seroconversion study dates
-      for (int a = 0; a < agestratlen; a++) {
-        for (int r = 0; r < rgnstratlen; r++){
-          for (int i = 0; i < max_seroday_obsd; i++) {
-            // go to the "end" of the day
-            for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
-              int time_elapsed = j - i - 1;
-              sero_con_num_full[j-1][a][r] += infxn_spline[i] * Ane[a] * Rne[r] * cum_hazard[time_elapsed];
-            }
+      for (int r = 0; r < rgnstratlen; r++){
+        for (int i = 0; i < max_seroday_obsd; i++) {
+          // go to the "end" of the day
+          for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
+            int time_elapsed = j - i - 1;
+            sero_con_num_full[j-1][r] += infxn_spline[i] * Rne[r] * cum_hazard[time_elapsed];
           }
         }
       }
+
 
       // get average over serostudy data
-      std::vector<std::vector<std::vector<double>>> sero_con_num(n_sero_obs, std::vector<std::vector<double>>(agestratlen, std::vector<double>(rgnstratlen)));
+      std::vector<std::vector<std::vector<double>>> sero_con_num(n_sero_obs, std::vector<std::vector<double>>(rgnstratlen));
       for (int i = 0; i < n_sero_obs; i++) {
-        for (int a = 0; a < agestratlen; a++) {
-          for (int r = 0; r < rgnstratlen; r++) {
-            for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
-              // days are 1 based
-              sero_con_num[i][a][r] += sero_con_num_full[k-1][a][r];
-            }
-            // now get average (+1 because days are 1-based)
-            sero_con_num[i][a][r] =  sero_con_num[i][a][r]/(sero_survey_end[i] - sero_survey_start[i] + 1);
+        for (int r = 0; r < rgnstratlen; r++) {
+          for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
+            // days are 1 based
+            sero_con_num[i][r] += sero_con_num_full[k-1][r];
           }
+          // now get average (+1 because days are 1-based)
+          sero_con_num[i][r] =  sero_con_num[i][r]/(sero_survey_end[i] - sero_survey_start[i] + 1);
         }
       }
 
 
-      //........................................................
-      // L4 -- Marginal Age Seroprevalences
-      //........................................................
-      // unpack serology observed data
-      double L4_agesero_loglik = 0.0;
-      std::vector<int> agedatpos_raw = Rcpp::as< std::vector<int> >(data["age_obs_serologypos"]);
-      std::vector<int> agedatn_raw = Rcpp::as< std::vector<int> >(data["age_obs_serologyn"]);
-      // recast datpos
-      std::vector<std::vector<int>> age_datpos(n_sero_obs, std::vector<int>(agestratlen));
-      std::vector<std::vector<int>> age_datn(n_sero_obs, std::vector<int>(agestratlen));
-      int ageseroiter = 0;
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int a = 0; a < agestratlen; a++) {
-          age_datpos[i][a] = agedatpos_raw[ageseroiter];
-          age_datn[i][a] = agedatn_raw[ageseroiter];
-          ageseroiter++;
-        }
-      }
-      // get marginal age_sero_con
-      std::vector<std::vector<double>> age_sero_con_num(n_sero_obs, std::vector<double>(agestratlen));
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int a = 0; a < agestratlen; a++) {
-          for (int r = 0; r < rgnstratlen; r++) {
-            age_sero_con_num[i][a] += sero_con_num[i][a][r];
-          }
-        }
-      }
-
-      // loop through sero likelihood
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int a = 0; a < agestratlen; a++) {
-          if (age_datpos[i][a] != -1 | age_datn[i][a] != -1 ) {
-            // Gelman Estimator for numerical stability
-            double obs_prev = sens*(age_sero_con_num[i][a]/count_marg_Ademog[a]) + (1-spec)*(1 - (age_sero_con_num[i][a]/count_marg_Ademog[a]));
-            L4_agesero_loglik += R::dbinom(age_datpos[i][a], age_datn[i][a], obs_prev, true);
-          }
-        }
-      }
-
-
-
-
-      //........................................................
+            //........................................................
       // L5 -- Marginal Regional Seroprevalences
       //........................................................
       // unpack serology observed data
@@ -394,9 +364,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       std::vector<std::vector<double>> rgn_sero_con_num(n_sero_obs, std::vector<double>(rgnstratlen));
       for (int i = 0; i < n_sero_obs; i++) {
         for (int r = 0; r < rgnstratlen; r++) {
-          for (int a = 0; a < agestratlen; a++) {
-            rgn_sero_con_num[i][r] += sero_con_num[i][a][r];
-          }
+          rgn_sero_con_num[i][r] += sero_con_num[i][r];
+
         }
       }
 
@@ -417,7 +386,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       //........................................................
       // // bring together
       //........................................................
-      loglik = L1death_loglik + L2cum_age_marg_deaths_loglik + L3cum_rgn_marg_deaths_loglik + L4_agesero_loglik + L5_rgnsero_loglik;
+      loglik = L1death_loglik + L2cum_age_marg_deaths_loglik + L3cum_rgn_marg_deaths_loglik + L5_rgnsero_loglik;
       // catch underflow
       if (!std::isfinite(loglik)) {
         loglik = -OVERFLO_DOUBLE;
