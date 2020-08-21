@@ -177,33 +177,52 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
 
-      // Expectation
-      double death_loglik = 0.0;
-      // get data in right format
-      std::vector<int> raw = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-      std::vector<std::vector<int>> obsd(days_obsd, std::vector<int>(stratlen));
-      int iter = 0;
-      for (int i = 0; i < days_obsd; i++) {
-        for (int j = 0; j < stratlen; j++) {
-          obsd[i][j] = raw[iter];
-          iter++;
-        }
-      }
-
-
-      std::vector<std::vector<double>> expd(days_obsd, std::vector<double>(stratlen));
+      //.............................
+      // L1 Deaths Shape Expectation
+      //.............................
+      // items for expectation
+      double L1deathshape_loglik = 0.0;
+      double texpd = 0.0;
+      std::vector<std::vector<double>> strata_expdailyd(days_obsd, std::vector<double>(stratlen));
+      std::vector<double> expd(days_obsd);
+      // read in observed deaths
+      std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
       // get log-likelihood over all days
       for (int  i = 0; i < days_obsd; i++) {
         for (int a = 0; a < stratlen; a++) {
-          // get exp deaths per age group
-          expd[i][a] = auc[i] * ne[a] * ma[a];
-          // a+1 to account for 1-based dates
-          if ((i+1) < rcensor_day) {
-            if (obsd[i][a] != -1) {
-              death_loglik += R::dpois(obsd[i][a], expd[i][a], true);
-            }
+          // store strata deaths for L2
+          strata_expdailyd[i][a] = auc[i] * ne[a] * ma[a];
+          // get exp deaths per day by "summing out" strata
+          expd[i] += strata_expdailyd[i][a];
+        }
+        // a+1 to account for 1-based dates
+        if ((i+1) < rcensor_day) {
+          if (obsd[i] != -1) {
+            L1deathshape_loglik += R::dpois(obsd[i], expd[i], true);
           }
         }
+        // store total expected deaths for L2 likelihood
+        texpd += expd[i];
+      }
+
+      //.............................
+      // L2 Deaths proportions Expectation
+      //.............................
+      // items for expectation
+      double L2deathprop_loglik = 0.0;
+      std::vector<double> strata_expd(stratlen);
+      for (int a = 0; a < stratlen; a++) {
+        for (int  i = 0; i < days_obsd; i++) {
+          if ((i+1) < rcensor_day) {
+            strata_expd[a] += strata_expdailyd[i][a];
+          }
+        }
+      }
+
+      // extract observed data
+      std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_strata_obs_deaths"]);
+      for (int a = 0; a < stratlen; a++) {
+        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a], true);
       }
 
       //........................................................
@@ -242,8 +261,11 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
 
+      //.............................
+      // L3 Serology Proportions Expectation
+      //.............................
+      double L3sero_loglik = 0.0;
       // unpack serology observed data
-      double sero_loglik = 0.0;
       std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serologypos"]);
       std::vector<double> datn_raw = Rcpp::as< std::vector<double> >(data["obs_serologyn"]);
       // recast datpos
@@ -263,12 +285,12 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           if (datpos[i][j] != -1 | datn[i][j] != -1 ) {
             // Gelman Estimator for numerical stability
             double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
-            sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
+            L3sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
           }
         }
       }
       // bring together
-      loglik = death_loglik + sero_loglik;
+      loglik = L1deathshape_loglik + L2deathprop_loglik + L3sero_loglik;
 
       // catch underflow
       if (!std::isfinite(loglik)) {
