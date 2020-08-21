@@ -32,8 +32,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double sod = params["sod"];
 
   // extract population demographics and put in right format
-  std::vector<double> prop_cond_ARdemog = Rcpp::as< std::vector<double> >(misc["propconditional_Age_Rgn_demog"]);
-  std::vector<double> prop_marg_Rdemog = Rcpp::as< std::vector<double> >(misc["propmarginal_Rgn_demog"]);
   std::vector<double> count_marg_Rdemog = Rcpp::as< std::vector<double> >(misc["countmarginal_Rgn_demog"]);
   std::vector<double> count_marg_Ademog = Rcpp::as< std::vector<double> >(misc["countmarginal_Age_demog"]);
 
@@ -409,9 +407,9 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       if (!std::isfinite(loglik)) {
         loglik = -OVERFLO_DOUBLE;
       }
-      end cumulative vs. popN check
+      // end cumulative vs. popN check
     }
-    end node_x check
+    // end node_x check
   }
 
   // // return as Rcpp list
