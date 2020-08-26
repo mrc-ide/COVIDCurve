@@ -538,8 +538,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #  mean offset (gamma) for sero rate (exp) and Spec
   #......................
   if (reparamDelays) {
-    seroscorrlftovr <- c(paste0(IFRmodel$modparam, "= ", IFRmodel$modparam, "* 1/spec;"),
-                         paste0("sero_rate = sero_rate * ", IFRmodel$modparam, ";"))
+    seroscorrlftovr <- "sero_rate = sero_rate * 1/spec;"
   } else {
     seroscorrlftovr <- ""
   }

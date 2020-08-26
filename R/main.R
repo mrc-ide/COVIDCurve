@@ -189,9 +189,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   }
 
   if (reparamDelays) {
-    # reparameterize serology params
-    mcmcout$output[,IFRmodel$modparam] <- unname(unlist(mcmcout$output[, IFRmodel$modparam] * 1/mcmcout$output[, "spec"]))
-    mcmcout$output[, "sero_rate"] <- unname(unlist(mcmcout$output[, IFRmodel$modparam] * mcmcout$output[, "sero_rate"]))
+    # reparameterize serology rate relative to specificity
+    mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, "sero_rate"]))
   }
 
   if (reparamNe) {

@@ -189,11 +189,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
   # data in
-  datin <- split(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))
-  datin <- unname(unlist(datin))
-  datin <- list(obs_deaths = datin,
+  datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                 obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
                 obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+
   #......................
   # split, run, recombine
   #......................
@@ -613,9 +613,8 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
   # data in
-  datin <- split(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))
-  datin <- unname(unlist(datin))
-  datin <- list(obs_deaths = datin,
+  datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                 obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
                 obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
 
