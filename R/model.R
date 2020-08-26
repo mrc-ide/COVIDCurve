@@ -57,12 +57,20 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
                                        # assert data
                                        assert_list(data)
-                                       assert_in(names(data), c("obs_deaths", "obs_serology"))
+                                       assert_in(names(data), c("obs_deaths", "prop_deaths", "obs_serology"))
+                                       # L1
                                        assert_dataframe(data$obs_deaths)
-                                       assert_in(x = colnames(data$obs_deaths), y = c("Strata", "ObsDay", "Deaths"))
+                                       assert_in(x = colnames(data$obs_deaths), y = c("ObsDay", "Deaths"))
                                        assert_numeric(data$obs_deaths$ObsDay)
                                        assert_increasing(data$obs_deaths$ObsDay)
                                        assert_numeric(data$obs_deaths$Deaths)
+                                       # L2
+                                       assert_dataframe(data$prop_deaths)
+                                       assert_in(x = colnames(data$prop_deaths), y = c("Strata", "PropDeaths"))
+                                       assert_bounded(data$prop_deaths$PropDeaths, left = 0, right = 1)
+                                       assert_in(data$prop_deaths$Strata, IFRparams)
+
+                                       # L3
                                        assert_dataframe(data$obs_serology)
                                        assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
                                        assert_in(data$obs_serology$Strata, IFRparams)
@@ -254,12 +262,19 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        stop("Must specify IFR parameters before specifying data")
                                      }
                                      assert_list(val)
-                                     assert_in(names(val), c("obs_deaths", "obs_serology"))
+                                     assert_in(names(val), c("obs_deaths", "prop_deaths", "obs_serology"))
+                                     # L1
                                      assert_dataframe(val$obs_deaths)
-                                     assert_in(x = c("Strata", "ObsDay", "Deaths"), y = colnames(val$obs_deaths))
+                                     assert_in(x = colnames(val$obs_deaths), y = c("ObsDay", "Deaths"))
                                      assert_numeric(val$obs_deaths$ObsDay)
                                      assert_increasing(val$obs_deaths$ObsDay)
                                      assert_numeric(val$obs_deaths$Deaths)
+                                     # L2
+                                     assert_dataframe(val$prop_deaths)
+                                     assert_in(x = colnames(val$prop_deaths), y = c("Strata", "PropDeaths"))
+                                     assert_bounded(val$prop_deaths$PropDeaths, left = 0, right = 1)
+                                     assert_in(val$prop_deaths$Strata, self$IFRparams)
+                                     # L3
                                      assert_dataframe(val$obs_serology)
                                      assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
