@@ -18,9 +18,8 @@ sum(infxns$infxns < 0)
 
 # make up fatality data
 fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
-                               IFR = c(0.05, 0.2, 0.5),
-                               Rho = 1,
-                               Ne = c(10,5,2))
+                               IFR = c(0.01, 0.05, 0.1),
+                               Rho = 1)
 demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
@@ -36,67 +35,42 @@ sero_days <- c(135, 160)
 dat <- COVIDCurve::Aggsim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
-  m_od = 14.2,
+  m_od = 19.2,
   s_od = 0.79,
   curr_day = 200,
   infections = infxns$infxns,
-  simulate_seroprevalence = TRUE,
   sens = 0.85,
   spec = 0.95,
-  sero_delay_rate = 13
+  sero_delay_rate = 15
 )
 
-# obs_serology <- dat$AggSeroPrev %>%
-#   dplyr::group_by(Strata) %>%
-#   dplyr::filter(event_obs_day %in% sero_days) %>%
-#   dplyr::rename(
-#     SeroDay = event_obs_day,
-#     SeroPrev = ObsPrev) %>%
-#   dplyr::select(c("SeroDay", "Strata", "SeroPrev")) %>%
-#   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
-#   dplyr::arrange(SeroDay) %>%
-#   dplyr::ungroup(.)
-#
-# datinput <- list(obs_deaths = dat$AggDeath,
-#                  obs_serology = obs_serology)
 
-
-obs_serology <- dat$AggSeroPrev %>%
+# liftover proprtion deaths
+totdeaths <- sum(dat$StrataAgg_TimeSeries_Death$Deaths)
+prop_strata_obs_deaths <- dat$StrataAgg_TimeSeries_Death %>%
   dplyr::group_by(Strata) %>%
-  dplyr::filter(event_obs_day %in% sero_days) %>%
+  dplyr::summarise(Deaths = sum(Deaths),
+                   PropDeaths = Deaths/totdeaths) %>%
+  dplyr::select(c("Strata", "PropDeaths"))
+
+# liftover obs serology
+obs_serology <- dat$StrataAgg_Seroprev %>%
+  dplyr::group_by(Strata) %>%
+  dplyr::filter(ObsDay %in% sero_days) %>%
   dplyr::mutate(
-    SeroPos = round(ObsPrev * popN),
-    SeroN = popN ) %>%
+    SeroPos = round(ObsPrev * testedN),
+    SeroN = testedN ) %>%
   dplyr::rename(
     SeroPrev = ObsPrev) %>%
   dplyr::mutate(SeroStartSurvey = c(130, 155),
                 SeroEndSurvey = c(140, 165)) %>%
   dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
-
   dplyr::ungroup(.) %>%
   dplyr::arrange(SeroStartSurvey, Strata)
 
-datinput <- list(obs_deaths = dat$AggDeath,
+datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death,
+                 prop_deaths = prop_strata_obs_deaths,
                  obs_serology = obs_serology)
-
-
-
-# obs_serology <- dat$AggSeroPrev %>%
-#   dplyr::group_by(Strata) %>%
-#   dplyr::filter(event_obs_day %in% sero_days) %>%
-#   dplyr::mutate(
-#     SeroPos = round(ObsPrev * popN),
-#     SeroN = popN ) %>%
-#   dplyr::rename(
-#     SeroDay = event_obs_day,
-#     SeroPrev = ObsPrev) %>%
-#   dplyr::select(c("SeroDay", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
-#   dplyr::mutate(SeroDay = ifelse(SeroDay == 135, "sero_day1", "sero_day2")) %>%
-#   dplyr::arrange(SeroDay) %>%
-#   dplyr::ungroup(.)
-#
-# datinput <- list(obs_deaths = dat$AggDeath,
-#                  obs_serology = obs_serology)
 
 #..................
 # make model
@@ -176,8 +150,8 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamKnot = TRUE,
                                        reparamDelays = FALSE,
                                        reparamNe = TRUE,
-                                       burnin = 1e2,
-                                       samples = 1e2,
+                                       burnin = 1e3,
+                                       samples = 1e3,
                                        chains = 1,
                                        rungs = 1,
                                        thinning = 0,
