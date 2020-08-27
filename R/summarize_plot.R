@@ -50,7 +50,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "IFRparams-FALSE"={
            groupingvar <- "param"
-           params <-  c("iteration", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$IFRparams
          },
 
          "Knotparams-TRUE"={
@@ -59,7 +59,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Knotparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Knotparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Knotparams
          },
 
          "Infxnparams-TRUE"={
@@ -68,7 +68,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Infxnparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Infxnparams
          },
 
          "Serotestparams-TRUE"={
@@ -77,7 +77,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Serotestparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Serotestparams
          },
 
          "Noiseparams-TRUE"={
@@ -86,14 +86,15 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Noiseparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Noiseparams
          }
   )
 
   IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung) %>%
     dplyr::select_at(params) %>%
-    tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
+    tidyr::pivot_longer(., cols = params[!grepl("chain", params)], # if chain isn't included in vector, grepl won't do anything
+                        names_to = "param", values_to = "est") %>%
     dplyr::group_by_at(groupingvar) %>%
     dplyr::summarise(
       min = min(est),
@@ -247,11 +248,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
              tidyr::unnest(cols = "infxncurves")
-           # downsize for what is needed in ggplot vs. returrn
+           # downsize for what is needed in ggplot vs. return
            plotdat_sm <- plotdat %>%
              dplyr::select(c("chain", "time", "sim", dplyr::starts_with("infxns_"))) %>%
              magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
-             tidyr::gather(., key = "Strata", value = "infxns", 4:ncol(.))
+             tidyr::pivot_longer(., cols = -c("chain", "time", "sim"), names_to = "Strata", values_to = "infxns")
            if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
              # set up dictionary key to be ageband, regions, etc.
              IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
@@ -336,11 +337,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
              tidyr::unnest(cols = "infxncurves")
-           # downsize for what is needed in ggplot vs. returrn
+           # downsize for what is needed in ggplot vs. return
            plotdat_sm <- plotdat %>%
              dplyr::select(c("time", "sim", dplyr::starts_with("infxns_"))) %>%
              magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
-             tidyr::gather(., key = "Strata", value = "infxns", 3:ncol(.))
+             tidyr::pivot_longer(., cols = -c("time", "sim"), names_to = "Strata", values_to = "infxns")
            if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
              # set up dictionary key to be ageband, regions, etc.
              IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
