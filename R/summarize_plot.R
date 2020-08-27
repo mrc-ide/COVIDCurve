@@ -287,39 +287,38 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain but not by strata
          "TRUE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             plotdat <- mcmcout.nodes %>%
-               dplyr::select(c("chain",
-                               IFRmodel_inf$inputs$IFRmodel$modparam,
-                               IFRmodel_inf$inputs$IFRmodel$sodparam,
-                               IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                               IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                               IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                               IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                               IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                               "infxncurves")) %>%
-               dplyr::group_by(chain) %>%
-               dplyr::mutate(sim = 1:dplyr::n()) %>%
-               dplyr::ungroup(chain) %>%
-               tidyr::unnest(cols = "infxncurves") %>%
-               dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
+                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
+                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                             "infxncurves")) %>%
+             dplyr::group_by(chain) %>%
+             dplyr::mutate(sim = 1:dplyr::n()) %>%
+             dplyr::ungroup(chain) %>%
+             tidyr::unnest(cols = "infxncurves") %>%
+             dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
 
-             plotObj <- ggplot2::ggplot() +
-               ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
-                                  lwd = 0.5, color = "#d9d9d9") +
-               ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
-               ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-               ggplot2::facet_wrap(. ~ chain) +
-               ggplot2::theme_minimal() +
-               ggplot2::theme(
-                 plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-                 plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-                 axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-                 axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-                 axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-                 panel.background =  ggplot2::element_blank(),
-                 plot.background =  ggplot2::element_blank(),
-                 axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
-                 legend.position = "none")
+           plotObj <- ggplot2::ggplot() +
+             ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+                                lwd = 0.5, color = "#d9d9d9") +
+             ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+             ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+             ggplot2::facet_wrap(. ~ chain) +
+             ggplot2::theme_minimal() +
+             ggplot2::theme(
+               plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+               axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+               axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+               panel.background =  ggplot2::element_blank(),
+               plot.background =  ggplot2::element_blank(),
+               axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
+               legend.position = "none")
          },
          # not by chain but by strata
          "FALSE-TRUE"={
