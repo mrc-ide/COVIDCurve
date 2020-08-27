@@ -23,7 +23,7 @@ sim_seroprev <- function(sero_line_list,
   # Tidy up so that we observe deaths on a daily time step
   #..................
   sero_line_list <- sero_line_list %>%
-    dplyr::mutate(obs_day_of_serocon = cut(tosc, breaks = c(0, 1:curr_day),
+    dplyr::mutate(ObsDaySerocon = cut(tosc, breaks = c(0, 1:curr_day),
                                            labels = 1:curr_day))
 
 
@@ -31,25 +31,25 @@ sim_seroprev <- function(sero_line_list,
   # observed seroprevalences taking into account sampling fractions
   #......................
   sero_line_list_sampl <- sero_line_list %>%
-    dplyr::filter(!is.na(obs_day_of_serocon))   # drop "future" seroconversions
+    dplyr::filter(!is.na(ObsDaySerocon))   # drop "future" seroconversions
   keeprows <- as.logical(rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
   sero_line_list_sampl <- sero_line_list_sampl[keeprows, ]
   # get serotested after sampling fraction
-  serotested <- tibble::tibble(strata = fatalitydata$strata,
-                               n_tested = demog$popN * smplfrac)
+  serotested <- tibble::tibble(Strata = fatalitydata$Strata,
+                               testedN = demog$popN * smplfrac)
 
   # get aggregate counts for model
   sero_strata_agg <- sero_line_list_sampl %>%
-    dplyr::group_by(strata, obs_day_of_serocon, .drop = F) %>%
+    dplyr::group_by(Strata, ObsDaySerocon, .drop = F) %>%
     dplyr::summarise(day_seros = dplyr::n()) %>%
-    dplyr::left_join(., demog, by = "strata") %>%
-    dplyr::left_join(., serotested, by = "strata") %>%
-    dplyr::mutate(obsday = as.numeric(as.character(obs_day_of_serocon)), # protect against factor
-                  true_serocount = cumsum(day_seros),
-                  true_prev = true_serocount/n_tested,
-                  obs_prev = sens*true_prev + (1-spec)*(1-true_prev)) %>%
+    dplyr::left_join(., demog, by = "Strata") %>%
+    dplyr::left_join(., serotested, by = "Strata") %>%
+    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDaySerocon)), # protect against factor
+                  TrueSeroCount = cumsum(day_seros),
+                  TruePrev = TrueSeroCount/testedN,
+                  ObsPrev = sens*TruePrev + (1-spec)*(1-TruePrev)) %>%
     dplyr::ungroup(.) %>%
-    dplyr::select(-c("day_seros", "popN", "obs_day_of_serocon"))
+    dplyr::select(-c("day_seros", "popN", "ObsDaySerocon"))
 
   # out
   out <- list(sero_line_list = sero_line_list,
@@ -83,7 +83,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_single_numeric(m_od)
   assert_single_numeric(s_od)
   assert_dataframe(fatalitydata)
-  assert_eq(colnames(fatalitydata), c("strata", "IFR", "rho"))
+  assert_eq(colnames(fatalitydata), c("Strata", "IFR", "Rho"))
   assert_single_int(curr_day)
   assert_vector(infections)
   assert_same_length(infections, 1:curr_day)
@@ -93,8 +93,8 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_bounded(sens, left = 0, right = 1)
   assert_numeric(sero_delay_rate)
   assert_dataframe(demog)
-  assert_eq(colnames(demog), c("strata", "popN"))
-  assert_eq(demog$strata, fatalitydata$strata,
+  assert_eq(colnames(demog), c("Strata", "popN"))
+  assert_eq(demog$Strata, fatalitydata$Strata,
             message = "%s must equal %s -- check that your strata are in the same order")
   assert_bounded(smplfrac, left = 0, right = 1, inclusive_left = FALSE)
 
@@ -115,8 +115,8 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   expected_inf.day <- stats::rpois(length(infections), lambda = infections)
 
   # Split infxns by strata prop. and rho
-  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$rho), ncol = length(expected_inf.day))
-  Pinfxnsero <- fatalitydata$rho/sum(fatalitydata$rho)
+  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$Rho), ncol = length(expected_inf.day))
+  Pinfxnsero <- fatalitydata$Rho/sum(fatalitydata$Rho)
   for (i in 1:length(expected_inf.day)) {
     expected_inf.strt.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i],
                                                   prob = Pinfxnsero)
@@ -126,8 +126,8 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   # not needed here but for clarity
   colnames(expected_inf.strt.day) <- 1:curr_day
   infxn_df <- expected_inf.strt.day %>%
-    cbind.data.frame(strata = fatalitydata$strata, .) %>%
-    tidyr::pivot_longer(cols = -c("strata"), names_to = "doi", values_to = "infxncount")
+    cbind.data.frame(Strata = fatalitydata$Strata, .) %>%
+    tidyr::pivot_longer(cols = -c("Strata"), names_to = "doi", values_to = "infxncount")
 
   # expand out the infection linelist
   infxn_line_list <- split(infxn_df, 1:nrow(infxn_df))
@@ -136,7 +136,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
     do.call("rbind.data.frame", .) %>%
     dplyr::select(-c("infxncount")) %>%
     dplyr::mutate(id = 1:nrow(.)) %>%
-    dplyr::select(c("id", "doi", "strata"))
+    dplyr::select(c("id", "doi", "Strata"))
 
   #..................
   # get seroprevalence
@@ -148,7 +148,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   # get deaths
   #..................
-  death_line_list <- dplyr::left_join(infxn_line_list, fatalitydata, by = "strata")
+  death_line_list <- dplyr::left_join(infxn_line_list, fatalitydata, by = "Strata")
   # draw deaths among infected
   death_line_list <- death_line_list %>%
     dplyr::mutate(dies = purrr::map_int(IFR, function(x){rbinom(n = 1, size = 1, prob = x)})) %>%
@@ -161,34 +161,31 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   death_line_list$tod <- as.numeric(death_line_list$doi) + death_line_list$otd
 
   # Tidy up so that we observe deaths on a daily time step
-  stratalvls <- unique(as.character(fatalitydata$strata)) # protect against data.frame, string as factor = F
+  stratalvls <- unique(as.character(fatalitydata$Strata)) # protect against data.frame, string as factor = F
   death_line_list <- death_line_list %>%
-    dplyr::mutate(strata = factor(strata, levels = stratalvls)) %>%  # need this for later summarize
-    dplyr::mutate(obs_day_of_death = cut(tod, breaks = c(0, 1:curr_day),
+    dplyr::mutate(Strata = factor(Strata, levels = stratalvls)) %>%  # need this for later summarize
+    dplyr::mutate(ObsDayDeath = cut(tod, breaks = c(0, 1:curr_day),
                                          labels = 1:curr_day))
 
   # tidy up for out
   death_strata_agg <- death_line_list %>%
-    dplyr::filter(!is.na(obs_day_of_death)) %>% # drop "future" deaths
-    dplyr::select(c("strata", "obs_day_of_death")) %>%
-    dplyr::rename(
-      obsday = obs_day_of_death,
-      strata = strata) %>%
-    dplyr::group_by(obsday, strata, .drop = F) %>%
-    dplyr::summarise(
-      day_deaths = dplyr::n()) %>%
-    dplyr::ungroup(obsday, strata) %>%
-    dplyr::mutate(obsday = as.numeric(as.character(obsday))) %>% # protect against factor
-    dplyr::rename(deaths = day_deaths)
+    dplyr::filter(!is.na(ObsDayDeath)) %>% # drop "future" deaths
+    dplyr::select(c("Strata", "ObsDayDeath")) %>%
+    dplyr::rename( ObsDay = ObsDayDeath ) %>%
+    dplyr::group_by(ObsDay, Strata, .drop = F) %>%
+    dplyr::summarise( day_deaths = dplyr::n() ) %>%
+    dplyr::ungroup(ObsDay, Strata) %>%
+    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDay))) %>% # protect against factor
+    dplyr::rename(Deaths = day_deaths)
   # marginalize over for model
   death_agg <- death_strata_agg %>%
-    dplyr::group_by(obsday) %>%
-    dplyr::summarise(deaths = sum(deaths)) %>%
+    dplyr::group_by(ObsDay) %>%
+    dplyr::summarise(Deaths = sum(Deaths)) %>%
     dplyr::ungroup(.)
 
   # full linelist
-  full_linelist <- dplyr::full_join(seroprev$sero_line_list, death_line_list, by = c("id", "doi", "strata")) %>%
-    dplyr::select(-c("IFR", "rho")) # holdovers from merge with fatality data
+  full_linelist <- dplyr::full_join(seroprev$sero_line_list, death_line_list, by = c("id", "doi", "Strata")) %>%
+    dplyr::select(-c("IFR", "Rho")) # holdovers from merge with fatality data
 
 
 
