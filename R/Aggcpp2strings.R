@@ -89,7 +89,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
     paste0("R::dunif(",param, ",", d1, ",", d2, ",", "true) +")
   }, param = IFRparams$name, d1 = IFRparams$dsc1, d2 = IFRparams$dsc2)
 
-
   #..................
   # priors for Time Onset to Death
   #..................
@@ -116,7 +115,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
     paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +")
   )
 
-
   #..................
   # priors for Noiseparams
   #..................
@@ -127,7 +125,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   makenoisepriors <- mapply(function(param, d1, d2){
     paste0("R::dnorm(",param, ",", d1, ",", d2, ",", "true) +")
   }, param = Noiseparams$name, d1 = Noiseparams$dsc1, d2 = Noiseparams$dsc2)
-
 
   #..................
   # bring together
@@ -290,7 +287,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
          "FALSE-TRUE-TRUE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makenoisepriors, maketodpriors,
                        paste0(length(knotscalars), "*log(", relKnot, ") +"),
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");")
            )
          },
 
@@ -346,7 +343,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
          "FALSE-FALSE-TRUE-FALSE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makenoisepriors, maketodpriors,
-                       paste0(length(infxnscalars), "*log(", relInfxn, ");"),
+                       paste0(length(infxnscalars), "*log(", relInfxn, ");")
            )
          },
 
@@ -359,7 +356,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 
          "FALSE-FALSE-FALSE-TRUE-FALSE" = {
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makenoisepriors, maketodpriors,
-                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);"),
+                       paste0("log(", IFRmodel$modparam, ") + 2*log(1/spec);")
            )
          },
 
