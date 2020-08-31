@@ -125,7 +125,7 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   })
 
   makenoisepriors <- mapply(function(param, d1, d2){
-    paste0("R::dunif(",param, ",", d1, ",", d2, ",", "true) +")
+    paste0("R::dnorm(",param, ",", d1, ",", d2, ",", "true) +")
   }, param = Noiseparams$name, d1 = Noiseparams$dsc1, d2 = Noiseparams$dsc2)
 
 
