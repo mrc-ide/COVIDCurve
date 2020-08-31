@@ -111,6 +111,68 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 
 
 
+#' @title Get the Global IFR Credible Intervals, or IFR Weighted by Demography
+#' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
+#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"
+#' @param whichrung character; Specify which rung to sample from (default is rung1)
+#' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
+#' @importFrom magrittr %>%
+#' @export
+
+get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_chain = TRUE) {
+  assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
+  assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
+  assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
+  assert_string(whichrung)
+  assert_logical(by_chain)
+
+
+  # make weighted demog
+  demogwi <- IFRmodel_inf$inputs$IFRmodel$demog %>%
+    dplyr::mutate(wi = popN/sum(popN))
+
+  ret <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::filter(stage == "sampling" & rung == whichrung) %>%
+    tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$IFRparams, # if chain isn't included in vector, grepl won't do anything
+                        names_to = "Strata", values_to = "est") %>%
+    dplyr::left_join(., demogwi, by = "Strata") %>%
+    dplyr::mutate(est = est*wi) %>%
+    dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
+    dplyr::summarise(est = sum(est))
+  if (by_chain) {
+    ret %>%
+      dplyr::group_by(chain) %>%
+      dplyr::summarise(
+      min = min(est),
+      LCI = quantile(est, 0.025),
+      median = median(est),
+      mean = mean(est),
+      UCI = quantile(est, 0.975),
+      max = max(est),
+      ESS = coda::effectiveSize(coda::as.mcmc(est)),
+      GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
+      GewekeP = dnorm(GewekeZ)
+    )
+  } else {
+    ret %>%
+      dplyr::ungroup(.) %>%
+      dplyr::summarise(
+        min = min(est),
+        LCI = quantile(est, 0.025),
+        median = median(est),
+        mean = mean(est),
+        UCI = quantile(est, 0.975),
+        max = max(est),
+        ESS = coda::effectiveSize(coda::as.mcmc(est)),
+        GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
+        GewekeP = dnorm(GewekeZ)
+      )
+  }
+
+}
+
+
+
 
 #' @title Draw posterior results from the Infection Curve (Cubic Spline)
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space

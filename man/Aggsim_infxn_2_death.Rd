@@ -7,15 +7,14 @@
 Aggsim_infxn_2_death(
   fatalitydata,
   infections,
-  m_od = 14.2,
+  m_od = 14.26,
   s_od = 0.79,
-  min_day = 1,
   curr_day,
-  simulate_seroprevalence = TRUE,
   spec,
   sens,
   demog,
-  sero_delay_rate
+  sero_delay_rate,
+  smplfrac = 1
 )
 }
 \arguments{
@@ -27,11 +26,7 @@ Aggsim_infxn_2_death(
 
 \item{s_od}{double; The coefficient of variation of the onset of infection to death (gamma distribution).}
 
-\item{min_day}{numeric; First day epidemic was observed.}
-
 \item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
-
-\item{simulate_seroprevalence}{logical; Whether or not seroprevalence data should also be simulated}
 
 \item{spec}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
 
@@ -40,6 +35,8 @@ Aggsim_infxn_2_death(
 \item{demog}{dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}}
 
 \item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{smplfrac}{numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)}
 
 \item{level}{character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.}
 }
