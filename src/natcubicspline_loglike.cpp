@@ -53,8 +53,14 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   // Lookup Items
   //........................................................
   // rescale Ne by attack rate
+  double nedom = 0.0;
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i] * rho[i];
+    nedom += ne[i];
+  }
+  // Ne as a prop vector
+  for (int i = 0; i < stratlen; i++) {
+    ne[i] = ne[i]/nedom;
   }
 
   // gamma look up table
