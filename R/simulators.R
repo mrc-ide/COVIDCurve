@@ -10,6 +10,8 @@ sim_seroprev <- function(sero_line_list,
                          smplfrac,
                          sero_delay_rate,
                          simulate_seroreversion,
+                         sero_rev_shape,
+                         sero_rev_scale,
                          demog,
                          fatalitydata,
                          curr_day) {
@@ -111,7 +113,8 @@ sim_seroprev <- function(sero_line_list,
 Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
-                                 simulate_seroreversion, smplfrac = 1){
+                                 simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
+                                 smplfrac = 1){
 
   #..................
   # Assertions that are specific to this project
@@ -133,8 +136,14 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_eq(demog$Strata, fatalitydata$Strata,
             message = "%s must equal %s -- check that your strata are in the same order")
   assert_bounded(smplfrac, left = 0, right = 1, inclusive_left = FALSE)
+  assert_logical(simulate_seroreversion)
+  if (simulate_seroreversion) {
+    assert_numeric(sero_rev_shape)
+    assert_numeric(sero_rev_scale)
+  }
 
-  #......................
+
+    #......................
   # misc helper function
   #......................
   df_expand <- function(datrow, col){
@@ -179,7 +188,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
                            sero_delay_rate = sero_delay_rate,
-                           simulate_seroreversion = simulate_seroreversion,
+                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
                            smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
 
