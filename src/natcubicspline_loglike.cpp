@@ -28,7 +28,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   // storage items
   int stratlen = rho.size();
   std::vector<double>ma(stratlen);
-  std::vector<double>ne(stratlen);
+  //std::vector<double>ne(stratlen);
   std::vector<double> node_x(n_knots);
   std::vector<double> node_y(n_knots);
   // fill storage with parameters
@@ -45,17 +45,41 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   ma[0] = params["ma1"];
   ma[1] = params["ma2"];
   ma[2] = params["ma3"];
-  ne[0] = params["ne1"];
-  ne[1] = params["ne2"];
-  ne[2] = params["ne3"];
+  // ne[0] = params["ne1"];
+  // ne[1] = params["ne2"];
+  // ne[2] = params["ne3"];
+
+  strata_expd[0] = params["strata_expd1"];   // fit expected deaths in each strata
+  strata_expd[1] = params["strata_expd2"];
+  strata_expd[2] = params["strata_expd3"];
+
+
+  //.............................
+  // L2 Deaths proportions Expectation
+  //.............................
+  // items for expectation
+  double L2deathprop_loglik = 0.0;
+  std::vector<double> strata_expd(stratlen), strata_propd(stratlen);
+
+  // extract observed data - as number of deaths. NEW DATA INPUT (?)
+  std::vector<double> naobsd = Rcpp::as< std::vector<double> >(data["n_strata_obs_deaths"]);
+  for (int a = 0; a < stratlen; a++) {
+    L2deathprop_loglik += R::dpois(round(strata_expd[a]), naobsd[a], true);
+  }
+
+  // get modelled proportion of deaths in each strata
+  for (int a = 0; a < stratlen; a++) {
+    strata_propd[a] = strata_expd[a]/sum(strata_expd);
+  }
+
 
   //........................................................
   // Lookup Items
   //........................................................
   // rescale Ne by attack rate
-  for (int i = 0; i < stratlen; i++) {
-    ne[i] = ne[i] * rho[i];
-  }
+  // for (int i = 0; i < stratlen; i++) {
+  //   ne[i] = ne[i] * rho[i];
+  // }
 
   // gamma look up table
   std::vector<double> pgmms(days_obsd + 1);
@@ -148,159 +172,177 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       infxn_spline[i] = exp(infxn_spline[i]);
     }
 
+
+
+
+    // loop through days and TOD integral
+    std::vector<double> auc(days_obsd);
+    for (int i = 0; i < days_obsd; i++) {
+      for (int j = i+1; j < (days_obsd + 1); j++) {
+        int delta = j - i - 1;
+        auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
+      }
+    }
+
     //.............................
-    // popN/size catch
+    // L1 Deaths Shape Expectation
     //.............................
-    // check if startified infections exceed stratified population denominator
+    // items for expectation
+    double L1deathshape_loglik = 0.0;
+    double texpd = 0.0;
+    std::vector<std::vector<double>> strata_expdailyd(days_obsd, std::vector<double>(stratlen));
+    std::vector<double> expd(days_obsd);
+    // read in observed deaths
+    std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
+    // get log-likelihood over all days
+    for (int  i = 0; i < days_obsd; i++) {
+      for (int a = 0; a < stratlen; a++) {
+        // store strata deaths for L2
+        strata_expdailyd[i][a] = auc[i] * strata_propd[a] * ma[a];
+        // get exp deaths per day by "summing out" strata
+        expd[i] += strata_expdailyd[i][a];
+      }
+      // a+1 to account for 1-based dates
+      if ((i+1) < rcensor_day) {
+        if (obsd[i] != -1) {
+          L1deathshape_loglik += R::dpois(obsd[i], expd[i], true);
+        }
+      }
+      // store total expected deaths
+      texpd += expd[i];
+    }
+
+    // Compute age specific cumulative deaths
+    for (int a = 0; a < stratlen; a++) {
+      for (int  i = 0; i < days_obsd; i++) {
+        if ((i+1) < rcensor_day) {
+          strata_expd[a] += strata_expdailyd[i][a];
+        }
+      }
+    }
+
+    // Compute age specific infection splines.
+    std::vector<std::vector<double>> strata_infxn_spline(days_obsd, std::vector<double>(stratlen));
+    std::vector<double> prop_inf(stratlen), strata_exp_inf_cumu(stratlen);
+    // first compute total cumulative infections in each age group (which gave rise to the cumulative deaths (but does not really matter which time we pick as assume constant age distribution)).
+    for (int a = 0; a < stratlen; a++) {
+      strata_exp_inf_cumu[a] = strata_expd[a]/ma[a];
+    }
+    // compute proportion of infections in each age group
+    for (int a = 0; a < stratlen; a++) {
+      prop_inf[a] = strata_exp_inf_cumu[a]/sum(strata_exp_inf_cumu);
+    }
+    // compute proportion of infections in each age group over time (LO: I may have been inefficient? Could combine with sero con num calc below)
+    for (int a = 0; a < stratlen; a++) {
+      for (int  i = 0; i < days_obsd; i++) {
+        if ((i+1) < rcensor_day) {
+          strata_infxn_spline[i][a] = infxn_spline[i]*prop_inf[a];
+        }
+      }
+    }
+
+        //.............................
+    // popN/size catch.
+    //.............................
+    // check if strtified infections exceed stratified population denominator
+
     bool popN_pass = true;
+    /*
+
     std::vector<double> cum_infxn_check(stratlen);
     for (int i = 0; i < days_obsd; i++) {
       for (int a = 0; a < stratlen; a++) {
         cum_infxn_check[a] += ne[a] * infxn_spline[i];
       }
     }
-
+     */
     for (int a = 0; a < stratlen; a++) {
-      if (cum_infxn_check[a] > demog[a]) {
+      if (strata_exp_inf_cumu[a] > demog[a]) {
         popN_pass = false;
       }
     }
 
-    if (popN_pass) {
+    //........................................................
+    // Serology Section
+    //........................................................
 
-      // loop through days and TOD integral
-      std::vector<double> auc(days_obsd);
-      for (int i = 0; i < days_obsd; i++) {
-        for (int j = i+1; j < (days_obsd + 1); j++) {
-          int delta = j - i - 1;
-          auc[j-1] += infxn_spline[i] * (pgmms[delta + 1] - pgmms[delta]);
-        }
-      }
-
-      //.............................
-      // L1 Deaths Shape Expectation
-      //.............................
-      // items for expectation
-      double L1deathshape_loglik = 0.0;
-      double texpd = 0.0;
-      std::vector<std::vector<double>> strata_expdailyd(days_obsd, std::vector<double>(stratlen));
-      std::vector<double> expd(days_obsd);
-      // read in observed deaths
-      std::vector<int> obsd = Rcpp::as< std::vector<int> >(data["obs_deaths"]);
-      // get log-likelihood over all days
-      for (int  i = 0; i < days_obsd; i++) {
-        for (int a = 0; a < stratlen; a++) {
-          // store strata deaths for L2
-          strata_expdailyd[i][a] = auc[i] * ne[a] * ma[a];
-          // get exp deaths per day by "summing out" strata
-          expd[i] += strata_expdailyd[i][a];
-        }
-        // a+1 to account for 1-based dates
-        if ((i+1) < rcensor_day) {
-          if (obsd[i] != -1) {
-            L1deathshape_loglik += R::dpois(obsd[i], expd[i], true);
-          }
-        }
-        // store total expected deaths for L2 likelihood
-        texpd += expd[i];
-      }
-
-      //.............................
-      // L2 Deaths proportions Expectation
-      //.............................
-      // items for expectation
-      double L2deathprop_loglik = 0.0;
-      std::vector<double> strata_expd(stratlen);
-      for (int a = 0; a < stratlen; a++) {
-        for (int  i = 0; i < days_obsd; i++) {
-          if ((i+1) < rcensor_day) {
-            strata_expd[a] += strata_expdailyd[i][a];
-          }
-        }
-      }
-
-      // extract observed data
-      std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_strata_obs_deaths"]);
-      for (int a = 0; a < stratlen; a++) {
-        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a], true);
-      }
-
-      //........................................................
-      // Serology Section
-      //........................................................
-      // get cumulative hazard for each day up to the latest serology observation date
-      // i.e. cumulative hazard of seroconversion on given day look up table
-      std::vector<double> cum_hazard(max_seroday_obsd);
-      for (int d = 0; d < max_seroday_obsd; d++) {
-        cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
-      }
-
-      // seroconversion by strata look up table
-      std::vector<std::vector<double>> sero_con_num_full(max_seroday_obsd, std::vector<double>(stratlen));
-      // loop through and split infection curve by strata and by number of seroconversion study dates
-      for (int a = 0; a < stratlen; a++) {
-        for (int i = 0; i < max_seroday_obsd; i++) {
-          // go to the "end" of the day
-          for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
-            int time_elapsed = j - i - 1;
-            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
-          }
-        }
-      }
-
-      // get average over serostudy data
-      std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int j = 0; j < stratlen; j++) {
-          for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
-            // days are 1 based
-            sero_con_num[i][j] += sero_con_num_full[k-1][j];
-          }
-          // now get average
-          sero_con_num[i][j] =  sero_con_num[i][j]/(sero_survey_end[i] - sero_survey_start[i] + 1);
-        }
-      }
-
-      //.............................
-      // L3 Serology Proportions Expectation
-      //.............................
-      double L3sero_loglik = 0.0;
-      // unpack serology observed data
-      std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serologypos"]);
-      std::vector<double> datn_raw = Rcpp::as< std::vector<double> >(data["obs_serologyn"]);
-      // recast datpos
-      std::vector<std::vector<double>> datpos(n_sero_obs, std::vector<double>(stratlen));
-      std::vector<std::vector<double>> datn(n_sero_obs, std::vector<double>(stratlen));
-      int seroiter = 0;
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int j = 0; j < stratlen; j++) {
-          datpos[i][j] = datpos_raw[seroiter];
-          datn[i][j] = datn_raw[seroiter];
-          seroiter++;
-        }
-      }
-      // loop through sero likelihood
-      for (int i = 0; i < n_sero_obs; i++) {
-        for (int j = 0; j < stratlen; j++) {
-          if (datpos[i][j] != -1 | datn[i][j] != -1 ) {
-            // Gelman Estimator for numerical stability
-            double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
-            L3sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
-          }
-        }
-      }
-      // bring together
-      loglik = L1deathshape_loglik + L2deathprop_loglik + L3sero_loglik;
-
-      // catch underflow
-      if (!std::isfinite(loglik)) {
-        loglik = -OVERFLO_DOUBLE;
-      }
-
-      // end cumulative vs. popN check
+    // get cumulative hazard for each day up to the latest serology observation date
+    // i.e. cumulative hazard of seroconversion on given day look up table
+    std::vector<double> cum_hazard(max_seroday_obsd);
+    for (int d = 0; d < max_seroday_obsd; d++) {
+      cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
     }
-    // end node_x check
+
+    // seroconversion by strata look up table
+    std::vector<std::vector<double>> sero_con_num_full(max_seroday_obsd, std::vector<double>(stratlen));
+    // loop through and split infection curve by strata and by number of seroconversion study dates
+    for (int a = 0; a < stratlen; a++) {
+      for (int i = 0; i < max_seroday_obsd; i++) {
+        // go to the "end" of the day
+        for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
+          int time_elapsed = j - i - 1;
+          sero_con_num_full[j-1][a] += strata_infxn_spline[i][a] * cum_hazard[time_elapsed];
+        }
+      }
+    }
+
+    // get average over serostudy data
+    std::vector<std::vector<double>> sero_con_num(n_sero_obs, std::vector<double>(stratlen));
+    for (int i = 0; i < n_sero_obs; i++) {
+      for (int j = 0; j < stratlen; j++) {
+        for (int k = sero_survey_start[i]; k <= sero_survey_end[i]; k++) {
+          // days are 1 based
+          sero_con_num[i][j] += sero_con_num_full[k-1][j];
+        }
+        // now get average
+        sero_con_num[i][j] =  sero_con_num[i][j]/(sero_survey_end[i] - sero_survey_start[i] + 1);
+      }
+    }
+
+    //.............................
+    // L3 Serology Proportions Expectation
+    //.............................
+    double L3sero_loglik = 0.0;
+    // unpack serology observed data
+    std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serologypos"]);
+    std::vector<double> datn_raw = Rcpp::as< std::vector<double> >(data["obs_serologyn"]);
+    // recast datpos
+    std::vector<std::vector<double>> datpos(n_sero_obs, std::vector<double>(stratlen));
+    std::vector<std::vector<double>> datn(n_sero_obs, std::vector<double>(stratlen));
+    int seroiter = 0;
+    for (int i = 0; i < n_sero_obs; i++) {
+      for (int j = 0; j < stratlen; j++) {
+        datpos[i][j] = datpos_raw[seroiter];
+        datn[i][j] = datn_raw[seroiter];
+        seroiter++;
+      }
+    }
+
+    // loop through sero likelihood
+    for (int i = 0; i < n_sero_obs; i++) {
+      for (int j = 0; j < stratlen; j++) {
+        if (datpos[i][j] != -1 | datn[i][j] != -1 ) {
+          // Gelman Estimator for numerical stability
+          double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
+          L3sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
+        }
+      }
+    }
+
+
+
+  // COMBINED LIKELIHOOD
+    // bring together
+    loglik = L1deathshape_loglik + L2deathprop_loglik + L3sero_loglik;
+
+    // catch underflow
+    if (!std::isfinite(loglik)) {
+      loglik = -OVERFLO_DOUBLE;
+    }
+
+    // end cumulative vs. popN check
   }
+  // end node_x check
 
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik);
