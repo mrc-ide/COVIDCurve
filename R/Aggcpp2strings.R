@@ -1,5 +1,6 @@
 #' @title Create the logprior from the IFRmodel R6 Class for DrJacoby Inference
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
+#' @param account_serorev logical; Whether seroreversion should be considered or ignored
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
@@ -7,11 +8,13 @@
 #' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
+make_user_Agg_logprior <- function(IFRmodel, account_serorev,
+                                   reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertsions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
+  assert_logical(account_serorev)
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
@@ -28,6 +31,14 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   Serotestparams <- paramdf[paramdf$name %in% IFRmodel$Serotestparams, ]
   Noiseparams <- paramdf[paramdf$name %in% IFRmodel$Noiseparams, ]
   TODparams <- paramdf[paramdf$name %in% c(IFRmodel$modparam, IFRmodel$sodparam), ]
+
+  #......................
+  # consider seroreversion
+  #......................
+  if (!account_serorev) {
+    Serotestparams <- Serotestparams %>%
+      dplyr::filter(!name %in% c("sero_rev_shape", "sero_rev_scale"))
+  }
 
   if (reparamKnots) {
     #..................
@@ -110,12 +121,22 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
     paste0("double ", param, " = params[\"",  param, "\"];")
   })
 
-  makeSerotestpriors <- c(
-    paste0("R::dnorm(sero_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rate"], ", true) +"),
-    paste0("R::dbeta(sens,", Serotestparams$dsc1[Serotestparams$name == "sens"], ",", Serotestparams$dsc2[Serotestparams$name == "sens"], ", true) +"),
-    paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +")
-  )
+  if (account_serorev) {
+    makeSerotestpriors <- c(
+      paste0("R::dnorm(sero_con_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_con_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_con_rate"], ", true) +"),
+      paste0("R::dbeta(sens,", Serotestparams$dsc1[Serotestparams$name == "sens"], ",", Serotestparams$dsc2[Serotestparams$name == "sens"], ", true) +"),
+      paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +"),
+      paste0("R::dnorm(sero_rev_shape,", Serotestparams$dsc1[Serotestparams$name == "sero_rev_shape"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rev_shape"], ", true) +"),
+      paste0("R::dnorm(sero_rev_scale,", Serotestparams$dsc1[Serotestparams$name == "sero_rev_scale"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rev_scale"], ", true) +")
+    )
+  } else {
+    makeSerotestpriors <- c(
+      paste0("R::dnorm(sero_con_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_con_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_con_rate"], ", true) +"),
+      paste0("R::dbeta(sens,", Serotestparams$dsc1[Serotestparams$name == "sens"], ",", Serotestparams$dsc2[Serotestparams$name == "sens"], ", true) +"),
+      paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +")
+    )
 
+  }
 
   #..................
   # priors for Noiseparams
@@ -127,7 +148,6 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
   makenoisepriors <- mapply(function(param, d1, d2){
     paste0("R::dunif(",param, ",", d1, ",", d2, ",", "true) +")
   }, param = Noiseparams$name, d1 = Noiseparams$dsc1, d2 = Noiseparams$dsc2)
-
 
   #..................
   # bring together
@@ -399,11 +419,13 @@ make_user_Agg_logprior <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKn
 #' @inheritParams make_user_Agg_logprior
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
+make_user_Agg_loglike <- function(IFRmodel, account_serorev,
+                                  reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertions
   #..................
   assert_custom_class(IFRmodel, "IFRmodel")
+  assert_logical(account_serorev)
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
@@ -422,13 +444,23 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #..................
   # extract misc and storage items
   #..................
-  extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); int stratlen = rho.size(); std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"]; std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc[\"sero_survey_start\"]); std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc[\"sero_survey_end\"]); int max_seroday_obsd = misc[\"max_seroday_obsd\"];"
+  extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); int stratlen = rho.size(); std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"]; std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc[\"sero_survey_start\"]); std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc[\"sero_survey_end\"]); int max_seroday_obsd = misc[\"max_seroday_obsd\"]; bool account_serorev = misc[\"account_serorev\"];"
   storageitems <- "std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots); std::vector<double>ma(stratlen); std::vector<double>ne(stratlen);"
 
   #......................
   # extract fixed parameters
   #......................
-  fixedparams <- "double sens = params[\"sens\"]; double spec = params[\"spec\"]; double sero_rate = params[\"sero_rate\"]; double mod = params[\"mod\"]; double sod = params[\"sod\"];"
+  fixedparams <- "double sens = params[\"sens\"]; double spec = params[\"spec\"]; double sero_con_rate = params[\"sero_con_rate\"]; double mod = params[\"mod\"]; double sod = params[\"sod\"];"
+
+   #......................
+  # extract potential seroreversion parameters
+  #......................
+  if (account_serorev) {
+    serorevparams <- "double sero_rev_shape = params[\"sero_rev_shape\"]; double sero_rev_scale = params[\"sero_rev_scale\"];"
+  } else {
+    # -1 here simply so Cpp see that this parameter is declared. It is not considered due to the if/else loop (and negative shapes are NaN anyways)
+    serorevparams <- "double sero_rev_shape = -1.0; double sero_rev_scale = -1.0;"
+  }
 
   #..................
   # Extract and potentially liftover knotreparam vars for Knots -- Infxn Xpositions
@@ -538,7 +570,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
   #  mean offset (gamma) for sero rate (exp) and Spec
   #......................
   if (reparamDelays) {
-    seroscorrlftovr <- "sero_rate = sero_rate * 1/spec;"
+    seroscorrlftovr <- "sero_con_rate = sero_con_rate * 1/spec;"
   } else {
     seroscorrlftovr <- ""
   }
@@ -561,6 +593,7 @@ make_user_Agg_loglike <- function(IFRmodel, reparamIFR, reparamInfxn, reparamKno
            extmisc,
            storageitems,
            fixedparams,
+           serorevparams,
            node_xvec,
            node_yvec,
            mavec,

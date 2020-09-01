@@ -73,12 +73,9 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
 
 
   #..............................................................
-  # unpack object
+  # catches
   #..............................................................
 
-  #..................
-  # Get loglike and logprior
-  #..................
   if (reparamIFR) {
     assert_non_null(IFRmodel$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
   }
@@ -91,8 +88,25 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
+  # catch seroreversion
+  check_serorev <- is.na(unlist(IFRmodel$paramdf[IFRmodel$paramdf$name %in% c("sero_rev_scale", "sero_rev_shape"),
+                                                 c("min", "init", "max", "dsc1", "dsc2")]))
+  if (all(check_serorev)) {
+    account_serorev <- FALSE
+
+  } else if (any(check_serorev)) {
+    stop("You have inputted a mixture of NAs and values for Seroreversion. This is not allowed.")
+  } else {
+    account_serorev <- TRUE
+  }
+
+  #..................
+  # use R to write Cpp prior and likelihood
+  #..................
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, account_serorev = account_serorev,
+                                                      reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, account_serorev = account_serorev,
+                                                   reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
 
   #..................
   # make misc
@@ -105,7 +119,8 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    sero_survey_start = unique(IFRmodel$data$obs_serology$SeroStartSurvey),
                    sero_survey_end = unique(IFRmodel$data$obs_serology$SeroEndSurvey),
                    max_seroday_obsd = max(IFRmodel$data$obs_serology$SeroEndSurvey),
-                   demog = IFRmodel$demog$popN)
+                   demog = IFRmodel$demog$popN,
+                   account_serorev = account_serorev)
   #..................
   # make data list
   #..................
@@ -118,6 +133,12 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   # make df param
   #..................
   df_params <-  IFRmodel$paramdf[, 1:4]
+  # catch if no serorevesion
+  if (!account_serorev) {
+    df_params <- df_params %>%
+      dplyr::filter(!name %in% c("sero_rev_scale", "sero_rev_shape"))
+  }
+
 
   #..............................................................
   # Dr Jacoby
@@ -208,6 +229,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     reparamIFR = reparamIFR,
     reparamInfxn = reparamInfxn,
     reparamKnots = reparamKnots,
+    account_seroreversion = account_serorev,
     burnin = burnin,
     samples = samples,
     chains = chains)

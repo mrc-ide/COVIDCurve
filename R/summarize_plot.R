@@ -155,6 +155,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -188,7 +189,8 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                    sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
                    sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
   datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                 prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
@@ -560,6 +562,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -570,20 +573,29 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_replace(fitcurve_curve, "  if \\(popN_pass\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_serocon_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
 
   # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<double> cum_hazard(days_obsd);
+                           "std::vector<double> cum_serocon_hazard(days_obsd);
                            for (int d = 0; d < days_obsd; d++) {
-                             cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+                             cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+                           }
+                            std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+                           if (account_serorev) {
+                             for (int d = 0; d < max_seroday_obsd; d++) {
+                               cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+                             }
+                           } else {
+                             std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
                            }
                            std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
                             for (int a = 0; a < stratlen; a++) {
                               for (int i = 0; i < days_obsd; i++) {
                                 for (int j = i+1; j < (days_obsd + 1); j++) {
                                   int time_elapsed = j - i - 1;
-                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
+                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
+                                   sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
                                 }
                               }
                             }
@@ -611,7 +623,8 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
                    sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
   datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                 prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
