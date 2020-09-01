@@ -59,10 +59,15 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   // Lookup Items
   //........................................................
   // rescale Ne by attack rate
+  double nedom = 0.0;
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i] * rho[i];
+    nedom += ne[i];
   }
-
+  // Ne as a prop vector
+  for (int i = 0; i < stratlen; i++) {
+    ne[i] = ne[i]/nedom;
+  }
   // gamma look up table
   std::vector<double> pgmms(days_obsd + 1);
   for (int i = 0; i < (days_obsd+1); i++) {
@@ -157,7 +162,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     //.............................
     // popN/size catch
     //.............................
-    // check if startified infections exceed stratified population denominator
+    // check if stratified infections exceed stratified population denominator
     bool popN_pass = true;
     std::vector<double> cum_infxn_check(stratlen);
     for (int i = 0; i < days_obsd; i++) {
