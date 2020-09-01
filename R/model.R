@@ -53,8 +53,8 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      #......................
                                      # assertions and checks
                                      #......................
-                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, paramdf, rho, modparam, sodparam, demog)
-                                     if ( !all(sapply(items, is.null)) ) { # if user tries to input things, assert otherwise initialize empty -- N.B., we initialize gamma_lookup later based on knots
+                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams, paramdf, rho, modparam, sodparam, demog)
+                                     if ( !all(sapply(items, is.null)) ) { # all user to input all options at init, otherwise initialize empty
                                        # assert data
                                        assert_list(data)
                                        assert_in(names(data), c("obs_deaths", "prop_deaths", "obs_serology"))
@@ -92,7 +92,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_unique(Knotparams)
                                        assert_string(Serotestparams)
                                        assert_unique(Serotestparams)
-                                       assert_in(Serotestparams, c("sens", "spec", "sero_rate"))
+                                       assert_in(Serotestparams, c("sens", "spec", "sero_con_rate", "sero_rev_shape", "sero_rev_scale"))
                                        assert_string(Noiseparams)
                                        assert_unique(Noiseparams)
                                        assert_same_length(Noiseparams, IFRparams)
@@ -104,11 +104,11 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_unique(paramdf$name)
                                        assert_in(paramdf$name, c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams))
                                        assert_in(c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams), paramdf$name)
-                                       assert_numeric(paramdf$init)
-                                       assert_numeric(paramdf$min)
-                                       assert_numeric(paramdf$max)
-                                       assert_numeric(paramdf$dsc1)
-                                       assert_numeric(paramdf$dsc2)
+                                       sapply(paramdf$min, assert_numeric_or_NA)
+                                       sapply(paramdf$init, assert_numeric_or_NA)
+                                       sapply(paramdf$max, assert_numeric_or_NA)
+                                       sapply(paramdf$dsc1, assert_numeric_or_NA)
+                                       sapply(paramdf$dsc2, assert_numeric_or_NA)
 
                                        # demography
                                        assert_dataframe(demog)
@@ -241,9 +241,12 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    set_Serotestparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
-                                     assert_in(val, c("sens", "spec", "sero_rate"),
+                                     assert_in(val, c("sens", "spec", "sero_con_rate", "sero_rev_scale", "sero_rev_shape"),
                                                message = "Serology test parameters currently limited to specifitiy (spec),
-                                             sensitivity (sens), and serology rate (sero_rate)")
+                                                          sensitivity (sens), lambda of the exponentially distributed onset of infection
+                                                          to seroconversion (sero_con_rate), and the scale and shape of a the Weibull
+                                                          distributed rate of serorevetion (sero_rev_scale; sero_rev_shape). Seroreversion
+                                                          parameters can be set to NA if seroreversion should be ignored")
                                      self$Serotestparams <- val
                                    },
 
@@ -304,11 +307,11 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_string(val$name)
                                      assert_unique(val$name)
                                      assert_in(val$name, c(self$modparam, self$sodparam, self$IFRparams, self$Knotparams, self$Infxnparams, self$Serotestparams, self$Noiseparams))
-                                     assert_numeric(val$init)
-                                     assert_numeric(val$min)
-                                     assert_numeric(val$max)
-                                     assert_numeric(val$dsc1)
-                                     assert_numeric(val$dsc2)
+                                     sapply(val$min, assert_numeric_or_NA)
+                                     sapply(val$init, assert_numeric_or_NA)
+                                     sapply(val$max, assert_numeric_or_NA)
+                                     sapply(val$dsc1, assert_numeric_or_NA)
+                                     sapply(val$dsc2, assert_numeric_or_NA)
                                      self$paramdf <- val
                                    },
 

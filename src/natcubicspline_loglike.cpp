@@ -22,7 +22,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   double sens = params["sens"];
   double spec = params["spec"];
   // sero conversion rate
-  double sero_rate = params["sero_rate"];
+  double sero_con_rate = params["sero_con_rate"];
   // sero reversion
   double sero_rev_shape = params["sero_rev_shape"];
   double sero_rev_scale = params["sero_rev_scale"];
@@ -153,7 +153,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
     }
-
     // exponentiate infxn spline out of log space
     for (int i = 0; i < days_obsd; i++) {
       infxn_spline[i] = exp(infxn_spline[i]);
@@ -243,7 +242,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       // i.e. cumulative hazard of seroconversion on given day look up table
       std::vector<double> cum_serocon_hazard(max_seroday_obsd);
       for (int d = 0; d < max_seroday_obsd; d++) {
-        cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_rate));
+        cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
       }
 
       // get cumulative hazard sero-reversion on given day via a lookup table
