@@ -36,6 +36,9 @@ test_that("serology likelihood accurate", {
     s_od = 0.79,
     curr_day = 200,
     infections = infxns$infxns,
+    simulate_seroreversion = TRUE,
+    sero_rev_shape = 4.75,
+    sero_rev_scale = 272,
     sens = 0.85,
     spec = 0.95,
     sero_delay_rate = 15
@@ -85,24 +88,25 @@ test_that("serology likelihood accurate", {
                    sero_survey_end = c(115, 140),
                    n_knots = length(knots)+1,
                    demog = demog$popN,
-                   account_serorev = TRUE)
+                   account_serorev = FALSE)
 
 
   # liftover to Rcpp list
   morelikely.paramsin <- c("mod" = 17.8, "sod" = 0.45,
-                           "ma1" = 0.05, "ma2" = 0.2, "ma3" = 0.5,
+                           "ma1" = 0.01, "ma2" = 0.05, "ma3" = 0.1,
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
                            "sens" = 0.85, "spec" = 0.95, "sero_rate" = 10,
-                           "sero_rev_scale" = 135, "sero_rev_shape" = 3.6)
-
+                           "sero_rev_scale" = 272, "sero_rev_shape" = 4.75)
 
   # truth
   morelikely <- COVIDCurve:::natcubspline_loglike(params = morelikely.paramsin,
                                                   param_i = 1,
                                                   data = datinput,
                                                   misc = misc_list)
+
+  morelikely
 
 
   # random
