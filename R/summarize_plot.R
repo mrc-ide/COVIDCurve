@@ -200,7 +200,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
@@ -227,7 +227,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                          data = datin, misc = misc_list)
+                                          datin = datin, misc = misc_list)
 
   #......................
   # tidy
@@ -634,7 +634,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
@@ -674,7 +674,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$seroprev <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                       data = datin, misc = misc_list)
+                                       datin = datin, misc = misc_list)
 
   #......................
   # tidy
