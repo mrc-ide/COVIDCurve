@@ -201,12 +201,21 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # split, run, recombine
   #......................
   cpp_function_wrapper <- function(params, datin, misc) {
+
+    # paramsin
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
     # run efficient cpp code
@@ -237,15 +246,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain and by strata
          "TRUE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -289,15 +290,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain but not by strata
          "TRUE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -325,15 +318,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain but by strata
          "FALSE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -378,14 +363,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain, not by strata
          "FALSE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select("infxncurves") %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              tidyr::unnest(cols = "infxncurves") %>%
              dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
@@ -635,20 +613,29 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # split, run, recombine
   #......................
   cpp_function_wrapper <- function(params, datin, misc) {
+    # params in
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
+
 
     seroprev_lists <- loglike(params = paramsin,
                               param_i = 1,
                               data = datin,
                               misc = misc_list)
 
-    crude_seroprev <- seroprev_lists[[1]] %>%
+    sero_counts <- seroprev_lists[[1]] %>%
       do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("serocounts_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
@@ -666,8 +653,9 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
-
-    ret <- dplyr::left_join(crude_seroprev, RG_seroprev, by = "ObsDay")
+    # out
+    ret <- dplyr::left_join(sero_counts, crude_seroprev, by = "ObsDay") %>%
+      dplyr::left_join(., RG_seroprev, by = "ObsDay")
     return(ret)
 
   }
@@ -679,18 +667,9 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # tidy
   #......................
-  # keep params around for convenience
   if (by_chain) {
     dat <- mcmcout.nodes %>%
-      dplyr::select(c("chain",
-                      IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select(c("chain", "seroprev")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
@@ -700,14 +679,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   } else {
     # keep params around for convenience
     dat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select("seroprev") %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "seroprev")
   }

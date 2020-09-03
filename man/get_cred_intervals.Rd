@@ -9,7 +9,7 @@ get_cred_intervals(IFRmodel_inf, what, whichrung = "rung1", by_chain = TRUE)
 \arguments{
 \item{IFRmodel_inf}{R6 class; The result of the IFR Model MCMC run along with the model input.}
 
-\item{what}{character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Serodayparams"}
+\item{what}{character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"}
 
 \item{whichrung}{character; Specify which rung to sample from (default is rung1)}
 

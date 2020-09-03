@@ -9,7 +9,8 @@ run_IFRmodel_agg(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
-  reparamSeroRate = TRUE,
+  reparamDelays = TRUE,
+  reparamNe = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
@@ -31,7 +32,9 @@ run_IFRmodel_agg(
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately}
 
-\item{reparamSeroRate}{logical; Whether mean delay to seroconverstion (serorate) should be reparameterized (as function of the mean offset-to-death) or inferred seperately}
+\item{reparamDelays}{logical; Whether the mean offset-to-death and the seroconversion rate delay should be reparameterized or inferred seperately}
+
+\item{reparamNe}{logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)}
 
 \item{burnin}{the number of burn-in iterations.}
 
@@ -47,7 +50,7 @@ parallel, otherwise they are run in serial.}
 \code{coupling_on}).}
 
 \item{GTI_pow}{the power used in the generalised thermodynamic integration 
-method.}
+method. Must either be a single positive integer or a vector of integers with length equal to the number of rungs.}
 
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}
