@@ -14,6 +14,9 @@ Aggsim_infxn_2_death(
   sens,
   demog,
   sero_delay_rate,
+  simulate_seroreversion,
+  sero_rev_shape = NULL,
+  sero_rev_scale = NULL,
   smplfrac = 1
 )
 }
@@ -35,6 +38,12 @@ Aggsim_infxn_2_death(
 \item{demog}{dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}}
 
 \item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
+
+\item{simulate_seroreversion}{logical; Whether seroreversion (due to waning of antibodies) should be simulated or not}
+
+\item{sero_rev_shape}{double; The shape parameter of the Weibull seroreversion distribution}
+
+\item{sero_rev_scale}{double; The scale parameter of the Weibull seroreversion distribution}
 
 \item{smplfrac}{numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)}
 

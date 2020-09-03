@@ -16,11 +16,17 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc["sero_survey_start"]);
   std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc["sero_survey_end"]);
   int max_seroday_obsd = misc["max_seroday_obsd"];
+  bool account_serorev = misc["account_serorev"];
 
   // extract serology items
   double sens = params["sens"];
   double spec = params["spec"];
-  double sero_rate = params["sero_rate"];
+  // sero conversion rate
+  double sero_con_rate = params["sero_con_rate"];
+  // sero reversion
+  double sero_rev_shape = params["sero_rev_shape"];
+  double sero_rev_scale = params["sero_rev_scale"];
+
   // death delay params
   double mod = params["mod"];
   double sod = params["sod"];
@@ -62,7 +68,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   for (int i = 0; i < stratlen; i++) {
     ne[i] = ne[i]/nedom;
   }
-
   // gamma look up table
   std::vector<double> pgmms(days_obsd + 1);
   for (int i = 0; i < (days_obsd+1); i++) {
@@ -148,7 +153,6 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
         }
       }
     }
-
     // exponentiate infxn spline out of log space
     for (int i = 0; i < days_obsd; i++) {
       infxn_spline[i] = exp(infxn_spline[i]);
@@ -157,7 +161,7 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
     //.............................
     // popN/size catch
     //.............................
-    // check if startified infections exceed stratified population denominator
+    // check if stratified infections exceed stratified population denominator
     bool popN_pass = true;
     std::vector<double> cum_infxn_check(stratlen);
     for (int i = 0; i < days_obsd; i++) {
@@ -236,10 +240,22 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       //........................................................
       // get cumulative hazard for each day up to the latest serology observation date
       // i.e. cumulative hazard of seroconversion on given day look up table
-      std::vector<double> cum_hazard(max_seroday_obsd);
+      std::vector<double> cum_serocon_hazard(max_seroday_obsd);
       for (int d = 0; d < max_seroday_obsd; d++) {
-        cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+        cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
       }
+
+      // get cumulative hazard sero-reversion on given day via a lookup table
+      std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+      if (account_serorev) {
+        for (int d = 0; d < max_seroday_obsd; d++) {
+          cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+        }
+      } else {
+        // if not account for serorev, fill with zeroes
+        std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
+      }
+
 
       // seroconversion by strata look up table
       std::vector<std::vector<double>> sero_con_num_full(max_seroday_obsd, std::vector<double>(stratlen));
@@ -249,7 +265,8 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
           // go to the "end" of the day
           for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
             int time_elapsed = j - i - 1;
-            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
+            sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
+            sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
           }
         }
       }

@@ -217,6 +217,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -250,7 +251,8 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                    sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
                    sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
   datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                 prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
@@ -260,13 +262,22 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
+
+    # paramsin
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
     # run efficient cpp code
@@ -287,7 +298,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                          data = datin, misc = misc_list)
+                                          datin = datin, misc = misc_list)
 
   #......................
   # tidy
@@ -297,15 +308,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain and by strata
          "TRUE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -349,15 +352,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain but not by strata
          "TRUE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -385,15 +380,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain but by strata
          "FALSE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain",
-                             IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select(c("chain", "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -438,14 +425,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain, not by strata
          "FALSE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+             dplyr::select("infxncurves") %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              tidyr::unnest(cols = "infxncurves") %>%
              dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
@@ -622,6 +602,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -632,20 +613,29 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
   fitcurve_curve <- stringr::str_replace(fitcurve_curve, "  if \\(popN_pass\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_serocon_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
 
   # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<double> cum_hazard(days_obsd);
+                           "std::vector<double> cum_serocon_hazard(days_obsd);
                            for (int d = 0; d < days_obsd; d++) {
-                             cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
+                             cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+                           }
+                            std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+                           if (account_serorev) {
+                             for (int d = 0; d < max_seroday_obsd; d++) {
+                               cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+                             }
+                           } else {
+                             std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
                            }
                            std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
                             for (int a = 0; a < stratlen; a++) {
                               for (int i = 0; i < days_obsd; i++) {
                                 for (int j = i+1; j < (days_obsd + 1); j++) {
                                   int time_elapsed = j - i - 1;
-                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_hazard[time_elapsed];
+                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
+                                   sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
                                 }
                               }
                             }
@@ -673,7 +663,8 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
                    sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN)
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
   datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                 prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
@@ -683,21 +674,30 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
+    # params in
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
+
 
     seroprev_lists <- loglike(params = paramsin,
                               param_i = 1,
                               data = datin,
                               misc = misc_list)
 
-    crude_seroprev <- seroprev_lists[[1]] %>%
+    sero_counts <- seroprev_lists[[1]] %>%
       do.call("rbind.data.frame", .) %>%
       magrittr::set_colnames(paste0("serocounts_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
@@ -715,31 +715,23 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
-
-    ret <- dplyr::left_join(crude_seroprev, RG_seroprev, by = "ObsDay")
+    # out
+    ret <- dplyr::left_join(sero_counts, crude_seroprev, by = "ObsDay") %>%
+      dplyr::left_join(., RG_seroprev, by = "ObsDay")
     return(ret)
 
   }
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$seroprev <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                       data = datin, misc = misc_list)
+                                       datin = datin, misc = misc_list)
 
   #......................
   # tidy
   #......................
-  # keep params around for convenience
   if (by_chain) {
     dat <- mcmcout.nodes %>%
-      dplyr::select(c("chain",
-                      IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select(c("chain", "seroprev")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
@@ -749,14 +741,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   } else {
     # keep params around for convenience
     dat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select("seroprev") %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "seroprev")
   }

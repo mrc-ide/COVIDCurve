@@ -9,6 +9,9 @@ sim_seroprev <- function(sero_line_list,
                          sens,
                          smplfrac,
                          sero_delay_rate,
+                         simulate_seroreversion,
+                         sero_rev_shape,
+                         sero_rev_scale,
                          demog,
                          fatalitydata,
                          curr_day) {
@@ -19,37 +22,68 @@ sim_seroprev <- function(sero_line_list,
   # observed time of seroconversion
   sero_line_list$tosc <- as.numeric(sero_line_list$doi) + sero_line_list$otsc
 
+  if (simulate_seroreversion) {
+    # draw time from seroconversion to seroreversion
+    sero_line_list$otsr <- stats::rweibull(n = nrow(sero_line_list), shape = sero_rev_shape, scale = sero_rev_scale)
+    # observed time of seroreversion
+    sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + sero_line_list$otsr
+  } else {
+    sero_line_list$otsr <- NA
+    sero_line_list$tosr <- Inf
+  }
+
   #..................
   # Tidy up so that we observe deaths on a daily time step
   #..................
   sero_line_list <- sero_line_list %>%
-    dplyr::mutate(ObsDaySerocon = cut(tosc, breaks = c(0, 1:curr_day),
-                                           labels = 1:curr_day))
+    dplyr::mutate(ObsDaySeroCon = cut(tosc, breaks = c(0, 1:curr_day),
+                                      labels = 1:curr_day),
+                  ObsDaySeroRev = cut(tosr, breaks = c(0, 1:curr_day),
+                                      labels = 1:curr_day),
+                  ObsDaySeroRev = ifelse(is.na(ObsDaySeroRev), Inf, ObsDaySeroRev)) # if seroreversion is missing, the subject doesn't revert within the study period
 
 
   #......................
   # observed seroprevalences taking into account sampling fractions
   #......................
   sero_line_list_sampl <- sero_line_list %>%
-    dplyr::filter(!is.na(ObsDaySerocon))   # drop "future" seroconversions
+    dplyr::filter(!is.na(ObsDaySeroCon))   # drop "future" seroconversions
   keeprows <- as.logical(rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
   sero_line_list_sampl <- sero_line_list_sampl[keeprows, ]
   # get serotested after sampling fraction
   serotested <- tibble::tibble(Strata = fatalitydata$Strata,
                                testedN = demog$popN * smplfrac)
 
+  # get count of seroreversions by day -- these are lost infections
+  sero_revertsdf <- sero_line_list_sampl %>%
+    dplyr::mutate(ObsDaySeroRev = factor(ObsDaySeroRev, levels = c(1:curr_day))) %>%
+    dplyr::group_by(Strata, ObsDaySeroRev, .drop = F) %>%
+    dplyr::summarise(daily_seroreverts = dplyr::n()) %>%
+    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDaySeroRev)), # protect against factor
+                  daily_cum_seroreverts = cumsum(daily_seroreverts)) %>%
+    dplyr::ungroup(.) %>%
+    dplyr::filter(ObsDay <= curr_day) %>%
+    dplyr::select(c("ObsDay", "Strata", "daily_cum_seroreverts"))
+
+
   # get aggregate counts for model
   sero_strata_agg <- sero_line_list_sampl %>%
-    dplyr::group_by(Strata, ObsDaySerocon, .drop = F) %>%
-    dplyr::summarise(day_seros = dplyr::n()) %>%
+    dplyr::group_by(Strata, ObsDaySeroCon, .drop = F) %>%
+    dplyr::summarise(daily_seroconverts = dplyr::n()) %>%
+    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDaySeroCon)), # protect against factor
+                  daily_cum_seroconverts = cumsum(daily_seroconverts)) %>%
+    dplyr::left_join(., sero_revertsdf, by = c("ObsDay", "Strata")) %>%
     dplyr::left_join(., demog, by = "Strata") %>%
     dplyr::left_join(., serotested, by = "Strata") %>%
-    dplyr::mutate(ObsDay = as.numeric(as.character(ObsDaySerocon)), # protect against factor
-                  TrueSeroCount = cumsum(day_seros),
-                  TruePrev = TrueSeroCount/testedN,
-                  ObsPrev = sens*TruePrev + (1-spec)*(1-TruePrev)) %>%
+    dplyr::mutate(
+      TrueSeroCount = daily_cum_seroconverts,
+      RevertSeroCount = daily_cum_seroconverts - daily_cum_seroreverts,
+      TruePrev = TrueSeroCount/testedN,
+      ObsPrev = RevertSeroCount/testedN, # observed prev corrected for seroreverts
+      ObsPrev = sens*ObsPrev + (1-spec)*(1-ObsPrev)) %>% # observed prev corrected for spec/sens
     dplyr::ungroup(.) %>%
-    dplyr::select(-c("day_seros", "popN", "ObsDaySerocon"))
+    dplyr::select(-c("daily_seroconverts", "daily_cum_seroconverts", "daily_cum_seroreverts", "RevertSeroCount",
+                     "popN", "ObsDaySeroCon"))
 
   # out
   out <- list(sero_line_list = sero_line_list,
@@ -69,13 +103,18 @@ sim_seroprev <- function(sero_line_list,
 #' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
+#' @param simulate_seroreversion logical; Whether seroreversion (due to waning of antibodies) should be simulated or not
+#' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
+#' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution
 #' @param smplfrac numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)
 #' @importFrom magrittr %>%
 #' @export
 
 Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
-                                 spec, sens, demog, sero_delay_rate, smplfrac = 1){
+                                 spec, sens, demog, sero_delay_rate,
+                                 simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
+                                 smplfrac = 1){
 
   #..................
   # Assertions that are specific to this project
@@ -97,8 +136,14 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_eq(demog$Strata, fatalitydata$Strata,
             message = "%s must equal %s -- check that your strata are in the same order")
   assert_bounded(smplfrac, left = 0, right = 1, inclusive_left = FALSE)
+  assert_logical(simulate_seroreversion)
+  if (simulate_seroreversion) {
+    assert_numeric(sero_rev_shape)
+    assert_numeric(sero_rev_scale)
+  }
 
-  #......................
+
+    #......................
   # misc helper function
   #......................
   df_expand <- function(datrow, col){
@@ -142,8 +187,11 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   # get seroprevalence
   #..................
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
-                           sero_delay_rate = sero_delay_rate, smplfrac = smplfrac,
+                           sero_delay_rate = sero_delay_rate,
+                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
+                           smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
+
 
   #..................
   # get deaths
@@ -165,7 +213,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   death_line_list <- death_line_list %>%
     dplyr::mutate(Strata = factor(Strata, levels = stratalvls)) %>%  # need this for later summarize
     dplyr::mutate(ObsDayDeath = cut(tod, breaks = c(0, 1:curr_day),
-                                         labels = 1:curr_day))
+                                    labels = 1:curr_day))
 
   # tidy up for out
   death_strata_agg <- death_line_list %>%
