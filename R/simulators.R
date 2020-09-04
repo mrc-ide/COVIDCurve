@@ -107,6 +107,7 @@ sim_seroprev <- function(sero_line_list,
 #' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
 #' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution
 #' @param smplfrac numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)
+#' @param return_linelist logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.
 #' @importFrom magrittr %>%
 #' @export
 
@@ -114,7 +115,7 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
                                  simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
-                                 smplfrac = 1){
+                                 smplfrac = 1, return_linelist = FALSE){
 
   #..................
   # Assertions that are specific to this project
@@ -241,11 +242,19 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   # out
   #..................
-  ret <- list(
-    StrataAgg_TimeSeries_Death = death_strata_agg,
-    Agg_TimeSeries_Death = death_agg,
-    StrataAgg_Seroprev = seroprev$sero_strata_agg,
-    full_linelist = full_linelist)
+  if (return_linelist) {
+    ret <- list(
+      StrataAgg_TimeSeries_Death = death_strata_agg,
+      Agg_TimeSeries_Death = death_agg,
+      StrataAgg_Seroprev = seroprev$sero_strata_agg,
+      full_linelist = full_linelist)
+  } else {
+    ret <- list(
+      StrataAgg_TimeSeries_Death = death_strata_agg,
+      Agg_TimeSeries_Death = death_agg,
+      StrataAgg_Seroprev = seroprev$sero_strata_agg)
+  }
+
 
   return(ret)
 }

@@ -17,7 +17,8 @@ Aggsim_infxn_2_death(
   simulate_seroreversion,
   sero_rev_shape = NULL,
   sero_rev_scale = NULL,
-  smplfrac = 1
+  smplfrac = 1,
+  return_linelist = FALSE
 )
 }
 \arguments{
@@ -46,6 +47,8 @@ Aggsim_infxn_2_death(
 \item{sero_rev_scale}{double; The scale parameter of the Weibull seroreversion distribution}
 
 \item{smplfrac}{numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)}
+
+\item{return_linelist}{logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.}
 
 \item{level}{character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.}
 }
