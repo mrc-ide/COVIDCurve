@@ -143,16 +143,16 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
     ret %>%
       dplyr::group_by(chain) %>%
       dplyr::summarise(
-      min = min(est),
-      LCI = quantile(est, 0.025),
-      median = median(est),
-      mean = mean(est),
-      UCI = quantile(est, 0.975),
-      max = max(est),
-      ESS = coda::effectiveSize(coda::as.mcmc(est)),
-      GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
-      GewekeP = dnorm(GewekeZ)
-    )
+        min = min(est),
+        LCI = quantile(est, 0.025),
+        median = median(est),
+        mean = mean(est),
+        UCI = quantile(est, 0.975),
+        max = max(est),
+        ESS = coda::effectiveSize(coda::as.mcmc(est)),
+        GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
+        GewekeP = dnorm(GewekeZ)
+      )
   } else {
     ret %>%
       dplyr::ungroup(.) %>%
@@ -303,12 +303,17 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # tidy
   #......................
-  # keep params around for convenience
+  # keep IFR params around for convenience for posterior death check
+  # and need mod and sod
   switch(paste0(by_chain, "-", by_strata),
          # by chain and by strata
          "TRUE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain", "infxncurves")) %>%
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -352,7 +357,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain but not by strata
          "TRUE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain", "infxncurves")) %>%
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -380,7 +389,11 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain but by strata
          "FALSE-TRUE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c("chain", "infxncurves")) %>%
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
@@ -425,7 +438,10 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain, not by strata
          "FALSE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select("infxncurves") %>%
+             dplyr::select(c("infxncurves",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam)) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              tidyr::unnest(cols = "infxncurves") %>%
              dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
@@ -621,9 +637,9 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                            for (int d = 0; d < days_obsd; d++) {
                              cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
                            }
-                            std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+                            std::vector<double> cum_serorev_hazard(days_obsd);
                            if (account_serorev) {
-                             for (int d = 0; d < max_seroday_obsd; d++) {
+                             for (int d = 0; d < days_obsd; d++) {
                                cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
                              }
                            } else {
