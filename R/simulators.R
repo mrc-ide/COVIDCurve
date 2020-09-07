@@ -157,12 +157,14 @@ Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   # Run Infxns and Deaths
   #..................
-  # get  number of infections for each day
+  # get  number of total infections in the entire population for each day
   expected_inf.day <- stats::rpois(length(infections), lambda = infections)
 
-  # Split infxns by strata prop. and rho
-  expected_inf.strt.day <- matrix(NA, nrow = length(fatalitydata$Rho), ncol = length(expected_inf.day))
-  Pinfxnsero <- fatalitydata$Rho/sum(fatalitydata$Rho)
+  # Given the total number of infections in the population, split by population density
+  # while accounting for some degree of differential attack rates through Rho
+  # P(Infxn) = P(Infxn|age) * P(age)
+  expected_inf.strt.day <- matrix(NA, nrow = nrow(fatalitydata), ncol = length(expected_inf.day))
+  Pinfxnsero <- (demog$popN * fatalitydata$Rho) / sum((demog$popN * fatalitydata$Rho))
   for (i in 1:length(expected_inf.day)) {
     expected_inf.strt.day[,i] <- stats::rmultinom(n = 1, size = expected_inf.day[i],
                                                   prob = Pinfxnsero)
