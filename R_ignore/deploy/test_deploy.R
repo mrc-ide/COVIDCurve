@@ -41,6 +41,9 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   infections = infxns$infxns,
   sens = 0.85,
   spec = 0.95,
+  simulate_seroreversion = FALSE,
+  sero_rev_shape = 4.5,
+  sero_rev_scale = 200,
   sero_delay_rate = 15
 )
 
@@ -95,19 +98,26 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 max =  c(0.33, 0.66, 0.99, 200),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_rate"),
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_con_rate"),
                                 min =   c(0.83,     0.8,    10),
                                 init =  c(0.85,     0.95,   15),
                                 max =   c(0.87,     1.00,   30),
                                 dsc1 =  c(8500,     950,    2.8),
                                 dsc2 =  c(1500,     50,     0.25))
+empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
+                        min  = c(NA,                 NA),
+                        init = c(NA,                 NA),
+                        max =  c(NA,                 NA),
+                        dsc1 = c(NA,                 NA),
+                        dsc2 = c(NA,                 NA))
+
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
-                                 min  = rep(0, 3),
-                                 init = c(1, 4, 6),
-                                 max = rep(10, 3),
-                                 dsc1 = rep(0, 3),
-                                 dsc2 = rep(10, 3))
+                                 min  = rep(0.5, 3),
+                                 init = rep(1, 3),
+                                 max = rep(1.5, 3),
+                                 dsc1 = rep(1, 3),
+                                 dsc2 = rep(0.05, 3))
 
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
@@ -118,7 +128,7 @@ tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
                                dsc2 = c(1,   50))
 
 
-df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
+df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, empty, noise_paramsdf, tod_paramsdf)
 
 #......................
 # make mode
@@ -132,12 +142,12 @@ mod1$set_Knotparams(paste0("x", 1:4))
 mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
-mod1$set_Serotestparams(c("sens", "spec", "sero_rate"))
+mod1$set_Serotestparams(c("sens", "spec", "sero_con_rate", "sero_rev_shape", "sero_rev_scale"))
 mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
 mod1$set_paramdf(df_params)
-mod1$set_rho(rep(1, 3))
+mod1$set_rho(demog$popN/sum(demog$popN))
 mod1$set_rcensor_day(.Machine$integer.max)
 
 #..................
@@ -149,10 +159,10 @@ modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
                                        reparamDelays = FALSE,
-                                       reparamNe = TRUE,
-                                       burnin = 1e3,
-                                       samples = 1e3,
-                                       chains = 1,
+                                       reparamNe = FALSE,
+                                       burnin = 1e4,
+                                       samples = 1e4,
+                                       chains = 3,
                                        rungs = 1,
                                        thinning = 0,
                                        silent = FALSE)
