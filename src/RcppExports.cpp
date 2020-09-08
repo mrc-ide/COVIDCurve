@@ -5,9 +5,9 @@
 
 using namespace Rcpp;
 
-// natcubspline_loglike
-Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
-RcppExport SEXP _COVIDCurve_natcubspline_loglike(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
+// natcubspline_loglike_binomial
+Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
+RcppExport SEXP _COVIDCurve_natcubspline_loglike_binomial(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -15,13 +15,28 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type param_i(param_iSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
     Rcpp::traits::input_parameter< Rcpp::List >::type misc(miscSEXP);
-    rcpp_result_gen = Rcpp::wrap(natcubspline_loglike(params, param_i, data, misc));
+    rcpp_result_gen = Rcpp::wrap(natcubspline_loglike_binomial(params, param_i, data, misc));
+    return rcpp_result_gen;
+END_RCPP
+}
+// natcubspline_loglike_logit
+Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc);
+RcppExport SEXP _COVIDCurve_natcubspline_loglike_logit(SEXP paramsSEXP, SEXP param_iSEXP, SEXP dataSEXP, SEXP miscSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< Rcpp::NumericVector >::type params(paramsSEXP);
+    Rcpp::traits::input_parameter< int >::type param_i(param_iSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type data(dataSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type misc(miscSEXP);
+    rcpp_result_gen = Rcpp::wrap(natcubspline_loglike_logit(params, param_i, data, misc));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_COVIDCurve_natcubspline_loglike", (DL_FUNC) &_COVIDCurve_natcubspline_loglike, 4},
+    {"_COVIDCurve_natcubspline_loglike_binomial", (DL_FUNC) &_COVIDCurve_natcubspline_loglike_binomial, 4},
+    {"_COVIDCurve_natcubspline_loglike_logit", (DL_FUNC) &_COVIDCurve_natcubspline_loglike_logit, 4},
     {NULL, NULL, 0}
 };
 

@@ -68,10 +68,23 @@ test_that("serology likelihood accurate", {
     dplyr::ungroup(.) %>%
     dplyr::arrange(SeroStartSurvey, Strata)
 
-  datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death$Deaths,
-                   prop_strata_obs_deaths = prop_strata_obs_deaths$PropDeaths,
-                   obs_serologypos = obs_serology$SeroPos,
-                   obs_serologyn = obs_serology$SeroN)
+  #......................
+  # binomial
+  #......................
+  datinput_binomial <- list(obs_deaths = dat$Agg_TimeSeries_Death$Deaths,
+                            prop_strata_obs_deaths = prop_strata_obs_deaths$PropDeaths,
+                            obs_serologypos = obs_serology$SeroPos,
+                            obs_serologyn = obs_serology$SeroN)
+  #......................
+  # logit
+  #......................
+  obs_serology <- obs_serology %>%
+    dplyr::mutate(SeroMu = log(SeroPrev/(1-SeroPrev)),
+                  SeroSE = 0.05) # pick some SE
+  datinput_logit <- list(obs_deaths = dat$Agg_TimeSeries_Death$Deaths,
+                         prop_strata_obs_deaths = prop_strata_obs_deaths$PropDeaths,
+                         obs_serologymu = obs_serology$SeroMu,
+                         obs_serologyse = obs_serology$SeroSE)
 
   #..................
   # inputs
@@ -97,16 +110,17 @@ test_that("serology likelihood accurate", {
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
-                           "sens" = 0.85, "spec" = 0.95, "sero_rate" = 10,
+                           "sens" = 0.85, "spec" = 0.95, "sero_con_rate" = 10,
                            "sero_rev_scale" = 272, "sero_rev_shape" = 4.75)
 
-  # truth
-  morelikely <- COVIDCurve:::natcubspline_loglike(params = morelikely.paramsin,
-                                                  param_i = 1,
-                                                  data = datinput,
-                                                  misc = misc_list)
-
-  morelikely
+  #......................
+  # binomial
+  #......................
+  # near truth
+  morelikely <- COVIDCurve:::natcubspline_loglike_binomial(params = morelikely.paramsin,
+                                                           param_i = 1,
+                                                           data = datinput_binomial,
+                                                           misc = misc_list)
 
 
   # random
@@ -115,15 +129,33 @@ test_that("serology likelihood accurate", {
                             "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
                             "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
                             "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
-                            "sens" = 0.85, "spec" = 0.99, "sero_rate" = 10,
-                            "sero_day1" = 110, "sero_day2" = 135)
+                            "sens" = 0.85, "spec" = 0.99, "sero_con_rate" = 10,
+                            "sero_rev_scale" = 272, "sero_rev_shape" = 4.75)
 
-  lesslikely <- COVIDCurve:::natcubspline_loglike(params = lesslikely.paramsin,
-                                                  param_i = 1,
-                                                  data = datinput,
-                                                  misc = misc_list)
-
-
+  lesslikely <- COVIDCurve:::natcubspline_loglike_binomial(params = lesslikely.paramsin,
+                                                           param_i = 1,
+                                                           data = datinput_binomial,
+                                                           misc = misc_list)
+  # check
   testthat::expect_gt(object = morelikely$LogLik, expected = lesslikely$LogLik)
+
+  #......................
+  # logit
+  #......................
+  # near truth
+  morelikely <- COVIDCurve:::natcubspline_loglike_logit(params = morelikely.paramsin,
+                                                        param_i = 1,
+                                                        data = datinput_logit,
+                                                        misc = misc_list)
+
+
+  lesslikely <- COVIDCurve:::natcubspline_loglike_logit(params = lesslikely.paramsin,
+                                                        param_i = 1,
+                                                        data = datinput_logit,
+                                                        misc = misc_list)
+  # check
+  testthat::expect_gt(object = morelikely$LogLik, expected = lesslikely$LogLik)
+
+
 
 })

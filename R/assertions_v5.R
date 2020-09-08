@@ -128,6 +128,28 @@ assert_numeric_or_NA <- function(x, message = "%s must be numeric or NA", name =
   return(TRUE)
 }
 
+#------------------------------------------------
+# x is positive integer or missing
+#' @noRd
+assert_pos_int_or_NA <- function(x, message = "%s must be a positive integer or NA", name = deparse(substitute(x))) {
+
+  if (!is.integer(x) & !is.na(x) & x < 0) {
+    stop(sprintf(message, name), call. = FALSE)
+  }
+  return(TRUE)
+}
+
+#------------------------------------------------
+# x is bounded or missing
+#' @noRd
+assert_bounded_or_NA <- function(x, left = 0, right = 1, inclusive_left = TRUE, inclusive_right = TRUE, name = deparse(substitute(x))) {
+  assert_numeric_or_NA(x)
+  if (any(!is.na(x))) {
+    assert_bounded(x[!is.na(x)])
+  }
+  return(TRUE)
+}
+
 
 #------------------------------------------------
 # x is single numeric

@@ -39,6 +39,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   s_od = 0.79,
   curr_day = 200,
   infections = infxns$infxns,
+  simulate_seroreversion = FALSE,
   sens = 0.85,
   spec = 0.95,
   simulate_seroreversion = FALSE,
@@ -69,7 +70,9 @@ obs_serology <- dat$StrataAgg_Seroprev %>%
                 SeroEndSurvey = c(140, 165)) %>%
   dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
   dplyr::ungroup(.) %>%
-  dplyr::arrange(SeroStartSurvey, Strata)
+  dplyr::arrange(SeroStartSurvey, Strata) %>%
+  dplyr::mutate(SeroLCI = SeroPrev - 0.01,
+                SeroUCI = SeroPrev + 0.01) # make up some tight CIs
 
 datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death,
                  prop_deaths = prop_strata_obs_deaths,
@@ -111,6 +114,13 @@ empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
                         dsc1 = c(NA,                 NA),
                         dsc2 = c(NA,                 NA))
 
+
+empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
+                        min  = c(NA,                 NA),
+                        init = c(NA,                 NA),
+                        max =  c(NA,                 NA),
+                        dsc1 = c(NA,                 NA),
+                        dsc2 = c(NA,                 NA))
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0.5, 3),
@@ -154,7 +164,7 @@ mod1$set_rcensor_day(.Machine$integer.max)
 # run model
 #..................
 start <- Sys.time()
-modout <- COVIDCurve::run_IFRmodel_agg(IFRmodel = mod1,
+modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
@@ -176,7 +186,7 @@ modout
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
 (sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
-                                       what = "Serotestparams", by_chain = F))
+                                        what = "Serotestparams", by_chain = F))
 (knotspost <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
                                              what = "Knotparams", by_chain = F))
 (infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),

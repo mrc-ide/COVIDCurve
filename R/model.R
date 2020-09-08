@@ -72,12 +72,13 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
 
                                        # L3
                                        assert_dataframe(data$obs_serology)
-                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
+                                       assert_in(colnames(data$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev", "SeroLCI", "SeroUCI"))
                                        assert_in(data$obs_serology$Strata, IFRparams)
-                                       assert_pos_int(data$obs_serology$SeroPos[data$obs_serology$SeroPos != -1])
-                                       assert_pos_int(data$obs_serology$SeroN[data$obs_serology$SeroN != -1])
-                                       assert_bounded(data$obs_serology$SeroPrev[data$obs_serology$SeroPrev != -1],
-                                                      left = 0, right = 1)
+                                       sapply(data$obs_serology$SeroPos, assert_pos_int_or_NA)
+                                       sapply(data$obs_serology$SeroN, assert_pos_int_or_NA)
+                                       sapply(data$obs_serology$SeroPrev, assert_bounded_or_NA, left = 0, right = 1)
+                                       sapply(data$obs_serology$SeroLCI, assert_numeric_or_NA)
+                                       sapply(data$obs_serology$SeroUCI, assert_numeric_or_NA)
                                        assert_pos_int(data$obs_serology$SeroStartSurvey)
                                        assert_pos_int(data$obs_serology$SeroEndSurvey)
 
@@ -279,17 +280,19 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_in(val$prop_deaths$Strata, self$IFRparams)
                                      # L3
                                      assert_dataframe(val$obs_serology)
-                                     assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev"))
+                                     assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev", "SeroLCI", "SeroUCI"))
                                      assert_in(val$obs_serology$Strata, self$IFRparams)
-                                     assert_pos_int(val$obs_serology$SeroPos[val$obs_serology$SeroPos != -1])
-                                     assert_pos_int(val$obs_serology$SeroN[val$obs_serology$SeroN != -1])
-                                     assert_bounded(val$obs_serology$SeroPrev[val$obs_serology$SeroPrev != -1],
-                                                    left = 0, right = 1)
+                                     sapply(val$obs_serology$SeroPos, assert_pos_int_or_NA)
+                                     sapply(val$obs_serology$SeroN, assert_pos_int_or_NA)
+                                     sapply(val$obs_serology$SeroPrev, assert_bounded_or_NA, left = 0, right = 1)
+                                     sapply(val$obs_serology$SeroLCI, assert_numeric_or_NA)
+                                     sapply(val$obs_serology$SeroUCI, assert_numeric_or_NA)
                                      assert_pos_int(val$obs_serology$SeroStartSurvey)
                                      assert_pos_int(val$obs_serology$SeroEndSurvey)
 
+                                     # extra checks
                                      if (unique(length(val$obs_deaths$ObsDay)) == 1) {
-                                       stop("Time-Series data but only one observation specified")
+                                       stop("Time-Series data has only one observed day specified")
                                      }
                                      if (min(val$obs_deaths$ObsDay) != 1) {
                                        stop("Time-Series Data must start on day 1")
