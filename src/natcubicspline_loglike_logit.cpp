@@ -4,7 +4,7 @@ using namespace Rcpp;
 //------------------------------------------------
 // Log-Likelihood for Aggregate Expected Deaths with a Natural Cubic Spline for the Incidence Curve and a Gamma distribution for the onset-to-death course
 // [[Rcpp::export]]
-Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
+Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
   std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
@@ -287,29 +287,30 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
       //.............................
       // L3 Serology Proportions Expectation
       //.............................
+      const double UNDERFLO_DOUBLE = DBL_MIN/100.0;
       double L3sero_loglik = 0.0;
       // unpack serology observed data
-      std::vector<double> datpos_raw = Rcpp::as< std::vector<double> >(data["obs_serologypos"]);
-      std::vector<double> datn_raw = Rcpp::as< std::vector<double> >(data["obs_serologyn"]);
+      std::vector<double> datmu_raw = Rcpp::as< std::vector<double> >(data["obs_serologymu"]);
+      std::vector<double> datse_raw = Rcpp::as< std::vector<double> >(data["obs_serologyse"]);
       // recast datpos
-      std::vector<std::vector<double>> datpos(n_sero_obs, std::vector<double>(stratlen));
-      std::vector<std::vector<double>> datn(n_sero_obs, std::vector<double>(stratlen));
+      std::vector<std::vector<double>> datmu(n_sero_obs, std::vector<double>(stratlen));
+      std::vector<std::vector<double>> datse(n_sero_obs, std::vector<double>(stratlen));
       int seroiter = 0;
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
-          datpos[i][j] = datpos_raw[seroiter];
-          datn[i][j] = datn_raw[seroiter];
+          datmu[i][j] = datmu_raw[seroiter];
+          datse[i][j] = datse_raw[seroiter];
           seroiter++;
         }
       }
       // loop through sero likelihood
       for (int i = 0; i < n_sero_obs; i++) {
         for (int j = 0; j < stratlen; j++) {
-          if (datpos[i][j] != -1 | datn[i][j] != -1 ) {
-            // Gelman Estimator for numerical stability
-            double obs_prev = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
-            L3sero_loglik += R::dbinom(datpos[i][j], datn[i][j], obs_prev, true);
-          }
+          // Gelman Estimator for numerical stability
+          double obs_prev_logit = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
+          // UNDERFLO_DOUBLE to prevent zeroes in numerator or denominator
+          obs_prev_logit = log((obs_prev_logit)/(1-(obs_prev_logit)));
+          L3sero_loglik += R::dnorm(obs_prev_logit, datmu[i][j], datse[i][j], true);
         }
       }
       // bring together
@@ -328,4 +329,5 @@ Rcpp::List natcubspline_loglike(Rcpp::NumericVector params, int param_i, Rcpp::L
   // return as Rcpp list
   Rcpp::List ret = Rcpp::List::create(Rcpp::Named("LogLik") = loglik);
   return ret;
+
 }

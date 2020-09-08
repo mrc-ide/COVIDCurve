@@ -1,11 +1,11 @@
 #' @title Create the logprior from the IFRmodel R6 Class for DrJacoby Inference
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
 #' @param account_serorev logical; Whether seroreversion should be considered or ignored
-#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
-#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
-#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
-#' @param reparamDelays logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
-#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
+#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred separately
+#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately
+#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately
+#' @param reparamDelays logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred separately
+#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relative to Ne1)
 #' @noRd
 
 make_user_Agg_logprior <- function(IFRmodel, account_serorev,
@@ -416,9 +416,10 @@ make_user_Agg_logprior <- function(IFRmodel, account_serorev,
 
 #' @title Create the loglikelihood from the IFRmodel R6 Class for DrJacoby Inference
 #' @inheritParams make_user_Agg_logprior
+#' @param binomial_likelihood logical; Whether the binomial or the logit likelihood should be used
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, account_serorev,
+make_user_Agg_loglike <- function(IFRmodel, binomial_likelihood, account_serorev,
                                   reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertions
@@ -451,7 +452,7 @@ make_user_Agg_loglike <- function(IFRmodel, account_serorev,
   #......................
   fixedparams <- "double sens = params[\"sens\"]; double spec = params[\"spec\"]; double sero_con_rate = params[\"sero_con_rate\"]; double mod = params[\"mod\"]; double sod = params[\"sod\"];"
 
-   #......................
+  #......................
   # extract potential seroreversion parameters
   #......................
   if (account_serorev) {
@@ -578,7 +579,11 @@ make_user_Agg_loglike <- function(IFRmodel, account_serorev,
   #..................
   # get loglike
   #..................
-  loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike.cpp", package = "COVIDCurve", mustWork = TRUE))
+  if (binomial_likelihood) {
+    loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike_binomial.cpp", package = "COVIDCurve", mustWork = TRUE))
+  } else {
+    loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike_logit.cpp", package = "COVIDCurve", mustWork = TRUE))
+  }
   loglike_start <- grep("// Lookup Items", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]

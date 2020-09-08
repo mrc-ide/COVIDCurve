@@ -1,16 +1,19 @@
 #' @title Run Aggregate Model
 #' @details Wraps the Metropolic-Coupled MCMC Framework from Dr. Jacoby
 #' @inheritParams drjacoby::run_mcmc
+#' @param binomial_likelihood logical; Whether the binomial or the logit likelihood should be used
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
-#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
-#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
-#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
-#' @param reparamDelays logical; Whether the mean offset-to-death and the seroconversion rate delay should be reparameterized or inferred seperately
+#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred separately
+#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately
+#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately
+#' @param reparamDelays logical; Whether the mean offset-to-death and the seroconversion rate delay should be reparameterized or inferred separately
 #' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamDelays = TRUE, reparamNe = TRUE,
+run_IFRmodel_age <- function(IFRmodel,
+                             binomial_likelihood = TRUE,
+                             reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamDelays = TRUE, reparamNe = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -52,6 +55,15 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
             as.character(IFRmodel$demog$Strata),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
+  if (binomial_likelihood) {
+    if( any(c(is.na(IFRmodel$data$obs_serology$SeroPos), is.na(IFRmodel$data$obs_serology$SeroN))) ) {
+      stop("Cannot have missing values of SeroPos or SeroN when considering the binomial likelihood")
+    }
+  } else {
+    if( any(c(is.na(IFRmodel$data$obs_serology$SeroPrev), is.na(IFRmodel$data$obs_serology$SeroUCI), is.na(IFRmodel$data$obs_serology$SeroLCI))) ) {
+      stop("Cannot have missing values of SeroPrev, SeroUCI, or SeroLCI when considering the logit likelihood")
+    }
+  }
 
   #............................................................
   # "Warm-Up" MCMC
@@ -102,11 +114,36 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
 
   #..................
   # use R to write Cpp prior and likelihood
+  # and make data list
+  # dependent on binomial or logit likelihood
   #..................
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, account_serorev = account_serorev,
+  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel,
+                                                      account_serorev = account_serorev,
                                                       reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, account_serorev = account_serorev,
+  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel,
+                                                   binomial_likelihood = binomial_likelihood,
+                                                   account_serorev = account_serorev,
                                                    reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
+
+  #..................
+  # make data list
+  #..................
+  if (binomial_likelihood) {
+    data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                      prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                      obs_serologypos = IFRmodel$data$obs_serology$SeroPos,
+                      obs_serologyn = IFRmodel$data$obs_serology$SeroN)
+  } else {
+    # logit-normal transformation for likelihood
+    IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+
+    data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                      prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                      obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
+                      obs_serologysigma = IFRmodel$data$obs_serology$SeroSE)
+  }
+
 
   #..................
   # make misc
@@ -121,13 +158,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
                    max_seroday_obsd = max(IFRmodel$data$obs_serology$SeroEndSurvey),
                    demog = IFRmodel$demog$popN,
                    account_serorev = account_serorev)
-  #..................
-  # make data list
-  #..................
-  data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
-                    prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
-                    obs_serologypos = IFRmodel$data$obs_serology$SeroPos,
-                    obs_serologyn = IFRmodel$data$obs_serology$SeroN)
 
   #..................
   # make df param
@@ -230,6 +260,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     reparamInfxn = reparamInfxn,
     reparamKnots = reparamKnots,
     account_seroreversion = account_serorev,
+    binomial_likelihood = binomial_likelihood,
     burnin = burnin,
     samples = samples,
     chains = chains)

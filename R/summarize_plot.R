@@ -1,3 +1,15 @@
+#' Simple Logit Function
+#' @details No tolerance considered, so x cannot be zero
+#' @noRd
+logit <- function(x){log(x/(1-x))}
+
+#' Simple Log-Sum-Exp Trick
+#' @details No tolerance considered, so x cannot be zero
+#' @noRd
+convert_post_probs <- function(logpost) {
+  exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
+}
+
 #' IFR-Inference-Aggregate-Model, overload summary
 #' @noRd
 #' @export
@@ -200,11 +212,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
-  probs <- convert_post_probs(mcmcout.nodes$logposterior)
+  probs <- COVIDCurve:::convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
                          prob = probs)
@@ -218,6 +226,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
+                                                        binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -253,11 +262,25 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                    max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    account_serorev = IFRmodel_inf$inputs$account_seroreversion)
+
+
+
   # data in
-  datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
-                obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
-                obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                  obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  } else {
+    # logit-normal transformation for likelihood
+    IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+
+    datin <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
+                  obs_serologysigma = IFRmodel$data$obs_serology$SeroSE)
+  }
 
   #......................
   # split, run, recombine
@@ -602,10 +625,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
   # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
-  probs <- convert_post_probs(mcmcout.nodes$logposterior)
+  probs <- COVIDCurve:::convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
                          prob = probs)
@@ -619,6 +639,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
   fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
+                                                        binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
                                                         reparamInfxn = FALSE,
@@ -682,10 +703,22 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
-  datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
-                obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
-                obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                  obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  } else {
+    # logit-normal transformation for likelihood
+    IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+
+    datin <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
+                  obs_serologysigma = IFRmodel$data$obs_serology$SeroSE)
+  }
+
 
   #......................
   # split, run, recombine
