@@ -309,7 +309,7 @@ Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, R
           // Gelman Estimator for numerical stability
           double obs_prev_logit = sens*(sero_con_num[i][j]/demog[j]) + (1-spec)*(1 - (sero_con_num[i][j]/demog[j]));
           // UNDERFLO_DOUBLE to prevent zeroes in numerator or denominator
-          obs_prev_logit = log((obs_prev_logit)/(1-(obs_prev_logit)));
+          obs_prev_logit = log((obs_prev_logit + UNDERFLO_DOUBLE)/(1-(obs_prev_logit + UNDERFLO_DOUBLE)));
           L3sero_loglik += R::dnorm(obs_prev_logit, datmu[i][j], datse[i][j], true);
         }
       }

@@ -136,12 +136,13 @@ run_IFRmodel_age <- function(IFRmodel,
   } else {
     # logit-normal transformation for likelihood
     IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
-      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96),
+                    SeroMu = COVIDCurve:::logit(SeroPrev))
 
     data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
                       prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
                       obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
-                      obs_serologysigma = IFRmodel$data$obs_serology$SeroSE)
+                      obs_serologyse = IFRmodel$data$obs_serology$SeroSE)
   }
 
 
