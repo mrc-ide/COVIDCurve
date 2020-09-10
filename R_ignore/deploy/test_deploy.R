@@ -42,9 +42,6 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   simulate_seroreversion = FALSE,
   sens = 0.85,
   spec = 0.95,
-  simulate_seroreversion = FALSE,
-  sero_rev_shape = 4.5,
-  sero_rev_scale = 200,
   sero_delay_rate = 15
 )
 
@@ -103,7 +100,7 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_con_rate"),
                                 min =   c(0.83,     0.8,    10),
-                                init =  c(0.85,     0.95,   15),
+                                init =  c(0.85,     0.90,   15),
                                 max =   c(0.87,     1.00,   30),
                                 dsc1 =  c(8500,     950,    2.8),
                                 dsc2 =  c(1500,     50,     0.25))
