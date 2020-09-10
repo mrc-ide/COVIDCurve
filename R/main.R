@@ -100,15 +100,10 @@ run_IFRmodel_age <- function(IFRmodel,
   }
 
   # catch seroreversion
-  check_serorev <- is.na(unlist(IFRmodel$paramdf[IFRmodel$paramdf$name %in% c("sero_rev_scale", "sero_rev_shape"),
-                                                 c("min", "init", "max", "dsc1", "dsc2")]))
-  if (all(check_serorev)) {
-    account_serorev <- FALSE
-
-  } else if (any(check_serorev)) {
-    stop("You have inputted a mixture of NAs and values for Seroreversion. This is not allowed.")
-  } else {
+  if( all(c("sero_rev_scale", "sero_rev_shape") %in% IFRmodel$Serotestparams) ) {
     account_serorev <- TRUE
+  } else {
+    account_serorev <- FALSE
   }
 
   #..................
@@ -116,10 +111,10 @@ run_IFRmodel_age <- function(IFRmodel,
   # and make data list
   # dependent on binomial or logit likelihood
   #..................
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel,
+  logpriorfunc <- COVIDCurve:::make_user_Age_logprior(IFRmodel,
                                                       account_serorev = account_serorev,
                                                       reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel,
+  loglikfunc <- COVIDCurve:::make_user_Age_loglike(IFRmodel,
                                                    binomial_likelihood = binomial_likelihood,
                                                    account_serorev = account_serorev,
                                                    reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
