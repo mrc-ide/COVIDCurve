@@ -8,7 +8,7 @@
 #' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relative to Ne1)
 #' @noRd
 
-make_user_Agg_logprior <- function(IFRmodel, account_serorev,
+make_user_Age_logprior <- function(IFRmodel, account_serorev,
                                    reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertsions
@@ -419,7 +419,7 @@ make_user_Agg_logprior <- function(IFRmodel, account_serorev,
 #' @param binomial_likelihood logical; Whether the binomial or the logit likelihood should be used
 #' @noRd
 
-make_user_Agg_loglike <- function(IFRmodel, binomial_likelihood, account_serorev,
+make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev,
                                   reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
   #..................
   # assertions
@@ -444,7 +444,7 @@ make_user_Agg_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   #..................
   # extract misc and storage items
   #..................
-  extmisc <- "std::vector<double> rho = Rcpp::as< std::vector<double> >(misc[\"rho\"]); int stratlen = rho.size(); std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"]; std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc[\"sero_survey_start\"]); std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc[\"sero_survey_end\"]); int max_seroday_obsd = misc[\"max_seroday_obsd\"]; bool account_serorev = misc[\"account_serorev\"];"
+  extmisc <- "std::vector<int> demog = Rcpp::as< std::vector<int> >(misc[\"demog\"]); int stratlen = demog.size(); int rcensor_day = misc[\"rcensor_day\"]; int days_obsd = misc[\"days_obsd\"]; int n_knots = misc[\"n_knots\"]; int n_sero_obs = misc[\"n_sero_obs\"]; std::vector<int> sero_survey_start = Rcpp::as< std::vector<int> >(misc[\"sero_survey_start\"]); std::vector<int> sero_survey_end = Rcpp::as< std::vector<int> >(misc[\"sero_survey_end\"]); int max_seroday_obsd = misc[\"max_seroday_obsd\"]; bool account_serorev = misc[\"account_serorev\"];"
   storageitems <- "std::vector<double> node_x(n_knots); std::vector<double> node_y(n_knots); std::vector<double>ma(stratlen); std::vector<double>ne(stratlen);"
 
   #......................
@@ -584,7 +584,7 @@ make_user_Agg_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   } else {
     loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike_logit.cpp", package = "COVIDCurve", mustWork = TRUE))
   }
-  loglike_start <- grep("// Lookup Items", loglike)
+  loglike_start <- grep("// Assume a uniform attack rate but then allow Ne to rescale", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]
   # remove comments which cause issues when coercing to string in this format
