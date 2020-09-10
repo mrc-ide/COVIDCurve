@@ -33,13 +33,12 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    relInfxn = NULL,
                                    Noiseparams = NULL,
                                    paramdf = NULL,
-                                   rho = NULL,
                                    Serotestparams = NULL,
                                    demog = NULL,
                                    rcensor_day = NULL,
                                    IFRdictkey = NULL,
 
-                                   initialize = function(data = NULL, maxObsDay = NULL, rho = NULL,
+                                   initialize = function(data = NULL, maxObsDay = NULL,
                                                          modparam = NULL, sodparam = NULL,
                                                          IFRparams = NULL, maxMa = NULL,
                                                          Infxnparams = NULL, relInfxn = NULL,
@@ -53,7 +52,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      #......................
                                      # assertions and checks
                                      #......................
-                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams, paramdf, rho, modparam, sodparam, demog)
+                                     items <- c(data, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams, paramdf, modparam, sodparam, demog)
                                      if ( !all(sapply(items, is.null)) ) { # all user to input all options at init, otherwise initialize empty
                                        # assert data
                                        assert_list(data)
@@ -94,17 +93,30 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        assert_string(Serotestparams)
                                        assert_unique(Serotestparams)
                                        assert_in(Serotestparams, c("sens", "spec", "sero_con_rate", "sero_rev_shape", "sero_rev_scale"))
-                                       assert_string(Noiseparams)
-                                       assert_unique(Noiseparams)
-                                       assert_same_length(Noiseparams, IFRparams)
+
+                                       # consider Ne if multiple strata
+                                       if (length(IFRparams) > 1) {
+                                         assert_string(Noiseparams)
+                                         assert_unique(Noiseparams)
+                                         assert_same_length(Noiseparams, IFRparams)
+                                       }
+
 
                                        # assert paramdf
                                        assert_dataframe(paramdf)
                                        assert_in(x = colnames(paramdf), y = c("name", "init", "min", "max", "dsc1", "dsc2"))
                                        assert_string(paramdf$name)
                                        assert_unique(paramdf$name)
+
+                                       # consider Ne if multiple strata
+                                       if (length(IFRparams) > 1) {
                                        assert_in(paramdf$name, c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams))
                                        assert_in(c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams, Noiseparams), paramdf$name)
+                                       } else {
+                                         assert_in(paramdf$name, c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams))
+                                         assert_in(c(modparam, sodparam, IFRparams, Infxnparams, Knotparams, Serotestparams), paramdf$name)
+                                       }
+
                                        sapply(paramdf$min, assert_numeric_or_NA)
                                        sapply(paramdf$init, assert_numeric_or_NA)
                                        sapply(paramdf$max, assert_numeric_or_NA)
@@ -122,10 +134,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        if (!is.null(rcensor_day)) {
                                          assert_pos_int(rcensor_day)
                                        }
-
-                                       # rho
-                                       assert_numeric(rho)
-                                       assert_same_length(rho, IFRparams)
                                      }
 
                                      # user ditctionary key
@@ -149,14 +157,17 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        self$maxObsDay <- max(data$obs_deaths$ObsDay)
                                      }
 
-                                     self$modparam <- modparam
-                                     self$sodparam <- sodparam
-
                                      self$IFRparams <- IFRparams
                                      if (!is.null(maxMa)) {
                                        assert_in(maxMa, IFRparams)
                                        self$maxMA <- maxMa
                                      }
+
+                                     # consider Ne if multiple strata
+                                     if (length(IFRparams) > 1) {
+                                       self$Noiseparams <- Noiseparams
+                                     }
+
                                      self$Knotparams <- Knotparams
                                      if (!is.null(relKnot)) {
                                        assert_in(relKnot, Knotparams)
@@ -169,11 +180,11 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                        self$relInfxn <- relInfxn
                                      }
 
+                                     self$modparam <- modparam
+                                     self$sodparam <- sodparam
                                      self$Serotestparams <- Serotestparams
-                                     self$Noiseparams <- Noiseparams
                                      self$demog <- demog
                                      self$paramdf <- paramdf
-                                     self$rho <- rho
 
                                      if (!is.null(rcensor_day)) {
                                        self$rcensor_day <- rcensor_day
@@ -187,21 +198,12 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    #......................
                                    # set functions
                                    #......................
-                                   set_MeanTODparam = function(val) {
-                                     assert_string(val)
-                                     self$modparam <- val
-                                   },
-                                   set_CoefVarOnsetTODparam = function(val) {
-                                     assert_string(val)
-                                     self$sodparam <- val
-                                   },
-
-
                                    set_IFRparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
                                      self$IFRparams <- val
                                    },
+
                                    set_maxMa = function(val) {
                                      if (length(self$IFRparams) == 0) {
                                        stop("Must specify IFR parameters before specifying the maximum mortality strata (maxMa)")
@@ -210,6 +212,20 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      assert_in(val, self$IFRparams)
                                      self$maxMa <- val
                                    },
+
+                                   set_Noiseparams = function(val) {
+                                     assert_string(val)
+                                     assert_unique(val)
+                                     if (is.null(self$IFRparams)) {
+                                       stop("Must specificy IFR parmaeters before Noise Effect parameters")
+                                     }
+                                     if (length(self$IFRparams) <= 1) {
+                                       stop("Cannot specify Noise Effect parameters when only one strata is being considered")
+                                     }
+                                     assert_same_length(val, self$IFRparams)
+                                     self$Noiseparams <- val
+                                   },
+
 
                                    set_Knotparams = function(val) {
                                      assert_string(val)
@@ -239,6 +255,16 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$relInfxn <- val
                                    },
 
+                                   set_MeanTODparam = function(val) {
+                                     assert_string(val)
+                                     self$modparam <- val
+                                   },
+
+                                   set_CoefVarOnsetTODparam = function(val) {
+                                     assert_string(val)
+                                     self$sodparam <- val
+                                   },
+
                                    set_Serotestparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
@@ -251,16 +277,7 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                      self$Serotestparams <- val
                                    },
 
-                                   set_Noiseparams = function(val) {
-                                     assert_string(val)
-                                     assert_unique(val)
-                                     if (is.null(self$IFRparams)) {
-                                       stop("Must specificy IFR parmaeters before Noise Effect parameters")
-                                     }
-                                     assert_same_length(val, self$IFRparams)
-                                     self$Noiseparams <- val
-                                   },
-
+                                  # set data and paramdf
                                    set_data = function(val) {
                                      if (is.null(self$IFRparams)) {
                                        stop("Must specify IFR parameters before specifying data")
@@ -322,12 +339,6 @@ make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
                                    set_rcensor_day = function(val) {
                                      assert_pos_int(val)
                                      self$rcensor_day <- val
-                                   },
-
-                                   set_rho = function(val) {
-                                     assert_numeric(val)
-                                     assert_same_length(val, self$IFRparams)
-                                     self$rho <- val
                                    },
 
                                    set_demog = function(val) {
