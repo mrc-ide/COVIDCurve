@@ -24,7 +24,7 @@ demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
 # pick serology date
-sero_days <- c(135, 160)
+sero_days <- c(150)
 
 #..............................................................
 # AGGREGATE
@@ -42,7 +42,7 @@ dat <- COVIDCurve::Aggsim_infxn_2_death(
   simulate_seroreversion = FALSE,
   sens = 0.85,
   spec = 0.95,
-  sero_delay_rate = 15
+  sero_delay_rate = 18.3
 )
 
 
@@ -63,8 +63,8 @@ obs_serology <- dat$StrataAgg_Seroprev %>%
     SeroN = testedN ) %>%
   dplyr::rename(
     SeroPrev = ObsPrev) %>%
-  dplyr::mutate(SeroStartSurvey = c(130, 155),
-                SeroEndSurvey = c(140, 165)) %>%
+  dplyr::mutate(SeroStartSurvey = sero_days - 5,
+                SeroEndSurvey = sero_days + 5) %>%
   dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
   dplyr::ungroup(.) %>%
   dplyr::arrange(SeroStartSurvey, Strata) %>%
@@ -98,19 +98,13 @@ knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 max =  c(0.33, 0.66, 0.99, 200),
                                 dsc1 = c(0,    0.33, 0.66, 175),
                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-sero_paramsdf <- tibble::tibble(name =  c("sens", "spec", "sero_con_rate"),
-                                min =   c(0.83,     0.8,    10),
-                                init =  c(0.85,     0.90,   15),
-                                max =   c(0.87,     1.00,   30),
-                                dsc1 =  c(8500,     950,    2.8),
-                                dsc2 =  c(1500,     50,     0.25))
-empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
-                        min  = c(NA,                 NA),
-                        init = c(NA,                 NA),
-                        max =  c(NA,                 NA),
-                        dsc1 = c(NA,                 NA),
-                        dsc2 = c(NA,                 NA))
 
+sero_paramsdf <- tibble::tibble(name =  c("sens", "spec"),
+                                min =   c(0.83,     0.8),
+                                init =  c(0.85,     0.90),
+                                max =   c(0.87,     1.00),
+                                dsc1 =  c(8500,     950),
+                                dsc2 =  c(1500,     50))
 
 empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
                         min  = c(NA,                 NA),
@@ -118,6 +112,7 @@ empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
                         max =  c(NA,                 NA),
                         dsc1 = c(NA,                 NA),
                         dsc2 = c(NA,                 NA))
+
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0.5, 3),
@@ -127,13 +122,12 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  dsc2 = rep(0.05, 3))
 
 # onset to deaths
-tod_paramsdf <- tibble::tibble(name = c("mod", "sod"),
-                               min  = c(0,     0),
-                               init = c(14,     0.7),
-                               max =  c(40,     1.00),
-                               dsc1 = c(14.5,  50),
-                               dsc2 = c(1,   50))
-
+tod_paramsdf <- tibble::tibble(name = c("mod", "sod", "sero_con_rate"),
+                               min  = c(18,     0,     16),
+                               init = c(19,     0.79,  18),
+                               max =  c(20,     1,     21),
+                               dsc1 = c(19.26,  2370,  18.3),
+                               dsc2 = c(0.1,    630,   0.1))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, empty, noise_paramsdf, tod_paramsdf)
 
@@ -167,9 +161,9 @@ modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        reparamKnot = TRUE,
                                        reparamDelays = FALSE,
                                        reparamNe = FALSE,
-                                       burnin = 1e4,
-                                       samples = 1e4,
-                                       chains = 3,
+                                       burnin = 1e3,
+                                       samples = 1e3,
+                                       chains = 1,
                                        rungs = 1,
                                        thinning = 0,
                                        silent = FALSE)
@@ -178,7 +172,7 @@ modout
 
 
 #............................................................
-# various outputs
+# examine outputs
 #...........................................................
 (ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
                                        what = "IFRparams", by_chain = F))
@@ -189,30 +183,6 @@ modout
 (infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
                                          what = "Infxnparams", by_chain = F))
 
-plot_par(modout$mcmcout, "sero_day1")
-plot_par(modout$mcmcout, "sero_day2")
-
-plot_par(modout$mcmcout, "ma1", rung = 1)
-plot_par(modout$mcmcout, "ma2", rung = 1)
-plot_par(modout$mcmcout, "ma3", rung = 1)
-plot_par(modout$mcmcout, "sens")
-plot_par(modout$mcmcout, "spec")
-plot_par(modout$mcmcout, "mod")
-plot_par(modout$mcmcout, "sero_rate")
-plot_par(modout$mcmcout, "sero_day1")
-plot_par(modout$mcmcout, "y1", rung = 1)
-plot_par(modout$mcmcout, "y2", rung = 1)
-plot_par(modout$mcmcout, "y3", rung = 1)
-plot_par(modout$mcmcout, "y4", rung = 1)
-plot_par(modout$mcmcout, "y5", rung = 1)
-plot_par(modout$mcmcout, "x1", rung = 1)
-plot_par(modout$mcmcout, "x2", rung = 1)
-plot_par(modout$mcmcout, "x3", rung = 1)
-plot_par(modout$mcmcout, "x4", rung = 1)
-plot_par(modout$mcmcout, "ne1", rung = 1)
-plot_par(modout$mcmcout, "ne2", rung = 1)
-plot_par(modout$mcmcout, "ne3", rung = 1)
-
 summary(modout$mcmcout$output$loglikelihood)
 summary(modout$mcmcout$output$logprior)
 modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$output$loglikelihood), ]
@@ -221,18 +191,15 @@ modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$
 #............................................................
 # curves and posteriors
 #...........................................................
+#......................
+# ifrs and infxns
+#......................
 curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
                                                         whichrung = paste0("rung", 1),
                                                         by_chain = T,
                                                         by_strata = T,
-                                                        dwnsmpl = 1e3)
-serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = modout,
-                                                    whichrung = paste0("rung", 1),
-                                                    by_chain = T,
-                                                    dwnsmpl = 1e3)
-# plot out
-jpeg("~/Desktop/posterior_curve_draws.jpg", width = 11, height = 8, units = "in", res = 500)
-library(ggplot2)
+                                                        dwnsmpl = 1e2)
+# tidy up and make plots
 liftover <- data.frame(param = c("ma1", "ma2", "ma3"),
                        Strata = c("ma1", "ma2", "ma3"))
 
@@ -251,9 +218,14 @@ plot2 <- curve$plotObj +
 
 cowplot::plot_grid(plot1, plot2, ncol = 1, nrow = 2)
 
-graphics.off()
 
-
+#......................
+# serology
+#......................
+serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = modout,
+                                                    whichrung = paste0("rung", 1),
+                                                    by_chain = F,
+                                                    dwnsmpl = 1e2)
 
 #......................
 # get deaths posterior pred check
@@ -268,70 +240,9 @@ postdeaths.plotObj <- postdeaths %>%
   geom_line(aes(x= time, y = deaths, group = strata, color = strata), size = 1.2) +
   scale_color_viridis_d()
 
-jpeg("~/Desktop/posterior_check.jpg", width = 11, height = 8, units = "in", res = 500)
 postdeaths.plotObj +
-  geom_line(data = dat$AggDat, aes(x=ObsDay, y = Deaths, group = Strata), color = "#bdbdbd", size = 0.75) +
+  geom_line(data = dat$Agg_TimeSeries_Death, aes(x=ObsDay, y = Deaths, group = Strata), color = "#bdbdbd", size = 0.75) +
   theme_bw() +
   ggtitle("Posterior Predictive Check", subtitle = "Grey Lines are Simulated Data, Viridis Lines are Draws from Posterior")
-graphics.off()
 
-
-
-
-#............................................................
-# look at corr
-#...........................................................
-
-plot_cor(modout$mcmcout, "ne1", "ne2", rung = 1)
-plot_cor(modout$mcmcout, "ne2", "ne3", rung = 1)
-
-plot_cor(modout$mcmcout, "y3", "spec", rung = 1)
-plot_cor(modout$mcmcout, "y3", "ma3", rung = 1)
-plot_cor(modout$mcmcout, "ma1", "ma3", rung = 1)
-
-
-#............................................................
-# look at MCoupling
-#...........................................................
-plot_mc_acceptance(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 2, phase = "burnin")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 1, y_axis_type = 3, phase = "sampling")
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 2)
-drjacoby::plot_rung_loglike(modout$mcmcout, x_axis_type = 2, y_axis_type = 3)
-
-
-
-
-
-#.....................
-# look at rungs
-#.....................
-COVIDCurve::get_cred_intervals(IFRmodel = mod1,
-                               mcmcout = modout,
-                               whichrung = "rung50",
-                               what = "IFRparams",
-                               by_chain = F)
-
-modout$output %>%
-  dplyr::mutate(
-    logpost = loglikelihood + logprior
-  ) %>%
-  dplyr::filter(stage == "sampling" &
-                  rung == "rung50") %>%
-  ggplot() +
-  geom_histogram(aes(x  = logpost))
-
-rungdf <- modout$output %>%
-  dplyr::mutate(
-    logpost = loglikelihood + logprior
-  ) %>%
-  dplyr::filter(stage == "sampling" &
-                  rung == "rung50")
-
-minloglike <- min(rungdf$logpost)
-# is this neg infinity
-if (minloglike < -1.796e306 & minloglike > -1.8e306) {
-  sum(rungdf$logpost == minloglike)/nrow(rungdf)
-}
 
