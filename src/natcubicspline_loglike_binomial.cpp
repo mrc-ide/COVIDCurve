@@ -7,7 +7,6 @@ using namespace Rcpp;
 Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) {
 
   // extract misc items
-  std::vector<double> rho = Rcpp::as< std::vector<double> >(misc["rho"]);
   std::vector<int> demog = Rcpp::as< std::vector<int> >(misc["demog"]);
   int n_knots = misc["n_knots"];
   int rcensor_day = misc["rcensor_day"];
@@ -32,7 +31,7 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
   double sod = params["sod"];
 
   // storage items
-  int stratlen = rho.size();
+  int stratlen = demog.size();
   std::vector<double>ma(stratlen);
   std::vector<double>ne(stratlen);
   std::vector<double> node_x(n_knots);
