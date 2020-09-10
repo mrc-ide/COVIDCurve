@@ -39,7 +39,6 @@ run_IFRmodel_age <- function(IFRmodel,
   assert_non_null(IFRmodel$Infxnparams)
   assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
-  assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
   assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$modparam)
@@ -149,8 +148,7 @@ run_IFRmodel_age <- function(IFRmodel,
   #..................
   # make misc
   #..................
-  misc_list = list(rho = IFRmodel$rho,
-                   rcensor_day = IFRmodel$rcensor_day,
+  misc_list = list(rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
                    n_sero_obs = length(unique(IFRmodel$data$obs_serology$SeroStartSurvey)),

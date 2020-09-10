@@ -55,20 +55,26 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
   ne[1] = params["ne2"];
   ne[2] = params["ne3"];
 
-  //........................................................
-  // Lookup Items
-  //........................................................
-  // rescale Ne by attack rate
-  double nedom = 0.0;
-  for (int i = 0; i < stratlen; i++) {
-    ne[i] = ne[i] * rho[i];
-    nedom += ne[i];
+  //.............................
+  // Assume a uniform attack rate but then allow Ne to rescale
+  //.............................
+  if (stratlen > 1) {
+    double nedom = 0.0;
+    for (int i = 0; i < stratlen; i++) {
+      ne[i] = ne[i] * demog[i];
+      nedom += ne[i];
+    }
+    // Ne as a prop vector
+    for (int i = 0; i < stratlen; i++) {
+      ne[i] = ne[i]/nedom;
+    }
+  } else {
+    // note, if stratlen == 1, then the R file that write this Cpp function will not have any Ne params to extract and we are just filling in a "blank" Ne vector
+    std::fill(ne.begin(), ne.end(), 1);
   }
-  // Ne as a prop vector
-  for (int i = 0; i < stratlen; i++) {
-    ne[i] = ne[i]/nedom;
-  }
+  //.............................
   // gamma look up table
+  //.............................
   std::vector<double> pgmms(days_obsd + 1);
   for (int i = 0; i < (days_obsd+1); i++) {
     pgmms[i] = R::pgamma(i, 1/pow(sod,2), mod*pow(sod,2), true, false);
