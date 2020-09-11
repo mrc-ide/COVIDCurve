@@ -6,14 +6,12 @@
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred separately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately
-#' @param reparamDelays logical; Whether the mean offset-to-death and the seroconversion rate delay should be reparameterized or inferred separately
-#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
 #' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
 run_IFRmodel_age <- function(IFRmodel,
                              binomial_likelihood = TRUE,
-                             reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamDelays = TRUE, reparamNe = TRUE,
+                             reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -24,8 +22,6 @@ run_IFRmodel_age <- function(IFRmodel,
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamDelays)
-  assert_logical(reparamNe)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -54,6 +50,7 @@ run_IFRmodel_age <- function(IFRmodel,
   assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
             as.character(IFRmodel$demog$Strata),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
+  # catch missing data
   if (binomial_likelihood) {
     if( any(c(is.na(IFRmodel$data$obs_serology$SeroPos), is.na(IFRmodel$data$obs_serology$SeroN))) ) {
       stop("Cannot have missing values of SeroPos or SeroN when considering the binomial likelihood")
@@ -63,9 +60,18 @@ run_IFRmodel_age <- function(IFRmodel,
       stop("Cannot have missing values of SeroPrev, SeroUCI, or SeroLCI when considering the logit likelihood")
     }
   }
+  if (any(is.na(IFRmodel$data$prop_deaths$PropDeaths))) {
+    stop("Cannot have missing proportions of cumulative deaths")
+  }
+
+  if (any(is.na(IFRmodel$data$obs_deaths$Deaths))) {
+    warning("Missing daily deaths -- will skip over in likelihood")
+  }
+
 
   #............................................................
   # "Warm-Up" MCMC
+  # TODO remove this for final version (Nick's broken computer)
   #...........................................................
   warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
   names(warmdf_params) <- c("name", "min", "max", "init")
@@ -113,12 +119,18 @@ run_IFRmodel_age <- function(IFRmodel,
   #..................
   logpriorfunc <- COVIDCurve:::make_user_Age_logprior(IFRmodel,
                                                       account_serorev = account_serorev,
-                                                      reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
+                                                      reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
   loglikfunc <- COVIDCurve:::make_user_Age_loglike(IFRmodel,
                                                    binomial_likelihood = binomial_likelihood,
                                                    account_serorev = account_serorev,
-                                                   reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamDelays = reparamDelays, reparamNe = reparamNe)
+                                                   reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
 
+
+
+  #......................
+  # catch user missing data -- liftover for Cpp
+  #......................
+  IFRmodel$data$obs_deaths$Deaths[is.na(IFRmodel$data$obs_deaths$Deaths)] <- -1
   #..................
   # make data list
   #..................
@@ -156,12 +168,8 @@ run_IFRmodel_age <- function(IFRmodel,
   #..................
   # make df param
   #..................
+  # columns 5 & 6 used for prior distributions
   df_params <-  IFRmodel$paramdf[, 1:4]
-  # catch if no serorevesion
-  if (!account_serorev) {
-    df_params <- df_params %>%
-      dplyr::filter(!name %in% c("sero_rev_scale", "sero_rev_shape"))
-  }
 
 
   #..............................................................
@@ -233,21 +241,8 @@ run_IFRmodel_age <- function(IFRmodel,
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
 
-  if (reparamDelays) {
-    # reparameterize serology rate relative to specificity
-    mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, "sero_rate"]))
-  }
 
-  if (reparamNe) {
-    # reparameterize noise parameters
-    Noiseparams <- IFRmodel$Noiseparams
-    liftovercols <- Noiseparams[2:length(Noiseparams)]
-    liftovercols.list <- mcmcout$output[, liftovercols]
-    liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-    mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
-  }
-
-  # store input along with Dr.Jacoby output for later use
+  # store MCMC input along with Dr.Jacoby output for later use
   inputs <- list(
     IFRmodel = IFRmodel,
     reparamIFR = reparamIFR,
@@ -258,12 +253,14 @@ run_IFRmodel_age <- function(IFRmodel,
     burnin = burnin,
     samples = samples,
     chains = chains)
+
   if (rungs > 1) {
     inputs <- append(inputs, list(rungs = rungs,
                                   GTI_pow = GTI_pow,
                                   coupling_on = coupling_on))
   }
 
+  # out
   ret <- list(
     inputs = inputs,
     mcmcout = mcmcout
