@@ -319,7 +319,7 @@ make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                    },
 
                                    set_paramdf = function(val) {
-                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Serotestparams) == 0 | length(self$Noiseparams) == 0 | length(self$modparam) == 0 | length(self$sodparam) == 0) {
+                                     if (length(self$IFRparams) == 0 | length(self$Knotparams) == 0 | length(self$Infxnparams) == 0 | length(self$Serotestparams) == 0 | length(self$modparam) == 0 | length(self$sodparam) == 0) {
                                        stop("Must specify modparam, sodparam, IFRparams, Knotparams, Infxnparams, Serotestparams, and Noiseparams before specifying the param dataframe")
                                      }
                                      assert_dataframe(val)

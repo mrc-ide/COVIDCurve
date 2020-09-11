@@ -136,13 +136,21 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
   #..................
   # priors for Noiseparams
   #..................
-  Noiseextractparams <- sapply(Noiseparams$name, function(param){
-    paste0("double ", param, " = params[\"",  param, "\"];")
-  })
+  # consider Nes if necessary
+  if (nrow(IFRparams) > 1) {
 
-  makenoisepriors <- mapply(function(param, d1, d2){
-    paste0("R::dnorm(",param, ",", d1, ",", d2, ",", "true) +")
-  }, param = Noiseparams$name, d1 = Noiseparams$dsc1, d2 = Noiseparams$dsc2)
+    Noiseextractparams <- sapply(Noiseparams$name, function(param){
+      paste0("double ", param, " = params[\"",  param, "\"];")
+    })
+
+    makenoisepriors <- mapply(function(param, d1, d2){
+      paste0("R::dnorm(",param, ",", d1, ",", d2, ",", "true) +")
+    }, param = Noiseparams$name, d1 = Noiseparams$dsc1, d2 = Noiseparams$dsc2)
+  } else {
+    Noiseextractparams <- ""
+    makenoisepriors <- ""
+  }
+
 
   #..................
   # bring together
@@ -348,9 +356,15 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   #......................
   # extract out noise params
   #......................
-  noisevec <- mapply(function(x, y){
-    paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
-  }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
+  # consider Nes if necessary
+  if (length(IFRparams) > 1) {
+    noisevec <- mapply(function(x, y){
+      paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
+    }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
+
+  } else {
+    noisevec <- ""
+  }
 
 
   #..................

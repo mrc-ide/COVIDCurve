@@ -36,7 +36,6 @@ run_IFRmodel_age <- function(IFRmodel,
   assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
   assert_non_null(IFRmodel$Serotestparams)
-  assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$modparam)
   assert_non_null(IFRmodel$sodparam)
   assert_non_null(IFRmodel$maxObsDay)
