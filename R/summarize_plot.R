@@ -224,7 +224,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
@@ -266,7 +266,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
 
   # data in
-  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
     datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                   prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                   obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
@@ -637,7 +637,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
@@ -703,7 +703,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
-  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
     datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                   prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                   obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
