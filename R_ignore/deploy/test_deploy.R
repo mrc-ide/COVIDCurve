@@ -128,7 +128,7 @@ df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_
 #......................
 # make mode
 #......................
-mod1 <- make_IFRmodel_agg$new()
+mod1 <- make_IFRmodel_age$new()
 mod1$set_MeanTODparam("mod")
 mod1$set_CoefVarOnsetTODparam("sod")
 mod1$set_IFRparams(c("ma1", "ma2", "ma3"))
