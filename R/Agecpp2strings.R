@@ -4,12 +4,10 @@
 #' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred separately
 #' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately
 #' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately
-#' @param reparamDelays logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred separately
-#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relative to Ne1)
 #' @noRd
 
 make_user_Age_logprior <- function(IFRmodel, account_serorev,
-                                   reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
+                                   reparamIFR, reparamInfxn, reparamKnots) {
   #..................
   # assertsions
   #..................
@@ -223,7 +221,7 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
 #' @noRd
 
 make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev,
-                                  reparamIFR, reparamInfxn, reparamKnots, reparamDelays, reparamNe) {
+                                  reparamIFR, reparamInfxn, reparamKnots) {
   #..................
   # assertions
   #..................
