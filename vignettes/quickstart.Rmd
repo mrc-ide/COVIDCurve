@@ -1,0 +1,22 @@
+---
+title: "Quick Start"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{quickstart}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## `COVIDCurve` Purpose
+The purpose of this "package" is to provide a framework to fit age-specific infection fatality ratios (IFRs) in an epidemic under several key assumptions. The model was originally designed in response to the COVID-19 pandemic (hence the name). 
+
+```{r setup}
+library(COVIDCurve)
+```

@@ -18,13 +18,14 @@ knitr::opts_chunk$set(
 
 
 ## Installing and Loading `COVIDCurve`
-The purpose of this "package" is to provide a framework to fit age-specific infection fatality rates (IFRs) or the initial number of individuals infected ($I_0$) in an epidemic under several key assumptions. To install this package, you will need to first install the [`remotes`](https://cran.r-project.org/web/packages/remotes/index.html) package and then run the following command:   
+To install this package, you will need to first install the [`remotes`](https://cran.r-project.org/web/packages/remotes/index.html) package and then run the following command:   
 
 ```{r, eval=FALSE}
-remotes::install_github("nickbrazeau/COVIDCurve")
+remotes::install_github("mrc-ide/COVIDCurve")
 ```
 
-As previously discussed, this package is essentially a "wrapper" of the [`drjacoby`](https://github.com/mrc-ide/drjacoby) R package, which depends on the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) package. The `Rcpp` package requires that certian OS-specific dependcies are avialble, as stated on [`drjacoby`](https://github.com/mrc-ide/drjacoby) site and pasted below for ease: 
+### Dependencies
+`COVIDCurve` relies on the [Rcpp](https://cran.r-project.org/web/packages/Rcpp/index.html) package, which requires certain OS-specific dependencies: 
 
 * Windows
     - Download and install the appropriate version of [Rtools](https://cran.rstudio.com/bin/windows/Rtools/) for your version of R. On installation, ensure you check the box to arrange your system PATH as recommended by Rtools
@@ -36,6 +37,8 @@ As previously discussed, this package is essentially a "wrapper" of the [`drjaco
     ```
     sudo apt-get install r-base-dev texlive-full
     ```
+
+In addition, `COVIDCurve` uses the [`drjacoby`](https://github.com/mrc-ide/drjacoby) package for MCMC framework. Please see the `drjacoby` site for further details.
 
 If you have any problems installing then please [raise an issue](https://github.com/nickbrazeau/COVIDCurve/issues) on github.
 
