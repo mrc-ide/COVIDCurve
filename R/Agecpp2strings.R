@@ -230,8 +230,6 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamDelays)
-  assert_logical(reparamNe)
 
   #..................
   # setup
@@ -348,33 +346,11 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   }
 
   #......................
-  # extract out noise params and potentially liftover
+  # extract out noise params
   #......................
-  if (reparamNe) {
-    noisevec_p1 <- paste0("ne[0] = params[\"",  Noiseparams[1], "\"];")
-    noisevec_p2 <- mapply(function(x, y){
-      paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"] * ne[0];")
-    }, x = paramdf$name[paramdf$name %in% Noiseparams[2:length(Noiseparams)]], y = 2:length(Noiseparams))
-    # bring together
-    noisevec <- c(noisevec_p1, noisevec_p2)
-
-  } else {
-    noisevec <- mapply(function(x, y){
-      paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
-    }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
-  }
-
-
-
-  #......................
-  # liftover for highly correlated serology parameters, including:
-  #  mean offset (gamma) for sero rate (exp) and Spec
-  #......................
-  if (reparamDelays) {
-    seroscorrlftovr <- "sero_con_rate = sero_con_rate * 1/spec;"
-  } else {
-    seroscorrlftovr <- ""
-  }
+  noisevec <- mapply(function(x, y){
+    paste0("ne", "[", y-1, "] ", " = params[\"",  x, "\"];")
+  }, x = paramdf$name[paramdf$name %in% Noiseparams[1:length(Noiseparams)]], y = 1:length(Noiseparams))
 
 
   #..................
@@ -403,12 +379,11 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
            node_yvec,
            mavec,
            noisevec,
-           seroscorrlftovr,
            loglike,
            "return Rcpp::wrap(loglik);",
            "}"
   )
-
+  # make string for DrJ
   out <- capture.output(cat(ret))
   return(out)
 }
