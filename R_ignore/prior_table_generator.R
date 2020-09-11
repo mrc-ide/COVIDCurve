@@ -4,17 +4,12 @@
 #......................
 # get combination of T/F vectors
 #......................
-n <- 5
+n <- 3
 out <- list()
 for(i in 0:(2^n-1)){
   out <- append(out, list(binaryLogic::as.binary(i, n = n)))
 }
 priortab <- out %>%
   do.call("rbind.data.frame", .) %>%
-  magrittr::set_colnames(c("rIFR", "rKnots", "rInfxn", "rSeros", "rNes"))
-
-#......................
-# reparam lines for each param
-#......................
-priortab <- priortab[32:1, ]
-
+  magrittr::set_colnames(c("rIFR", "rKnots", "rInfxn"))
+priortab[nrow(priortab):1, ]
