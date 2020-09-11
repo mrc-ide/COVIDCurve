@@ -1,7 +1,7 @@
 #' @title Make Model Inference Object-Oriented Class
 #' @description A simple R6 class with only public features. Purpose is to provide a model framework
-#' for inference of IFRs and the incidence curve from Aggregate Death Data.
-#' @name make_IFRmodel_agg
+#' for inference of IFRs and the incidence curve from Age-Specific Death Data.
+#' @name make_IFRmodel_age
 #' @section Public Variables:
 #'  \tabular{ll}{
 #'   \strong{Variable} \tab \strong{Return} \cr
@@ -19,7 +19,7 @@ NULL
 #..............................................................
 # declare
 #..............................................................
-make_IFRmodel_agg <- R6::R6Class(classname = "IFRmodel",
+make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                  public = list(
                                    data = NULL,
                                    maxObsDay = NULL,

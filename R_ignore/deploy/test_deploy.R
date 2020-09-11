@@ -24,7 +24,8 @@ demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
 # pick serology date
-sero_days <- c(150)
+#sero_days <- c(150)
+sero_days <- c(135, 160)
 
 #..............................................................
 # AGGREGATE
@@ -106,13 +107,6 @@ sero_paramsdf <- tibble::tibble(name =  c("sens", "spec"),
                                 dsc1 =  c(8500,     950),
                                 dsc2 =  c(1500,     50))
 
-empty <- tibble::tibble(name = c("sero_rev_shape", "sero_rev_scale"),
-                        min  = c(NA,                 NA),
-                        init = c(NA,                 NA),
-                        max =  c(NA,                 NA),
-                        dsc1 = c(NA,                 NA),
-                        dsc2 = c(NA,                 NA))
-
 
 noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
                                  min  = rep(0.5, 3),
@@ -129,12 +123,12 @@ tod_paramsdf <- tibble::tibble(name = c("mod", "sod", "sero_con_rate"),
                                dsc1 = c(19.26,  2370,  18.3),
                                dsc2 = c(0.1,    630,   0.1))
 
-df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, empty, noise_paramsdf, tod_paramsdf)
+df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
 
 #......................
 # make mode
 #......................
-mod1 <- make_IFRmodel_agg$new()
+mod1 <- make_IFRmodel_age$new()
 mod1$set_MeanTODparam("mod")
 mod1$set_CoefVarOnsetTODparam("sod")
 mod1$set_IFRparams(c("ma1", "ma2", "ma3"))
@@ -143,12 +137,11 @@ mod1$set_Knotparams(paste0("x", 1:4))
 mod1$set_relKnot("x4")
 mod1$set_Infxnparams(paste0("y", 1:5))
 mod1$set_relInfxn("y5")
-mod1$set_Serotestparams(c("sens", "spec", "sero_con_rate", "sero_rev_shape", "sero_rev_scale"))
+mod1$set_Serotestparams(c("sens", "spec", "sero_con_rate"))
 mod1$set_Noiseparams(c("ne1", "ne2", "ne3"))
 mod1$set_data(datinput)
 mod1$set_demog(demog)
 mod1$set_paramdf(df_params)
-mod1$set_rho(demog$popN/sum(demog$popN))
 mod1$set_rcensor_day(.Machine$integer.max)
 
 #..................
@@ -159,8 +152,6 @@ modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       reparamDelays = FALSE,
-                                       reparamNe = FALSE,
                                        burnin = 1e3,
                                        samples = 1e3,
                                        chains = 1,

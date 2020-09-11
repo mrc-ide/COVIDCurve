@@ -124,10 +124,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 
 
 #' @title Get the Global IFR Credible Intervals, or IFR Weighted by Demography
-#' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"
-#' @param whichrung character; Specify which rung to sample from (default is rung1)
-#' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
+#' @inheritParams get_cred_intervals
 #' @importFrom magrittr %>%
 #' @export
 
@@ -189,6 +186,7 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
 #' @title Draw posterior results from the Infection Curve (Cubic Spline)
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
+#' @param by_strata logical; Whether posterior infection curves should be split by strata
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
 #' @importFrom magrittr %>%
 #' @export
@@ -224,7 +222,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
@@ -252,8 +250,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   # inputs needed for cpp function
   #......................
   # misc list
-  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
+  misc_list = list(rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
                    n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
@@ -266,7 +263,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
 
   # data in
-  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
     datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                   prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                   obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
@@ -637,7 +634,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
                                                         account_serorev = IFRmodel_inf$inputs$account_seroreversion,
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
@@ -692,8 +689,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # inputs needed for cpp function
   #......................
   # misc list
-  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
+  misc_list = list(rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
                    n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
@@ -703,7 +699,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                    demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
                    account_serorev = IFRmodel_inf$inputs$account_seroreversion)
   # data in
-  if (IFRmodel_inf$inputs$IFRmodel$binomial_likelihood) {
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
     datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                   prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
                   obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,

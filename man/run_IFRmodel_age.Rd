@@ -10,8 +10,6 @@ run_IFRmodel_age(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
-  reparamDelays = TRUE,
-  reparamNe = TRUE,
   burnin = 1000,
   samples = 1000,
   chains = 3,
@@ -34,10 +32,6 @@ run_IFRmodel_age(
 \item{reparamInfxn}{logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately}
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately}
-
-\item{reparamDelays}{logical; Whether the mean offset-to-death and the seroconversion rate delay should be reparameterized or inferred separately}
-
-\item{reparamNe}{logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)}
 
 \item{burnin}{the number of burn-in iterations.}
 

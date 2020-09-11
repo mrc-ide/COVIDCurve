@@ -1,9 +1,7 @@
 context("mod fit with cpp background")
 
-test_that("serology likelihood accurate", {
+test_that("likelihood accurate", {
   set.seed(1234)
-  library(magrittr)
-  library(tidyverse)
   # sigmoidal function
   infxns <- data.frame(time = 1:200)
   sig <- function(x){1 / (1 +  exp(-x))}
@@ -29,10 +27,10 @@ test_that("serology likelihood accurate", {
   #..................
   # run sim
   #..................
-  dat <- COVIDCurve::Aggsim_infxn_2_death(
+  dat <- COVIDCurve::Agesim_infxn_2_death(
     fatalitydata = fatalitydata,
     demog = demog,
-    m_od = 19.2,
+    m_od = 19.24,
     s_od = 0.79,
     curr_day = 200,
     infections = infxns$infxns,
@@ -41,7 +39,7 @@ test_that("serology likelihood accurate", {
     sero_rev_scale = 272,
     sens = 0.85,
     spec = 0.95,
-    sero_delay_rate = 15
+    sero_delay_rate = 18.3
   )
 
 
@@ -92,8 +90,7 @@ test_that("serology likelihood accurate", {
   # misc list
   days_obsd <- 150
   knots <- c(30, 60, 90, 120)
-  misc_list = list(rho = fatalitydata$Rho,
-                   rcensor_day = .Machine$integer.max,
+  misc_list = list(rcensor_day = .Machine$integer.max,
                    days_obsd = days_obsd,
                    n_sero_obs = 2,
                    max_seroday_obsd = 140,

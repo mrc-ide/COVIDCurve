@@ -1,5 +1,5 @@
 #' Simulate Seroprevalence Study
-#' @inheritParams Aggsim_infxn_2_death
+#' @inheritParams Agesim_infxn_2_death
 #' @param serolin numeric vector; the expected number of infections from the infection curve from the poisson draw
 #' @importFrom magrittr %>%
 #' @noRd
@@ -99,7 +99,6 @@ sim_seroprev <- function(sero_line_list,
 #' @param fatalitydata dataframe; The strata-specific fatalities to simulate given a probability of infection and a noise effect. The column names: strata, ifr, rho, and Ne correspond to (patient) strata, infection-fatality ratio, the probability of infection (i.e. a probalistic attack rate), and a noise effect, respectively.
 #' @param demog dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}
 #' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
-#' @param level character; Must either be "Time-Series" or "Cumulative", indicating whether daily death counts or cumulative deaths to the current day should be returned, respectively.
 #' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
@@ -111,7 +110,7 @@ sim_seroprev <- function(sero_line_list,
 #' @importFrom magrittr %>%
 #' @export
 
-Aggsim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
+Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
                                  simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
