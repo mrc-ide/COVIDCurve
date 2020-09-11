@@ -20,6 +20,8 @@ draw_posterior_infxn_cubic_splines(
 \item{dwnsmpl}{integer; Number of posterior results to draw -- weighted by posterior prob}
 
 \item{by_chain}{logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.}
+
+\item{by_strata}{logical; Whether posterior infection curves should be split by strata}
 }
 \description{
 Draw posterior results from the Infection Curve (Cubic Spline)

@@ -16,8 +16,6 @@ get_globalIFR_cred_intervals(
 \item{whichrung}{character; Specify which rung to sample from (default is rung1)}
 
 \item{by_chain}{logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.}
-
-\item{what}{character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"}
 }
 \description{
 Get the Global IFR Credible Intervals, or IFR Weighted by Demography
