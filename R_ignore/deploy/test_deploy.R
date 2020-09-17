@@ -4,7 +4,6 @@
 # Author: Nicholas F. Brazeau
 #########################################################################
 devtools::load_all()
-set.seed(1234)
 library(drjacoby)
 library(tidyverse)
 # sigmoidal function
@@ -32,8 +31,8 @@ demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
 dat <- COVIDCurve::Agesim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
-  m_od = 19.2,
-  s_od = 0.79,
+  m_od = 19.66,
+  s_od = 0.90,
   curr_day = 200,
   infections = infxns$infxns,
   simulate_seroreversion = FALSE,
@@ -53,7 +52,7 @@ prop_strata_obs_deaths <- dat$StrataAgg_TimeSeries_Death %>%
 
 # pick serology date
 #sero_days <- c(150)
-sero_days <- c(135, 160)
+sero_days <- c(135, 180)
 
 # sero_days full
 sero_days <- lapply(sero_days, function(x){seq(from = (x-5), to = (x+5), by = 1)})
@@ -87,7 +86,7 @@ datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death,
 ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3"),
                                min  = rep(0, 3),
                                init = rep(0.2, 3),
-                               max = rep(1, 3),
+                               max = rep(0.4, 3),
                                dsc1 = rep(0, 3),
                                dsc2 = rep(0.4, 3))
 
@@ -98,12 +97,19 @@ infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  dsc1 = rep(0, 5),
                                  dsc2 = c(rep(1, 4), 10))
 
+# knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
+#                                 min  = c(0,    0.33, 0.66, 175),
+#                                 init = c(0.05, 0.40, 0.75, 185),
+#                                 max =  c(0.33, 0.66, 0.99, 200),
+#                                 dsc1 = c(0,    0.33, 0.66, 175),
+#                                 dsc2 = c(0.33, 0.66, 0.99, 200))
+
 knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-                                min  = c(0,    0.33, 0.66, 175),
-                                init = c(0.05, 0.40, 0.75, 185),
-                                max =  c(0.33, 0.66, 0.99, 200),
-                                dsc1 = c(0,    0.33, 0.66, 175),
-                                dsc2 = c(0.33, 0.66, 0.99, 200))
+                                min  = c(rep(0,3), 175),
+                                init = c(rep(0.2,3), 185),
+                                max =  c(rep(1,3), 200),
+                                dsc1 = c(rep(0,3), 175),
+                                dsc2 = c(rep(1,3), 200))
 
 sero_paramsdf <- tibble::tibble(name =  c("sens", "spec"),
                                 min =   c(0.83,     0.8),
@@ -123,17 +129,17 @@ noise_paramsdf <- tibble::tibble(name = c("ne1", "ne2", "ne3"),
 # onset to deaths
 tod_paramsdf <- tibble::tibble(name = c("mod", "sod", "sero_con_rate"),
                                min  = c(18,     0,     16),
-                               init = c(19,     0.79,  18),
-                               max =  c(20,     1,     21),
-                               dsc1 = c(19.26,  2370,  18.3),
-                               dsc2 = c(0.1,    630,   0.1))
+                               init = c(19,     0.90,  18),
+                               max =  c(20.5,   1,     21),
+                               dsc1 = c(19.66,  2700,  18.3),
+                               dsc2 = c(0.1,    300,   0.1))
 
 df_params <- rbind.data.frame(ifr_paramsdf, infxn_paramsdf, knot_paramsdf, sero_paramsdf, noise_paramsdf, tod_paramsdf)
 
 #......................
 # make mode
 #......................
-mod1 <- make_IFRmodel_age$new()
+mod1 <- COVIDCurve::make_IFRmodel_age$new()
 mod1$set_MeanTODparam("mod")
 mod1$set_CoefVarOnsetTODparam("sod")
 mod1$set_IFRparams(c("ma1", "ma2", "ma3"))
@@ -196,9 +202,9 @@ modout$mcmcout$output[modout$mcmcout$output$loglikelihood == max(modout$mcmcout$
 #......................
 curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
                                                         whichrung = paste0("rung", 1),
-                                                        by_chain = T,
-                                                        by_strata = T,
-                                                        dwnsmpl = 1e2)
+                                                        by_chain = F,
+                                                        by_strata = F,
+                                                        dwnsmpl = 1e3)
 # tidy up and make plots
 liftover <- data.frame(param = c("ma1", "ma2", "ma3"),
                        Strata = c("ma1", "ma2", "ma3"))
@@ -226,6 +232,28 @@ serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = modout,
                                                     whichrung = paste0("rung", 1),
                                                     by_chain = F,
                                                     dwnsmpl = 1e2)
+
+serocurvedat <- serocurve %>%
+  dplyr::select(c("sim", "ObsDay", dplyr::starts_with("RG_pd_"),
+                  dplyr::starts_with("crude_pd_"))) %>%
+  tidyr::pivot_longer(., cols = -c("sim", "ObsDay"),
+                      names_to = "seroprev_strata_lvl", values_to = "seroprev") %>%
+  dplyr::mutate(seroprevlvl = ifelse(stringr::str_detect(seroprev_strata_lvl, "RG_"), "RG Corr.", "Crude"),
+                param = stringr::str_extract(seroprev_strata_lvl, "ma[0-9]+"))
+
+SeroPrevObs <- tibble::tibble(obsdaymin = sapply(sero_days, median) - 5,
+                              obsdaymax = sapply(sero_days, median) + 5)
+serocurvedat %>%
+  ggplot() +
+  geom_line(aes(x = ObsDay, y = seroprev, color = seroprevlvl), alpha = 0.5) +
+  geom_rect(data = SeroPrevObs, aes(xmin = obsdaymin, xmax = obsdaymax, ymin = -Inf, ymax = Inf),
+            fill = "#d9d9d9", alpha = 0.4) +
+  facet_wrap(.~param) +
+  scale_color_manual("Seroprev. \n Adjustment", values = c("#FFD301", "#246BCF"),
+                     labels = c("Inferred 'Truth'", "Inferred 'Observed' - \n Rogan-Gladen Corrected")) +
+  labs(caption = "Grey box is observed seroprevalence across study period") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.90, hjust= 1, face = "bold"))
 
 #......................
 # get deaths posterior pred check
