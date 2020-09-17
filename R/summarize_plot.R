@@ -227,9 +227,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE,
-                                                        reparamDelays = FALSE,
-                                                        reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
@@ -639,9 +637,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                                                         binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE,
-                                                        reparamDelays = FALSE,
-                                                        reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
