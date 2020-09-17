@@ -23,10 +23,6 @@ fatalitydata <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
 demog <- tibble::tibble(Strata = c("ma1", "ma2", "ma3"),
                         popN = c(1500000, 2250000, 1250000))
 
-# pick serology date
-#sero_days <- c(150)
-sero_days <- c(135, 160)
-
 #..............................................................
 # AGGREGATE
 #..............................................................
@@ -43,9 +39,9 @@ dat <- COVIDCurve::Agesim_infxn_2_death(
   simulate_seroreversion = FALSE,
   sens = 0.85,
   spec = 0.95,
-  sero_delay_rate = 18.3
+  sero_delay_rate = 18.3,
+  smplfrac = 1e-3
 )
-
 
 # liftover proprtion deaths
 totdeaths <- sum(dat$StrataAgg_TimeSeries_Death$Deaths)
@@ -55,17 +51,26 @@ prop_strata_obs_deaths <- dat$StrataAgg_TimeSeries_Death %>%
                    PropDeaths = Deaths/totdeaths) %>%
   dplyr::select(c("Strata", "PropDeaths"))
 
-# liftover obs serology
+# pick serology date
+#sero_days <- c(150)
+sero_days <- c(135, 160)
+
+# sero_days full
+sero_days <- lapply(sero_days, function(x){seq(from = (x-5), to = (x+5), by = 1)})
 obs_serology <- dat$StrataAgg_Seroprev %>%
   dplyr::group_by(Strata) %>%
-  dplyr::filter(ObsDay %in% sero_days) %>%
+  dplyr::filter(ObsDay %in% unlist(sero_days)) %>%
+  dplyr::mutate(serodaynum = sort(rep(1:length(sero_days), 11))) %>%
   dplyr::mutate(
-    SeroPos = round(ObsPrev * testedN),
+    SeroPos = ObsPrev * testedN,
     SeroN = testedN ) %>%
-  dplyr::rename(
-    SeroPrev = ObsPrev) %>%
-  dplyr::mutate(SeroStartSurvey = sero_days - 5,
-                SeroEndSurvey = sero_days + 5) %>%
+  dplyr::group_by(Strata, serodaynum) %>%
+  dplyr::summarise(SeroPos = mean(SeroPos),
+                   SeroN = mean(SeroN)) %>% # seroN doesn't change
+  dplyr::mutate(SeroStartSurvey = sapply(sero_days, median) - 5,
+                SeroEndSurvey = sapply(sero_days, median) + 5,
+                SeroPos = round(SeroPos),
+                SeroPrev = SeroPos/SeroN) %>%
   dplyr::select(c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev")) %>%
   dplyr::ungroup(.) %>%
   dplyr::arrange(SeroStartSurvey, Strata) %>%
