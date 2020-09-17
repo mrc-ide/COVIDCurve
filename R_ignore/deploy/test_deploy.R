@@ -33,7 +33,7 @@ sero_days <- c(135, 160)
 #..................
 # run sim
 #..................
-dat <- COVIDCurve::Aggsim_infxn_2_death(
+dat <- COVIDCurve::Agesim_infxn_2_death(
   fatalitydata = fatalitydata,
   demog = demog,
   m_od = 19.2,
@@ -81,10 +81,10 @@ datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death,
 #..................
 ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3"),
                                min  = rep(0, 3),
-                               init = rep(0.5, 3),
+                               init = rep(0.2, 3),
                                max = rep(1, 3),
                                dsc1 = rep(0, 3),
-                               dsc2 = rep(1, 3))
+                               dsc2 = rep(0.4, 3))
 
 infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  min  = rep(0, 5),
@@ -154,9 +154,9 @@ modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        reparamKnot = TRUE,
                                        burnin = 1e3,
                                        samples = 1e3,
-                                       chains = 1,
-                                       rungs = 1,
-                                       thinning = 0,
+                                       chains = 3,
+                                       rungs = 10,
+                                       thinning = 10,
                                        silent = FALSE)
 Sys.time() - start
 modout
@@ -173,6 +173,10 @@ modout
                                              what = "Knotparams", by_chain = F))
 (infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
                                          what = "Infxnparams", by_chain = F))
+
+(ddelays <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                         what = "DeathDelayparams", by_chain = F))
+
 
 summary(modout$mcmcout$output$loglikelihood)
 summary(modout$mcmcout$output$logprior)

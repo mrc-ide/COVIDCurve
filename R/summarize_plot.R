@@ -39,7 +39,7 @@ print.IFRmodel <- function(x, ...){
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
 #' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Noiseparams"
+#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", "Noiseparams", or "DeathDelayparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
@@ -49,7 +49,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Noiseparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Noiseparams", "DeathDelayparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -99,7 +99,18 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          "Noiseparams-FALSE"={
            groupingvar <- "param"
            params <- IFRmodel_inf$inputs$IFRmodel$Noiseparams
+         },
+
+         "DeathDelayparams-TRUE"={
+           groupingvar <- c("chain", "param")
+           params <- c("chain", "mod", "sod")
+         },
+         "DeathDelayparams-FALSE"={
+           groupingvar <- "param"
+           params <- c("mod", "sod")
          }
+
+
   )
 
   IFRmodel_inf$mcmcout$output %>%
