@@ -1,10 +1,10 @@
 #' Simulate Seroprevalence Study
 #' @inheritParams Agesim_infxn_2_death
-#' @param serolin numeric vector; the expected number of infections from the infection curve from the poisson draw
 #' @importFrom magrittr %>%
 #' @noRd
 
 sim_seroprev <- function(sero_line_list,
+                         death_line_list,
                          spec,
                          sens,
                          smplfrac,
@@ -43,10 +43,17 @@ sim_seroprev <- function(sero_line_list,
                   ObsDaySeroRev = ifelse(is.na(ObsDaySeroRev), Inf, ObsDaySeroRev)) # if seroreversion is missing, the subject doesn't revert within the study period
 
 
+  #..................
+  # Remove death as a competing event
+  # this inherently occurs in the observed data
+  #..................
+  sero_line_list_full <- dplyr::left_join(sero_line_list, death_line_list, by = c("id", "doi", "Strata")) %>%
+    dplyr::filter(otsc < tod | is.na(tod))
+
   #......................
   # observed seroprevalences taking into account sampling fractions
   #......................
-  sero_line_list_sampl <- sero_line_list %>%
+  sero_line_list_sampl <- sero_line_list_full %>%
     dplyr::filter(!is.na(ObsDaySeroCon))   # drop "future" seroconversions
   keeprows <- as.logical(rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
   sero_line_list_sampl <- sero_line_list_sampl[keeprows, ]
@@ -186,16 +193,6 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
     dplyr::select(c("id", "doi", "Strata"))
 
   #..................
-  # get seroprevalence
-  #..................
-  seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
-                           sero_delay_rate = sero_delay_rate,
-                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
-                           smplfrac = smplfrac,
-                           demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
-
-
-  #..................
   # get deaths
   #..................
   death_line_list <- dplyr::left_join(infxn_line_list, fatalitydata, by = "Strata")
@@ -233,7 +230,22 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
     dplyr::summarise(Deaths = sum(Deaths)) %>%
     dplyr::ungroup(.)
 
+
+  #..................
+  # get seroprevalence
+  #..................
+  seroprev <- sim_seroprev(sero_line_list = infxn_line_list,
+                           death_line_list = death_line_list,
+                           spec = spec, sens = sens,
+                           sero_delay_rate = sero_delay_rate,
+                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
+                           smplfrac = smplfrac,
+                           demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
+
+
+  #..................
   # full linelist
+  #..................
   full_linelist <- dplyr::full_join(seroprev$sero_line_list, death_line_list, by = c("id", "doi", "Strata")) %>%
     dplyr::select(-c("IFR", "Rho")) # holdovers from merge with fatality data
 
