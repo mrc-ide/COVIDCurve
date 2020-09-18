@@ -20,13 +20,13 @@ sim_seroprev <- function(sero_line_list,
   # draw time from onset to seroconversion
   sero_line_list$otsc <- stats::rexp(n = nrow(sero_line_list), rate = 1/sero_delay_rate)
   # observed time of seroconversion
-  sero_line_list$tosc <- as.numeric(sero_line_list$doi) + sero_line_list$otsc
+  sero_line_list$tosc <- (as.numeric(sero_line_list$doi)-1) + sero_line_list$otsc
 
   if (simulate_seroreversion) {
     # draw time from seroconversion to seroreversion
     sero_line_list$otsr <- stats::rweibull(n = nrow(sero_line_list), shape = sero_rev_shape, scale = sero_rev_scale)
     # observed time of seroreversion
-    sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + ceiling(sero_line_list$otsr)
+    sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + sero_line_list$otsr
   } else {
     sero_line_list$otsr <- NA
     sero_line_list$tosr <- Inf
@@ -208,7 +208,7 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   # simulate onset of infection to death
   death_line_list$otd <- rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
   # simulate time of death -- note, we have a discrete day + a continuous time -- but allow it to happen on the day it was observed
-  death_line_list$tod <- as.numeric(death_line_list$doi) + ceiling(death_line_list$otd)
+  death_line_list$tod <- (as.numeric(death_line_list$doi)-1) + death_line_list$otd
 
   # Tidy up so that we observe deaths on a daily time step
   stratalvls <- unique(as.character(fatalitydata$Strata)) # protect against data.frame, string as factor = F
