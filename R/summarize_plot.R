@@ -146,19 +146,40 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
   assert_string(whichrung)
   assert_logical(by_chain)
 
+  if (length(IFRmodel_inf$inputs$IFRmodel$IFRparams) == 1) {
+    stop("Only one IFR estimated. Overall IFR is equivalent")
+  }
+
 
   # make weighted demog
   demogwi <- IFRmodel_inf$inputs$IFRmodel$demog %>%
-    dplyr::mutate(wi = popN/sum(popN))
-
-  ret <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::mutate(popwi = popN/sum(popN))
+  # ifr data
+  ifrdat <- IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung) %>%
     tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$IFRparams, # if chain isn't included in vector, grepl won't do anything
                         names_to = "Strata", values_to = "est") %>%
+    dplyr::rename(ifr = est) %>%
+    dplyr::select(c("iteration", "chain", "rung", "Strata", "ifr"))
+
+  # attrack rate data
+  ardat <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::filter(stage == "sampling" & rung == whichrung) %>%
+    tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$Noiseparams, # if chain isn't included in vector, grepl won't do anything
+                        names_to = "Strata", values_to = "est") %>%
+    dplyr::rename(attackrate = est) %>%
+    dplyr::select(c("iteration", "chain", "rung", "Strata", "attackrate")) %>%
+    dplyr::mutate(Strata = gsub("ne", "ma", Strata))
+
+
+  # bring together data
+  ret <- dplyr::left_join(ifrdat, ardat, by = c("iteration", "chain", "rung", "Strata")) %>%
     dplyr::left_join(., demogwi, by = "Strata") %>%
-    dplyr::mutate(est = est*wi) %>%
+    dplyr::mutate(est = ifr * attackrate * popwi) %>%
     dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
     dplyr::summarise(est = sum(est))
+
+  # out
   if (by_chain) {
     ret %>%
       dplyr::group_by(chain) %>%
