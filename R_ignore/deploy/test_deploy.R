@@ -166,8 +166,8 @@ modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        burnin = 1e4,
                                        samples = 1e4,
                                        chains = 3,
-                                       rungs = 10,
-                                       thinning = 10,
+                                       rungs = 1,
+                                       thinning = 0,
                                        silent = FALSE)
 Sys.time() - start
 modout
