@@ -67,27 +67,6 @@ run_IFRmodel_age <- function(IFRmodel,
     warning("Missing daily deaths -- will skip over in likelihood")
   }
 
-
-  #............................................................
-  # "Warm-Up" MCMC
-  # TODO remove this for final version (Nick's broken computer)
-  #...........................................................
-  warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
-  names(warmdf_params) <- c("name", "min", "max", "init")
-  warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-  warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-  warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)),
-                               df_params = warmdf_params,
-                               misc = list(),
-                               loglike = warmloglike,
-                               logprior = warmlogprior,
-                               burnin = 1,
-                               samples = 1,
-                               chains = 1,
-                               rungs = 1,
-                               silent = T)
-
-
   #..............................................................
   # catches
   #..............................................................
