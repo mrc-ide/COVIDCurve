@@ -159,14 +159,18 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
     dplyr::rename(ifr = est) %>%
     dplyr::select(c("iteration", "chain", "rung", "Strata", "ifr"))
 
+  # df to match Ne params to ifr params
+  dfmatch <- tibble::tibble(Strata_tomatch = IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                            Strata = IFRmodel_inf$inputs$IFRmodel$IFRparams)
   # attrack rate data
   ardat <- IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung) %>%
     tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$Noiseparams, # if chain isn't included in vector, grepl won't do anything
-                        names_to = "Strata", values_to = "est") %>%
+                        names_to = "Strata_tomatch", values_to = "est") %>%
     dplyr::rename(attackrate = est) %>%
-    dplyr::select(c("iteration", "chain", "rung", "Strata", "attackrate")) %>%
-    dplyr::mutate(Strata = gsub("ne", "ma", Strata)) %>%
+    dplyr::select(c("iteration", "chain", "rung", "Strata_tomatch", "attackrate")) %>%
+    dplyr::left_join(., dfmatch, by = "Strata_tomatch") %>%
+    dplyr::select(-c("Strata_tomatch")) %>%
     dplyr::left_join(., IFRmodel_inf$inputs$IFRmodel$demog, by = "Strata")
 
   # get weighted denom
@@ -182,7 +186,6 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
 
   # bring together data
   ret <- dplyr::left_join(ifrdat, ardat, by = c("iteration", "chain", "rung", "Strata")) %>%
-    dplyr::left_join(., demogwi, by = "Strata") %>%
     dplyr::mutate(est = ifr * wi) %>%
     dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
     dplyr::summarise(est = sum(est))
