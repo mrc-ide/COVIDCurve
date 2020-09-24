@@ -1,6 +1,6 @@
 #' @title Make Model Inference Object-Oriented Class
 #' @description A simple R6 class with only public features. Purpose is to provide a model framework
-#' for inference of IFRs and the incidence curve from Age-Specific Death Data.
+#' for inference of IFRs from Age-Specific Death Data.
 #' @name make_IFRmodel_age
 #' @section Public Variables:
 #'  \tabular{ll}{

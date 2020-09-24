@@ -637,7 +637,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
 
 
 
-#' ' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
+#' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
@@ -745,13 +745,13 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                   obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
   } else {
     # logit-normal transformation for likelihood
-    IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
-      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+    IFRmodel_inf$inputs$IFRmodel$data$obs_serology <- IFRmodel_inf$inputs$IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96) )
 
-    datin <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
-                  prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
-                  obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
-                  obs_serologysigma = IFRmodel$data$obs_serology$SeroSE)
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologymu = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroMu,
+                  obs_serologysigma = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroSE)
   }
 
 

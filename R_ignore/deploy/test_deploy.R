@@ -84,11 +84,11 @@ datinput <- list(obs_deaths = dat$Agg_TimeSeries_Death,
 # make model
 #..................
 ifr_paramsdf <- tibble::tibble(name = c("ma1", "ma2",  "ma3"),
-                               min  = rep(0, 3),
-                               init = rep(0.2, 3),
-                               max = rep(0.4, 3),
-                               dsc1 = rep(0, 3),
-                               dsc2 = rep(0.4, 3))
+                               min  = c(0, 0, 0),
+                               init = c(0.2, 0.2, 0.2),
+                               max =  c(1, 1, 0.4),
+                               dsc1 = c(0, 0, 0),
+                               dsc2 = c(1, 1, 0.4))
 
 infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  min  = rep(0, 5),
@@ -163,8 +163,8 @@ modout <- COVIDCurve::run_IFRmodel_age(IFRmodel = mod1,
                                        reparamIFR = TRUE,
                                        reparamInfxn = TRUE,
                                        reparamKnot = TRUE,
-                                       burnin = 1e4,
-                                       samples = 1e4,
+                                       burnin = 1e3,
+                                       samples = 1e3,
                                        chains = 3,
                                        rungs = 1,
                                        thinning = 0,
@@ -187,7 +187,8 @@ modout
 
 (ddelays <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
                                          what = "DeathDelayparams", by_chain = F))
-
+(neparams <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                            what = "Noiseparams", by_chain = F))
 
 summary(modout$mcmcout$output$loglikelihood)
 summary(modout$mcmcout$output$logprior)
