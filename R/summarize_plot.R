@@ -1,3 +1,5 @@
+
+
 #' Simple Logit Function
 #' @details No tolerance considered, so x cannot be zero
 #' @noRd
@@ -35,6 +37,26 @@ print.IFRmodel <- function(x, ...){
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
   cat(crayon::yellow("Total Population Size: "), sum(x$demog$popN), "\n")
+}
+
+
+#' @title Get Gelman Diagnostic for Age-Specific Model
+#' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
+#' @details Using the \link[coda]{gelman.diag} function to assess convergence
+#' @importFrom magrittr %>%
+#' @export
+get_gelman_rubin_diagnostic <- function(IFRmodel_inf) {
+
+  chains <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::select(-c("rung", "iteration", "stage", "logprior", "loglikelihood")) %>% # drop details
+    dplyr::group_by(chain) %>%
+    tidyr::nest(.)
+
+  # convert to coda object
+  chains_mcmc <- lapply(chains$data, coda::as.mcmc)
+  # run coda back end for diagnostic
+  ret <- coda::gelman.diag(coda::as.mcmc.list(chains_mcmc))
+  return(ret)
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
