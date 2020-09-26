@@ -332,9 +332,10 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                   obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
                   obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
   } else {
+
     # logit-normal transformation for likelihood
     IFRmodel_inf$inputs$IFRmodel$data$obs_serology <- IFRmodel_inf$inputs$IFRmodel$data$obs_serology %>%
-      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroPrevUCI) - COVIDCurve:::logit(SeroPrevLCI)) / (2*1.96) )
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96) )
 
     datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
                   prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
