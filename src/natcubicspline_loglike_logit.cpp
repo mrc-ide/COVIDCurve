@@ -235,8 +235,20 @@ Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, R
 
       // extract observed data
       std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_strata_obs_deaths"]);
+      double paobsd_sum = 0.0;
       for (int a = 0; a < stratlen; a++) {
-        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a], true);
+        // this will always equal 1 per upstream check -- but for clarity
+        paobsd_sum += paobsd[a];
+      }
+      // using internal chained binomial function for multinomial
+      // NB, upstream catches to make sure probability vector is valid
+      // X vector is created above and can be safely modified in place below
+      for (int a = 0; a < (stratlen - 1); a++) {
+        if (strata_expd[a] > 0) {
+          L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a]/paobsd_sum, true);
+          texpd -= strata_expd[a];
+        }
+        paobsd_sum -= paobsd[a];
       }
 
       //........................................................
