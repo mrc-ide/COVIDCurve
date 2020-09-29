@@ -48,7 +48,7 @@ sim_seroprev <- function(sero_line_list,
   #......................
   sero_line_list_sampl <- sero_line_list %>%
     dplyr::filter(!is.na(ObsDaySeroCon))   # drop "future" seroconversions
-  keeprows <- as.logical(rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
+  keeprows <- as.logical(stats::rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
   sero_line_list_sampl <- sero_line_list_sampl[keeprows, ]
   # get serotested after sampling fraction
   serotested <- tibble::tibble(Strata = fatalitydata$Strata,
@@ -201,12 +201,12 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   death_line_list <- dplyr::left_join(infxn_line_list, fatalitydata, by = "Strata")
   # draw deaths among infected
   death_line_list <- death_line_list %>%
-    dplyr::mutate(dies = purrr::map_int(IFR, function(x){rbinom(n = 1, size = 1, prob = x)})) %>%
+    dplyr::mutate(dies = purrr::map_int(IFR, function(x){stats::rbinom(n = 1, size = 1, prob = x)})) %>%
     dplyr::filter(dies == 1) %>%
     dplyr::select(-c("dies"))
 
   # simulate onset of infection to death
-  death_line_list$otd <- rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
+  death_line_list$otd <- stats::rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
   # simulate time of death -- note, we have a discrete day + a continuous time -- but allow it to happen on the day it was observed
   death_line_list$tod <- (as.numeric(death_line_list$doi)-1) + death_line_list$otd
 

@@ -217,7 +217,7 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
            "}"
   )
 
-  out <- capture.output(cat(ret))
+  out <- utils::capture.output(cat(ret))
   return(out)
 }
 
@@ -398,7 +398,7 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
            "}"
   )
   # make string for DrJ
-  out <- capture.output(cat(ret))
+  out <- utils::capture.output(cat(ret))
   return(out)
 }
 
