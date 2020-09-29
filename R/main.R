@@ -82,6 +82,12 @@ run_IFRmodel_age <- function(IFRmodel,
   if (reparamKnots) {
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
+  if (length(IFRmodel$IFRparams != 1)) {
+    if (length(IFRmodel$IFRparams) != length(IFRmodel$Noiseparams)) {
+      stop("You must specificy the same number of IFR params and Noise params to estimate. Having
+           a mix of no noise params and noise params among IFR params is not currently supported")
+    }
+  }
 
   # catch seroreversion
   if( all(c("sero_rev_scale", "sero_rev_shape") %in% IFRmodel$Serotestparams) ) {
@@ -119,9 +125,10 @@ run_IFRmodel_age <- function(IFRmodel,
                       obs_serologyn = IFRmodel$data$obs_serology$SeroN)
   } else {
     # logit-normal transformation for likelihood
+    # machine min tolerance is to protect against zeroes
     IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
-      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96),
-                    SeroMu = COVIDCurve:::logit(SeroPrev))
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI + .Machine$double.xmin) - COVIDCurve:::logit(SeroLCI + .Machine$double.xmin)) / (2*1.96),
+                    SeroMu = COVIDCurve:::logit(SeroPrev + .Machine$double.xmin))
 
     data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
                       prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
