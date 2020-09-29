@@ -1,3 +1,17 @@
+
+
+#' Simple Logit Function
+#' @details No tolerance considered, so x cannot be zero
+#' @noRd
+logit <- function(x){log(x/(1-x))}
+
+#' Simple Log-Sum-Exp Trick
+#' @details No tolerance considered, so x cannot be zero
+#' @noRd
+convert_post_probs <- function(logpost) {
+  exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
+}
+
 #' IFR-Inference-Aggregate-Model, overload summary
 #' @noRd
 #' @export
@@ -8,7 +22,6 @@ summary.IFRmodel <- function(object, ...){
   cat(crayon::blue("Infection Point Params: "), paste(object$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(object$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(object$Serotestparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Day Parameters: "), paste(object$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Total Population Size: "), sum(object$demog$popN), "\n")
 }
 
@@ -23,13 +36,32 @@ print.IFRmodel <- function(x, ...){
   cat(crayon::blue("Infection Point Params: "), paste(x$Infxnparams, collapse = ", "), "\n")
   cat(crayon::blue("Infection Knot Params: "), paste(x$Knotparams, collapse = ", "), "\n")
   cat(crayon::magenta("Serology Test Parameters: "), paste(x$Serotestparams, collapse = ", "), "\n")
-  cat(crayon::magenta("Serology Day Parameters: "), paste(x$Serodayparams, collapse = ", "), "\n")
   cat(crayon::yellow("Total Population Size: "), sum(x$demog$popN), "\n")
+}
+
+
+#' @title Get Gelman Diagnostic for Age-Specific Model
+#' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
+#' @details Using the \link[coda]{gelman.diag} function to assess convergence
+#' @importFrom magrittr %>%
+#' @export
+get_gelman_rubin_diagnostic <- function(IFRmodel_inf) {
+
+  chains <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::select(-c("rung", "iteration", "stage", "logprior", "loglikelihood")) %>% # drop details
+    dplyr::group_by(chain) %>%
+    tidyr::nest(.)
+
+  # convert to coda object
+  chains_mcmc <- lapply(chains$data, coda::as.mcmc)
+  # run coda back end for diagnostic
+  ret <- coda::gelman.diag(coda::as.mcmc.list(chains_mcmc))
+  return(ret)
 }
 
 #' @title Get Credible Intervals for Parameters from Sampling Iterations
 #' @param IFRmodel_inf R6 class; The result of the IFR Model MCMC run along with the model input.
-#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", or "Serodayparams"
+#' @param what character; Specify which parameters you want: "IFRparams", "Infxnparams", "Serotestparams", "Noiseparams", or "DeathDelayparams"
 #' @param whichrung character; Specify which rung to sample from (default is rung1)
 #' @param by_chain logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.
 #' @importFrom magrittr %>%
@@ -39,7 +71,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
-  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Serodayparams", "Noiseparams", "TODparams"))
+  assert_in(what, c("IFRparams", "Knotparams", "Infxnparams", "Serotestparams", "Noiseparams", "DeathDelayparams"))
   assert_string(whichrung)
   assert_logical(by_chain)
 
@@ -52,7 +84,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "IFRparams-FALSE"={
            groupingvar <- "param"
-           params <-  c("iteration", IFRmodel_inf$inputs$IFRmodel$IFRparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$IFRparams
          },
 
          "Knotparams-TRUE"={
@@ -61,7 +93,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Knotparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Knotparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Knotparams
          },
 
          "Infxnparams-TRUE"={
@@ -70,7 +102,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Infxnparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Infxnparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Infxnparams
          },
 
          "Serotestparams-TRUE"={
@@ -79,16 +111,7 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Serotestparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serotestparams)
-         },
-
-         "Serodayparams-TRUE"={
-           groupingvar <- c("chain", "param")
-           params <- c("chain", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
-         },
-         "Serodayparams-FALSE"={
-           groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Serodayparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Serotestparams
          },
 
          "Noiseparams-TRUE"={
@@ -97,23 +120,26 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
          },
          "Noiseparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", IFRmodel_inf$inputs$IFRmodel$Noiseparams)
+           params <- IFRmodel_inf$inputs$IFRmodel$Noiseparams
          },
 
-         "TODparams-TRUE"={
+         "DeathDelayparams-TRUE"={
            groupingvar <- c("chain", "param")
-           params <- c("chain", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
+           params <- c("chain", "mod", "sod")
          },
-         "TODparams-FALSE"={
+         "DeathDelayparams-FALSE"={
            groupingvar <- "param"
-           params <- c("iteration", c(IFRmodel_inf$inputs$IFRmodel$modparam, IFRmodel_inf$inputs$IFRmodel$sodparam))
+           params <- c("mod", "sod")
          }
+
+
   )
 
   IFRmodel_inf$mcmcout$output %>%
     dplyr::filter(stage == "sampling" & rung == whichrung) %>%
     dplyr::select_at(params) %>%
-    tidyr::gather(., key = "param", value = "est", 2:ncol(.)) %>%
+    tidyr::pivot_longer(., cols = params[!grepl("chain", params)], # if chain isn't included in vector, grepl won't do anything
+                        names_to = "param", values_to = "est") %>%
     dplyr::group_by_at(groupingvar) %>%
     dplyr::summarise(
       min = min(est),
@@ -130,10 +156,102 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 
 
 
+#' @title Get the Global IFR Credible Intervals, or IFR Weighted by Demography
+#' @inheritParams get_cred_intervals
+#' @importFrom magrittr %>%
+#' @export
+
+get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_chain = TRUE) {
+  assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
+  assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
+  assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
+  assert_string(whichrung)
+  assert_logical(by_chain)
+
+  if (length(IFRmodel_inf$inputs$IFRmodel$IFRparams) == 1) {
+    stop("Only one IFR estimated. Overall IFR is equivalent")
+  }
+
+
+  # ifr data
+  ifrdat <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::filter(stage == "sampling" & rung == whichrung) %>%
+    tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$IFRparams, # if chain isn't included in vector, grepl won't do anything
+                        names_to = "Strata", values_to = "est") %>%
+    dplyr::rename(ifr = est) %>%
+    dplyr::select(c("iteration", "chain", "rung", "Strata", "ifr"))
+
+  # df to match Ne params to ifr params
+  dfmatch <- tibble::tibble(Strata_tomatch = IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                            Strata = IFRmodel_inf$inputs$IFRmodel$IFRparams)
+  # attrack rate data
+  ardat <- IFRmodel_inf$mcmcout$output %>%
+    dplyr::filter(stage == "sampling" & rung == whichrung) %>%
+    tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$Noiseparams, # if chain isn't included in vector, grepl won't do anything
+                        names_to = "Strata_tomatch", values_to = "est") %>%
+    dplyr::rename(attackrate = est) %>%
+    dplyr::select(c("iteration", "chain", "rung", "Strata_tomatch", "attackrate")) %>%
+    dplyr::left_join(., dfmatch, by = "Strata_tomatch") %>%
+    dplyr::select(-c("Strata_tomatch")) %>%
+    dplyr::left_join(., IFRmodel_inf$inputs$IFRmodel$demog, by = "Strata")
+
+  # get weighted denom
+  denom <- ardat %>%
+    dplyr::group_by_at(c("iteration", "chain", "rung")) %>%
+    dplyr::mutate(wi = attackrate * popN) %>%
+    dplyr::summarise(denom = sum(wi))
+  # get weight
+  ardat <- ardat %>%
+    dplyr::left_join(., denom, by = c("iteration", "chain", "rung")) %>%
+    dplyr::mutate(wi = (attackrate * popN) / denom)
+
+
+  # bring together data
+  ret <- dplyr::left_join(ifrdat, ardat, by = c("iteration", "chain", "rung", "Strata")) %>%
+    dplyr::mutate(est = ifr * wi) %>%
+    dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
+    dplyr::summarise(est = sum(est))
+
+  # out
+  if (by_chain) {
+    ret %>%
+      dplyr::group_by(chain) %>%
+      dplyr::summarise(
+        min = min(est),
+        LCI = quantile(est, 0.025),
+        median = median(est),
+        mean = mean(est),
+        UCI = quantile(est, 0.975),
+        max = max(est),
+        ESS = coda::effectiveSize(coda::as.mcmc(est)),
+        GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
+        GewekeP = dnorm(GewekeZ)
+      )
+  } else {
+    ret %>%
+      dplyr::ungroup(.) %>%
+      dplyr::summarise(
+        min = min(est),
+        LCI = quantile(est, 0.025),
+        median = median(est),
+        mean = mean(est),
+        UCI = quantile(est, 0.975),
+        max = max(est),
+        ESS = coda::effectiveSize(coda::as.mcmc(est)),
+        GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
+        GewekeP = dnorm(GewekeZ)
+      )
+  }
+
+}
+
+
+
 
 #' @title Draw posterior results from the Infection Curve (Cubic Spline)
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
+#' @param by_strata logical; Whether posterior infection curves should be split by strata
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
 #' @importFrom magrittr %>%
 #' @export
@@ -157,11 +275,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
-  # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
-  probs <- convert_post_probs(mcmcout.nodes$logposterior)
+  probs <- COVIDCurve:::convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
                          prob = probs)
@@ -173,17 +287,17 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
+                                                        binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE,
-                                                        reparamSeros = FALSE,
-                                                        reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "double cum_infxn_check = 0.0;", n = 2)[,1]
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "bool popN_pass = true;", n = 2)[,1]
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
                            "std::vector<std::vector<double>> infxn_spline_strata(days_obsd, std::vector<double>(stratlen));
                             for (int i = 0; i < days_obsd; i++) {
@@ -198,28 +312,56 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
   #......................
   # inputs needed for cpp function
   #......................
-  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
-                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
+  # misc list
+  misc_list = list(rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
-                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
+                   n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
 
-  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
 
+
+  # data in
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                  obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  } else {
+
+    # logit-normal transformation for likelihood
+    IFRmodel_inf$inputs$IFRmodel$data$obs_serology <- IFRmodel_inf$inputs$IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96) )
+
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologymu = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroMu,
+                  obs_serologysigma = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroSE)
+  }
 
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
+
+    # paramsin
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
 
     # run efficient cpp code
@@ -240,35 +382,31 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$infxncurves <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                          data = datin, misc = misc_list)
+                                          datin = datin, misc = misc_list)
 
   #......................
   # tidy
   #......................
-  # keep params around for convenience
+  # keep IFR params around for convenience for posterior death check
+  # and need mod and sod
   switch(paste0(by_chain, "-", by_strata),
          # by chain and by strata
          "TRUE-TRUE"={
            plotdat <- mcmcout.nodes %>%
              dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
                              IFRmodel_inf$inputs$IFRmodel$modparam,
                              IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                              "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
              tidyr::unnest(cols = "infxncurves")
-           # downsize for what is needed in ggplot vs. returrn
+           # downsize for what is needed in ggplot vs. return
            plotdat_sm <- plotdat %>%
              dplyr::select(c("chain", "time", "sim", dplyr::starts_with("infxns_"))) %>%
              magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
-             tidyr::gather(., key = "Strata", value = "infxns", 4:ncol(.))
+             tidyr::pivot_longer(., cols = -c("chain", "time", "sim"), names_to = "Strata", values_to = "infxns")
            if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
              # set up dictionary key to be ageband, regions, etc.
              IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
@@ -303,63 +441,52 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # by chain but not by strata
          "TRUE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             plotdat <- mcmcout.nodes %>%
-               dplyr::select(c("chain",
-                               IFRmodel_inf$inputs$IFRmodel$modparam,
-                               IFRmodel_inf$inputs$IFRmodel$sodparam,
-                               IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                               IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                               IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                               IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                               IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                               IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                               "infxncurves")) %>%
-               dplyr::group_by(chain) %>%
-               dplyr::mutate(sim = 1:dplyr::n()) %>%
-               dplyr::ungroup(chain) %>%
-               tidyr::unnest(cols = "infxncurves") %>%
-               dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
+             dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+                             "infxncurves")) %>%
+             dplyr::group_by(chain) %>%
+             dplyr::mutate(sim = 1:dplyr::n()) %>%
+             dplyr::ungroup(chain) %>%
+             tidyr::unnest(cols = "infxncurves") %>%
+             dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
 
-             plotObj <- ggplot2::ggplot() +
-               ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
-                                  lwd = 0.5, color = "#d9d9d9") +
-               ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
-               ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-               ggplot2::facet_wrap(. ~ chain) +
-               ggplot2::theme_minimal() +
-               ggplot2::theme(
-                 plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-                 plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
-                 axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
-                 axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
-                 axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
-                 panel.background =  ggplot2::element_blank(),
-                 plot.background =  ggplot2::element_blank(),
-                 axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
-                 legend.position = "none")
+           plotObj <- ggplot2::ggplot() +
+             ggplot2::geom_line(data = plotdat, mapping =  ggplot2::aes(x = time, y = totinfxns, group = sim), alpha = 0.25,
+                                lwd = 0.5, color = "#d9d9d9") +
+             ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
+             ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
+             ggplot2::facet_wrap(. ~ chain) +
+             ggplot2::theme_minimal() +
+             ggplot2::theme(
+               plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               plot.subtitle =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
+               axis.title =  ggplot2::element_text(family = "Helvetica", face = "bold", hjust = 0.5, vjust = 0.5, size = 16),
+               axis.text.x =  ggplot2::element_text(family = "Helvetica", angle = 45, hjust = 0.5, vjust = 0.5, size = 15),
+               axis.text.y =  ggplot2::element_text(family = "Helvetica", hjust = 0.5, vjust = 0.5, size = 15),
+               panel.background =  ggplot2::element_blank(),
+               plot.background =  ggplot2::element_blank(),
+               axis.line =  ggplot2::element_line(color = "#000000", size = 1.2),
+               legend.position = "none")
          },
          # not by chain but by strata
          "FALSE-TRUE"={
            plotdat <- mcmcout.nodes %>%
              dplyr::select(c("chain",
+                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
                              IFRmodel_inf$inputs$IFRmodel$modparam,
                              IFRmodel_inf$inputs$IFRmodel$sodparam,
-                             IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
                              "infxncurves")) %>%
              dplyr::group_by(chain) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              dplyr::ungroup(chain) %>%
              tidyr::unnest(cols = "infxncurves")
-           # downsize for what is needed in ggplot vs. returrn
+           # downsize for what is needed in ggplot vs. return
            plotdat_sm <- plotdat %>%
              dplyr::select(c("time", "sim", dplyr::starts_with("infxns_"))) %>%
              magrittr::set_colnames(gsub("infxns_", "", colnames(.))) %>%
-             tidyr::gather(., key = "Strata", value = "infxns", 3:ncol(.))
+             tidyr::pivot_longer(., cols = -c("time", "sim"), names_to = "Strata", values_to = "infxns")
            if( !is.null(IFRmodel_inf$inputs$IFRmodel$IFRdictkey) ) {
              # set up dictionary key to be ageband, regions, etc.
              IFRdictkey <- IFRmodel_inf$inputs$IFRmodel$IFRdictkey
@@ -395,15 +522,10 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
          # not by chain, not by strata
          "FALSE-FALSE"={
            plotdat <- mcmcout.nodes %>%
-             dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                             IFRmodel_inf$inputs$IFRmodel$sodparam,
+             dplyr::select(c("infxncurves",
                              IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                             IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                             IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                             IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                             IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                             "infxncurves")) %>%
+                             IFRmodel_inf$inputs$IFRmodel$modparam,
+                             IFRmodel_inf$inputs$IFRmodel$sodparam)) %>%
              dplyr::mutate(sim = 1:dplyr::n()) %>%
              tidyr::unnest(cols = "infxncurves") %>%
              dplyr::mutate(totinfxns = rowSums(dplyr::select(., dplyr::starts_with("infxns_"))))
@@ -538,7 +660,7 @@ posterior_check_infxns_to_death <- function(IFRmodel_inf, whichrung = "rung1",
 
 
 
-#' ' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
+#' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 #' @details Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
 #' @inheritParams get_cred_intervals
 #' @param dwnsmpl integer; Number of posterior results to draw -- weighted by posterior prob
@@ -564,10 +686,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   mcmcout.nodes <- mcmcout.nodes %>%
     dplyr::mutate(logposterior = loglikelihood + logprior)
   # Log-Sum-Exp trick
-  convert_post_probs <- function(logpost) {
-    exp(logpost - (log(sum(exp(logpost - max(logpost)))) + max(logpost)))
-  }
-  probs <- convert_post_probs(mcmcout.nodes$logposterior)
+  probs <- COVIDCurve:::convert_post_probs(mcmcout.nodes$logposterior)
   # downsample
   dwnsmpl_rows <- sample(1:nrow(mcmcout.nodes), size = dwnsmpl,
                          prob = probs)
@@ -579,120 +698,147 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   #......................
   # internal function, liftover cpp likelihood to get infxn curve
   # NOTE, this is extremely sensitive to the placements of the Cpp source file and therefore, is not generalizable
-  fitcurve_string <- COVIDCurve:::make_user_Agg_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+  fitcurve_string <- COVIDCurve:::make_user_Age_loglike(IFRmodel = IFRmodel_inf$inputs$IFRmodel,
+                                                        account_serorev = IFRmodel_inf$inputs$account_seroreversion,
+                                                        binomial_likelihood = IFRmodel_inf$inputs$binomial_likelihood,
                                                         reparamIFR = FALSE,
                                                         reparamKnots = FALSE,
-                                                        reparamInfxn = FALSE,
-                                                        reparamSeros = FALSE,
-                                                        reparamNe = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
+                                                        reparamInfxn = FALSE) #NOTE, must be false because we re-parameterized the posterior already if reparameterization was requested (and if not, not needed)
   # pull out pieces I need
   fitcurve_start <- stringr::str_split_fixed(fitcurve_string, "const double OVERFLO_DOUBLE = DBL_MAX/100.0;", n = 2)[,1]
   fitcurve_start <- sub("SEXP", "Rcpp::List", fitcurve_start)
   fitcurve_curve <- stringr::str_split_fixed(fitcurve_string, "if \\(nodex_pass\\) \\{", n = 2)[,2]
-  fitcurve_curve <- stringr::str_replace(fitcurve_curve, "if \\(cum_infxn_check <= popN\\) \\{", "")
-  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<std::vector<double>> sero_con_num\\(n_sero_obs, std::vector<double>\\(stratlen\\)\\);", n = 2)[,1]
-  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
-                           "std::vector<std::vector<double>> full_sero_con_num(days_obsd, std::vector<double>(stratlen));
-                            std::vector<std::vector<double>> RGfull_sero_con_num(days_obsd, std::vector<double>(stratlen));
-                            // get cumulative hazard for study period
-                            std::vector<double> cum_hazard(days_obsd);
-                            for (int d = 0; d < days_obsd; d++) {
-                              cum_hazard[d] = 1-exp((-(d+1)/sero_rate));
-                            }
+  fitcurve_curve <- stringr::str_replace(fitcurve_curve, "  if \\(popN_pass\\) \\{", "")
+  fitcurve_curve <- stringr::str_split_fixed(fitcurve_curve, "std::vector<double> cum_serocon_hazard\\(max_seroday_obsd\\);", n = 2)[,1]
 
-                            for (int i = 0; i < days_obsd; i++) {
-                              for (int j = 0; j < stratlen; j++) {
-                                // loop through and split infection curve by strata and by number of seroconversion study period
-                                // note this cumulative, so loop through previous days
-                                for (int d = 0; d <= i; d++) {
-                                  int time_elapsed = days_obsd - d - 1;
-                                  full_sero_con_num[i][j] += infxn_spline[d] * ne[j] * cum_hazard[time_elapsed];
+  # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
+  fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
+                           "std::vector<double> cum_serocon_hazard(days_obsd);
+                           for (int d = 0; d < days_obsd; d++) {
+                             cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+                           }
+                            std::vector<double> cum_serorev_hazard(days_obsd);
+                           if (account_serorev) {
+                             for (int d = 0; d < days_obsd; d++) {
+                               cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+                             }
+                           } else {
+                             std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
+                           }
+                           std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
+                            for (int a = 0; a < stratlen; a++) {
+                              for (int i = 0; i < days_obsd; i++) {
+                                for (int j = i+1; j < (days_obsd + 1); j++) {
+                                  int time_elapsed = j - i - 1;
+                                  sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
+                                   sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
                                 }
                               }
                             }
-
-                            // correct for spec/sens
+                           std::vector<std::vector<double>> crude_seroprev(days_obsd, std::vector<double>(stratlen));
+                           std::vector<std::vector<double>> RG_seroprev(days_obsd, std::vector<double>(stratlen));
                             for (int i = 0; i < days_obsd; i++) {
                               for (int j = 0; j < stratlen; j++) {
-                                // Rogan-Gladen Estimator
-                                double obs_prev = (full_sero_con_num[i][j]/demog[j]) * (spec + (sens-1)) - (spec-1);
-                                RGfull_sero_con_num[i][j] = round(obs_prev * demog[j]);
+                                crude_seroprev[i][j] = (sero_con_num_full[i][j]/demog[j]);
+                                RG_seroprev[i][j] = sens*crude_seroprev[i][j] + (1-spec)*(1-crude_seroprev[i][j]);
                               }
                             }",
-                           "Rcpp::List ret = Rcpp::List::create(full_sero_con_num,  RGfull_sero_con_num); return ret;}",
+                           "Rcpp::List ret = Rcpp::List::create(sero_con_num_full, crude_seroprev,  RG_seroprev); return ret;}",
                            collapse = "")
   Rcpp::cppFunction(fitcurve_string)
 
   #......................
   # inputs needed for cpp function
   #......................
-  misc_list = list(rho = IFRmodel_inf$inputs$IFRmodel$rho,
-                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
-                   rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
+  # misc list
+  misc_list = list(rcensor_day = IFRmodel_inf$inputs$IFRmodel$rcensor_day,
                    days_obsd = IFRmodel_inf$inputs$IFRmodel$maxObsDay,
-                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams)+1,
-                   n_sero_obs = length(IFRmodel_inf$inputs$IFRmodel$Serodayparams))
+                   n_knots = length(IFRmodel_inf$inputs$IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
+                   n_sero_obs = length(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroEndSurvey),
+                   demog = IFRmodel_inf$inputs$IFRmodel$demog$popN,
+                   account_serorev = IFRmodel_inf$inputs$account_seroreversion)
+  # data in
+  if (IFRmodel_inf$inputs$binomial_likelihood) {
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologypos = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPos,
+                  obs_serologyn = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroN)
+  } else {
+    # logit-normal transformation for likelihood
+    IFRmodel_inf$inputs$IFRmodel$data$obs_serology <- IFRmodel_inf$inputs$IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96) )
 
-  datin <- list("obs_deaths" = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
-                "obs_serology" = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroPrev)
+    datin <- list(obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$Deaths,
+                  prop_strata_obs_deaths = IFRmodel_inf$inputs$IFRmodel$data$prop_deaths$PropDeaths,
+                  obs_serologymu = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroMu,
+                  obs_serologysigma = IFRmodel_inf$inputs$IFRmodel$data$obs_serology$SeroSE)
+  }
 
 
   #......................
   # split, run, recombine
   #......................
-  cpp_function_wrapper <- function(params, data, misc) {
+  cpp_function_wrapper <- function(params, datin, misc) {
+    # params in
+    if (misc_list$account_serorev) {
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+    } else {
+      serotestparams <- c("spec", "sens", "sero_con_rate")
+    }
+
+
     paramsin <- unlist(params[c(IFRmodel_inf$inputs$IFRmodel$modparam,
                                 IFRmodel_inf$inputs$IFRmodel$sodparam,
                                 IFRmodel_inf$inputs$IFRmodel$IFRparams,
                                 IFRmodel_inf$inputs$IFRmodel$Infxnparams,
                                 IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                                IFRmodel_inf$inputs$IFRmodel$Serodayparams,
+                                serotestparams,
                                 IFRmodel_inf$inputs$IFRmodel$Noiseparams)])
+
 
     seroprev_lists <- loglike(params = paramsin,
                               param_i = 1,
                               data = datin,
                               misc = misc_list)
 
-    inf_sero_con_num <- seroprev_lists[[1]] %>%
+    sero_counts <- seroprev_lists[[1]] %>%
       do.call("rbind.data.frame", .) %>%
-      magrittr::set_colnames(paste0("inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      magrittr::set_colnames(paste0("serocounts_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
-    RG_sero_con_num <- seroprev_lists[[2]] %>%
+    crude_seroprev <- seroprev_lists[[2]] %>%
       do.call("rbind.data.frame", .) %>%
-      magrittr::set_colnames(paste0("RG_inf_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      magrittr::set_colnames(paste0("crude_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
       dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
       dplyr::select(c("ObsDay", dplyr::everything()))
 
+    RG_seroprev <- seroprev_lists[[3]] %>%
+      do.call("rbind.data.frame", .) %>%
+      magrittr::set_colnames(paste0("RG_pd_seroprev_", IFRmodel_inf$inputs$IFRmodel$IFRparams)) %>%
+      dplyr::mutate(ObsDay = sort(unique(IFRmodel_inf$inputs$IFRmodel$data$obs_deaths$ObsDay))) %>%
+      dplyr::select(c("ObsDay", dplyr::everything()))
 
-    ret <- dplyr::left_join(inf_sero_con_num, RG_sero_con_num, by = "ObsDay")
+    # out
+    ret <- dplyr::left_join(sero_counts, crude_seroprev, by = "ObsDay") %>%
+      dplyr::left_join(., RG_seroprev, by = "ObsDay")
     return(ret)
 
   }
 
   mcmcout.node.rows <- split(mcmcout.nodes, 1:nrow(mcmcout.nodes))
   mcmcout.nodes$seroprev <- purrr::map(mcmcout.node.rows, cpp_function_wrapper,
-                                       data = datin, misc = misc_list)
+                                       datin = datin, misc = misc_list)
 
   #......................
   # tidy
   #......................
-  # keep params around for convenience
   if (by_chain) {
     dat <- mcmcout.nodes %>%
-      dplyr::select(c("chain",
-                      IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select(c("chain", "seroprev")) %>%
       dplyr::group_by(chain) %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
@@ -702,15 +848,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   } else {
     # keep params around for convenience
     dat <- mcmcout.nodes %>%
-      dplyr::select(c(IFRmodel_inf$inputs$IFRmodel$modparam,
-                      IFRmodel_inf$inputs$IFRmodel$sodparam,
-                      IFRmodel_inf$inputs$IFRmodel$IFRparams,
-                      IFRmodel_inf$inputs$IFRmodel$Knotparams,
-                      IFRmodel_inf$inputs$IFRmodel$Infxnparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serotestparams,
-                      IFRmodel_inf$inputs$IFRmodel$Serodayparams,
-                      IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                      "seroprev")) %>%
+      dplyr::select("seroprev") %>%
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       tidyr::unnest(cols = "seroprev")
   }

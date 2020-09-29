@@ -1,16 +1,17 @@
 #' @title Run Aggregate Model
 #' @details Wraps the Metropolic-Coupled MCMC Framework from Dr. Jacoby
 #' @inheritParams drjacoby::run_mcmc
+#' @param binomial_likelihood logical; Whether the binomial or the logit likelihood should be used
 #' @param IFRmodel R6 class; Internal model object for COVIDCurve
-#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred seperately
-#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred seperately
-#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred seperately
-#' @param reparamSeros logical; Whether the numerous correlation serology paratmers should be reparameterized (mean offset-to-death is scaled by 1/specificity, attack rate noise vector is scaled by 1/specificity, and the seroconversion rate delay is recast as function of the mean offset-to-death) or inferred seperately
-#' @param reparamNe logical; Whether "noise scalar effects" should be reparameterized or inferred seperately (if TRUE, considered relateve to Ne1)
+#' @param reparamIFR logical; Whether IFRs should be reparameterized or inferred separately
+#' @param reparamKnots logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately
+#' @param reparamInfxn logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately
 #' @param thinning integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).
 #' @export
 
-run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE, reparamSeros = TRUE, reparamNe = TRUE,
+run_IFRmodel_age <- function(IFRmodel,
+                             binomial_likelihood = TRUE,
+                             reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
                              burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
                              rungs = 1, GTI_pow = 3, coupling_on = TRUE,
                              cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
@@ -21,8 +22,6 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_logical(reparamIFR)
   assert_logical(reparamInfxn)
   assert_logical(reparamKnots)
-  assert_logical(reparamSeros)
-  assert_logical(reparamNe)
   assert_numeric(burnin)
   assert_numeric(samples)
   assert_numeric(chains)
@@ -36,50 +35,42 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   assert_non_null(IFRmodel$Infxnparams)
   assert_non_null(IFRmodel$Knotparams)
   assert_non_null(IFRmodel$paramdf)
-  assert_non_null(IFRmodel$rho)
   assert_non_null(IFRmodel$Serotestparams)
-  assert_non_null(IFRmodel$Serodayparams)
-  assert_non_null(IFRmodel$Noiseparams)
   assert_non_null(IFRmodel$modparam)
   assert_non_null(IFRmodel$sodparam)
   assert_non_null(IFRmodel$maxObsDay)
   assert_non_null(IFRmodel$demog)
   assert_eq(as.character(IFRmodel$demog$Strata),
-            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            as.character(IFRmodel$data$prop_deaths$Strata[1:length(IFRmodel$IFRparams)]),
             message = "Strata within the demography data-frame must be in the same order as the strata in the observed deaths data frame")
   assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
-            as.character(IFRmodel$data$obs_deaths$Strata[1:length(IFRmodel$IFRparams)]),
+            as.character(IFRmodel$data$prop_deaths$Strata[1:length(IFRmodel$IFRparams)]),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in the observed deaths data frame")
   assert_eq(as.character(IFRmodel$data$obs_serology$Strata[1:length(IFRmodel$IFRparams)]),
             as.character(IFRmodel$demog$Strata),
             message = "Strata within the observed serology data-frame must be in the same order as the strata in thedemography data frame")
+  # catch missing data
+  if (binomial_likelihood) {
+    if( any(c(is.na(IFRmodel$data$obs_serology$SeroPos), is.na(IFRmodel$data$obs_serology$SeroN))) ) {
+      stop("Cannot have missing values of SeroPos or SeroN when considering the binomial likelihood")
+    }
+  } else {
+    if( any(c(is.na(IFRmodel$data$obs_serology$SeroPrev), is.na(IFRmodel$data$obs_serology$SeroUCI), is.na(IFRmodel$data$obs_serology$SeroLCI))) ) {
+      stop("Cannot have missing values of SeroPrev, SeroUCI, or SeroLCI when considering the logit likelihood")
+    }
+  }
+  if (any(is.na(IFRmodel$data$prop_deaths$PropDeaths))) {
+    stop("Cannot have missing proportions of cumulative deaths")
+  }
 
-  #............................................................
-  # "Warm-Up" MCMC
-  #...........................................................
-  warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
-  names(warmdf_params) <- c("name", "min", "max", "init")
-  warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-  warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-  warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)),
-                               df_params = warmdf_params,
-                               misc = list(),
-                               loglike = warmloglike,
-                               logprior = warmlogprior,
-                               burnin = 1,
-                               samples = 1,
-                               chains = 1,
-                               rungs = 1,
-                               silent = T)
-
+  if (any(is.na(IFRmodel$data$obs_deaths$Deaths))) {
+    warning("Missing daily deaths -- will skip over in likelihood")
+  }
 
   #..............................................................
-  # unpack object
+  # catches
   #..............................................................
 
-  #..................
-  # Get loglike and logprior
-  #..................
   if (reparamIFR) {
     assert_non_null(IFRmodel$maxMa, message = "If performing reparameterization, must set a maximum Ma in the R6 class object")
   }
@@ -92,30 +83,72 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
 
-  logpriorfunc <- COVIDCurve:::make_user_Agg_logprior(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros, reparamNe = reparamNe)
-  loglikfunc <- COVIDCurve:::make_user_Agg_loglike(IFRmodel, reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots, reparamSeros = reparamSeros, reparamNe = reparamNe)
+  # catch seroreversion
+  if( all(c("sero_rev_scale", "sero_rev_shape") %in% IFRmodel$Serotestparams) ) {
+    account_serorev <- TRUE
+  } else {
+    account_serorev <- FALSE
+  }
+
+  #..................
+  # use R to write Cpp prior and likelihood
+  # and make data list
+  # dependent on binomial or logit likelihood
+  #..................
+  logpriorfunc <- COVIDCurve:::make_user_Age_logprior(IFRmodel,
+                                                      account_serorev = account_serorev,
+                                                      reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
+  loglikfunc <- COVIDCurve:::make_user_Age_loglike(IFRmodel,
+                                                   binomial_likelihood = binomial_likelihood,
+                                                   account_serorev = account_serorev,
+                                                   reparamIFR = reparamIFR, reparamInfxn = reparamInfxn, reparamKnots = reparamKnots)
+
+
+
+  #......................
+  # catch user missing data -- liftover for Cpp
+  #......................
+  IFRmodel$data$obs_deaths$Deaths[is.na(IFRmodel$data$obs_deaths$Deaths)] <- -1
+  #..................
+  # make data list
+  #..................
+  if (binomial_likelihood) {
+    data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                      prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                      obs_serologypos = IFRmodel$data$obs_serology$SeroPos,
+                      obs_serologyn = IFRmodel$data$obs_serology$SeroN)
+  } else {
+    # logit-normal transformation for likelihood
+    IFRmodel$data$obs_serology <- IFRmodel$data$obs_serology %>%
+      dplyr::mutate(SeroSE = (COVIDCurve:::logit(SeroUCI) - COVIDCurve:::logit(SeroLCI)) / (2*1.96),
+                    SeroMu = COVIDCurve:::logit(SeroPrev))
+
+    data_list <- list(obs_deaths = IFRmodel$data$obs_deaths$Deaths,
+                      prop_strata_obs_deaths = IFRmodel$data$prop_deaths$PropDeaths,
+                      obs_serologymu = IFRmodel$data$obs_serology$SeroMu,
+                      obs_serologyse = IFRmodel$data$obs_serology$SeroSE)
+  }
+
 
   #..................
   # make misc
   #..................
-  misc_list = list(rho = IFRmodel$rho,
-                   rcensor_day = IFRmodel$rcensor_day,
+  misc_list = list(rcensor_day = IFRmodel$rcensor_day,
                    days_obsd = IFRmodel$maxObsDay,
                    n_knots = length(IFRmodel$Knotparams) + 1, # +1 because we set an internal knot for pos 1
-                   n_sero_obs = length(IFRmodel$Serodayparams),
-                   demog = IFRmodel$demog$popN)
-  #..................
-  # make data list
-  #..................
-  data_list <- split(IFRmodel$data$obs_deaths$Deaths, factor(IFRmodel$data$obs_deaths$ObsDay))
-  data_list <- unname(unlist(data_list))
-  data_list <- list(obs_deaths = data_list,
-                    obs_serology = IFRmodel$data$obs_serology$SeroPrev)
+                   n_sero_obs = length(unique(IFRmodel$data$obs_serology$SeroStartSurvey)),
+                   sero_survey_start = unique(IFRmodel$data$obs_serology$SeroStartSurvey),
+                   sero_survey_end = unique(IFRmodel$data$obs_serology$SeroEndSurvey),
+                   max_seroday_obsd = max(IFRmodel$data$obs_serology$SeroEndSurvey),
+                   demog = IFRmodel$demog$popN,
+                   account_serorev = account_serorev)
 
   #..................
   # make df param
   #..................
+  # columns 5 & 6 used for prior distributions
   df_params <-  IFRmodel$paramdf[, 1:4]
+
 
   #..............................................................
   # Dr Jacoby
@@ -145,15 +178,13 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
       dplyr::filter(iteration %in% keepiters) %>%
       dplyr::ungroup(.)
   }
-  #..................
-  # account for noise vector reparam
-  #..................
-  Noiseparams <- IFRmodel$Noiseparams
+
+  #......................
+  # account for reparameterizations
+  #......................
 
   if (reparamIFR) {
-    #..................
     # account for ifr reparam
-    #..................
     IFRparams <- IFRmodel$IFRparams
     maxMa <- IFRmodel$maxMa
     scalars <- IFRparams[IFRparams != maxMa]
@@ -165,9 +196,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   }
 
   if (reparamKnots) {
-    #..................
     # account for knots (infxn X position) reparam
-    #..................
     Knotparams <- IFRmodel$Knotparams
     relKnot <- IFRmodel$relKnot
     scalars <- Knotparams[Knotparams != relKnot]
@@ -179,9 +208,7 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
   }
 
   if (reparamInfxn) {
-    #..................
     # account for Infxn Y position reparam
-    #..................
     Infxnparams <- IFRmodel$Infxnparams
     relInfxn <- IFRmodel$relInfxn
     scalars <- Infxnparams[Infxnparams != relInfxn]
@@ -192,39 +219,26 @@ run_IFRmodel_agg <- function(IFRmodel, reparamIFR = TRUE, reparamInfxn = TRUE, r
     mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, relInfxn]})
   }
 
-  if (reparamSeros) {
-    #......................
-    # reparameterize serology params
-    #......................
-    mcmcout$output[, IFRmodel$modparam] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam]))
-    mcmcout$output[, Noiseparams[1]] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, Noiseparams[1]]))
-    mcmcout$output[, "sero_rate"] <- unname(unlist(1/mcmcout$output[, "spec"] * mcmcout$output[, IFRmodel$modparam] * mcmcout$output[, "sero_rate"]))
-  }
 
-  #......................
-  # reparameterize noise parameters
-  # NB, must do this after potential recasting by reparam seros
-  #......................
-  liftovercols <- Noiseparams[2:length(Noiseparams)]
-  liftovercols.list <- mcmcout$output[, liftovercols]
-  liftovercols.list <- lapply(colnames(liftovercols.list), function(x){liftovercols.list[,x]})
-  mcmcout$output[, liftovercols] <- sapply(liftovercols.list, function(x) {x * mcmcout$output[, Noiseparams[1]]})
-
-  # store input along with Dr.Jacoby output for later use
+  # store MCMC input along with Dr.Jacoby output for later use
   inputs <- list(
     IFRmodel = IFRmodel,
     reparamIFR = reparamIFR,
     reparamInfxn = reparamInfxn,
     reparamKnots = reparamKnots,
+    account_seroreversion = account_serorev,
+    binomial_likelihood = binomial_likelihood,
     burnin = burnin,
     samples = samples,
     chains = chains)
+
   if (rungs > 1) {
     inputs <- append(inputs, list(rungs = rungs,
                                   GTI_pow = GTI_pow,
                                   coupling_on = coupling_on))
   }
 
+  # out
   ret <- list(
     inputs = inputs,
     mcmcout = mcmcout

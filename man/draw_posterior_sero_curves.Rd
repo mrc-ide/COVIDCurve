@@ -2,7 +2,7 @@
 % Please edit documentation in R/summarize_plot.R
 \name{draw_posterior_sero_curves}
 \alias{draw_posterior_sero_curves}
-\title{' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator}
+\title{Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator}
 \usage{
 draw_posterior_sero_curves(
   IFRmodel_inf,
@@ -21,7 +21,7 @@ draw_posterior_sero_curves(
 \item{by_chain}{logical; Whether or not credible intervals should be reported with respect to individual chains (TRUE) or not.}
 }
 \description{
-' @title Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
+Draw the Inferred Seropevalence Curves both Adjusted and Unadjusted for Specificity and Sensitivity with the Rogan-Gladen Estimator
 }
 \details{
 Given sampling iterations with posterior-log-likes greater than or equal to a specific threshold, posterior results for the linear spline are generated. Assumed that the spline was fit in "un-transformed" space
