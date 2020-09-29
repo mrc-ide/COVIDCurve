@@ -67,6 +67,8 @@ make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                        assert_dataframe(data$prop_deaths)
                                        assert_in(x = colnames(data$prop_deaths), y = c("Strata", "PropDeaths"))
                                        assert_bounded(data$prop_deaths$PropDeaths, left = 0, right = 1)
+                                       assert_eq(sum(data$prop_deaths$PropDeaths), 1,
+                                                 message = c("Proportion of deaths by strata must sum to 1"))
                                        assert_in(data$prop_deaths$Strata, IFRparams)
 
                                        # L3
@@ -295,6 +297,8 @@ make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                      assert_in(x = colnames(val$prop_deaths), y = c("Strata", "PropDeaths"))
                                      assert_bounded(val$prop_deaths$PropDeaths, left = 0, right = 1)
                                      assert_in(val$prop_deaths$Strata, self$IFRparams)
+                                     assert_eq(sum(val$prop_deaths$PropDeaths), 1,
+                                               message = c("Proportion of deaths by strata must sum to 1"))
                                      # L3
                                      assert_dataframe(val$obs_serology)
                                      assert_in(colnames(val$obs_serology), c("SeroStartSurvey", "SeroEndSurvey", "Strata", "SeroPos", "SeroN", "SeroPrev", "SeroLCI", "SeroUCI"))
