@@ -111,7 +111,7 @@ sim_seroprev <- function(sero_line_list,
 Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
-                                 simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
+                                 simulate_seroreversion, sero_rev_rate = NULL,
                                  smplfrac = 1, return_linelist = FALSE){
 
   #..................
@@ -188,7 +188,7 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
                            sero_delay_rate = sero_delay_rate,
-                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
+                           simulate_seroreversion = simulate_seroreversion, sero_rev_rate = sero_rev_rate,
                            smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
 
