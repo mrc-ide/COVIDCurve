@@ -15,8 +15,7 @@ Agesim_infxn_2_death(
   demog,
   sero_delay_rate,
   simulate_seroreversion,
-  sero_rev_shape = NULL,
-  sero_rev_scale = NULL,
+  sero_rev_rate = NULL,
   smplfrac = 1,
   return_linelist = FALSE
 )
@@ -42,9 +41,7 @@ Agesim_infxn_2_death(
 
 \item{simulate_seroreversion}{logical; Whether seroreversion (due to waning of antibodies) should be simulated or not}
 
-\item{sero_rev_shape}{double; The shape parameter of the Weibull seroreversion distribution}
-
-\item{sero_rev_scale}{double; The scale parameter of the Weibull seroreversion distribution}
+\item{sero_rev_rate}{double; The rate parameter of the exponential seroreversion distribution}
 
 \item{smplfrac}{numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)}
 

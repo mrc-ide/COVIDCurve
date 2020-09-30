@@ -23,8 +23,7 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
   // sero conversion rate
   double sero_con_rate = params["sero_con_rate"];
   // sero reversion
-  double sero_rev_shape = params["sero_rev_shape"];
-  double sero_rev_scale = params["sero_rev_scale"];
+  double sero_rev_rate = params["sero_rev_rate"];
 
   // death delay params
   double mod = params["mod"];
@@ -236,29 +235,37 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
 
       // extract observed data
       std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_strata_obs_deaths"]);
+      double paobsd_sum = 0.0;
       for (int a = 0; a < stratlen; a++) {
-        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a], true);
+        // this will always equal 1 per upstream check -- but for clarity
+        paobsd_sum += paobsd[a];
+      }
+      // using internal chained binomial function for multinomial
+      // NB, upstream catches to make sure probability vector is valid
+      // X vector is created above and can be safely modified in place below
+      for (int a = 0; a < (stratlen - 1); a++) {
+        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a]/paobsd_sum, true);
+        texpd -= strata_expd[a];
+        paobsd_sum -= paobsd[a];
       }
 
       //........................................................
       // Serology Section
       //........................................................
-      // get cumulative hazard for each day up to the latest serology observation date
-      // i.e. cumulative hazard of seroconversion on given day look up table
+      // Look up tables for cumulative hazard on each day ; vector length is up to the latest serology observation date
       std::vector<double> cum_serocon_hazard(max_seroday_obsd);
-      for (int d = 0; d < max_seroday_obsd; d++) {
-        cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
-      }
-
-      // get cumulative hazard sero-reversion on given day via a lookup table
-      std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+      // flag determines if we considered seroreversion or not
+      // get cumulative hazard seroconversion-followed-by-reversion on given day
       if (account_serorev) {
         for (int d = 0; d < max_seroday_obsd; d++) {
-          cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+          cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate + sero_con_rate)) *
+                                  (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
         }
       } else {
-        // if not account for serorev, fill with zeroes
-        std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
+        // i.e. cumulative hazard of seroconversion on given day -- no seroreversion considered
+        for (int d = 0; d < max_seroday_obsd; d++) {
+          cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+        }
       }
 
 
@@ -271,7 +278,6 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
           for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
             int time_elapsed = j - i - 1;
             sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
-            sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
           }
         }
       }

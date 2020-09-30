@@ -10,8 +10,7 @@ sim_seroprev <- function(sero_line_list,
                          smplfrac,
                          sero_delay_rate,
                          simulate_seroreversion,
-                         sero_rev_shape,
-                         sero_rev_scale,
+                         sero_rev_rate,
                          demog,
                          fatalitydata,
                          curr_day) {
@@ -24,7 +23,7 @@ sim_seroprev <- function(sero_line_list,
 
   if (simulate_seroreversion) {
     # draw time from seroconversion to seroreversion
-    sero_line_list$otsr <- stats::rweibull(n = nrow(sero_line_list), shape = sero_rev_shape, scale = sero_rev_scale)
+    sero_line_list$otsr <- stats::rexp(n = nrow(sero_line_list), rate = 1/sero_rev_rate)
     # observed time of seroreversion
     sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + sero_line_list$otsr
   } else {
@@ -48,7 +47,7 @@ sim_seroprev <- function(sero_line_list,
   #......................
   sero_line_list_sampl <- sero_line_list %>%
     dplyr::filter(!is.na(ObsDaySeroCon))   # drop "future" seroconversions
-  keeprows <- as.logical(rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
+  keeprows <- as.logical(stats::rbinom(n = nrow(sero_line_list_sampl), size = 1, prob = smplfrac))
   sero_line_list_sampl <- sero_line_list_sampl[keeprows, ]
   # get serotested after sampling fraction
   serotested <- tibble::tibble(Strata = fatalitydata$Strata,
@@ -103,8 +102,7 @@ sim_seroprev <- function(sero_line_list,
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @param simulate_seroreversion logical; Whether seroreversion (due to waning of antibodies) should be simulated or not
-#' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
-#' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution
+#' @param sero_rev_rate double; The rate parameter of the exponential seroreversion distribution
 #' @param smplfrac numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)
 #' @param return_linelist logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.
 #' @importFrom magrittr %>%
@@ -113,7 +111,7 @@ sim_seroprev <- function(sero_line_list,
 Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
-                                 simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
+                                 simulate_seroreversion, sero_rev_rate = NULL,
                                  smplfrac = 1, return_linelist = FALSE){
 
   #..................
@@ -190,7 +188,7 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
                            sero_delay_rate = sero_delay_rate,
-                           simulate_seroreversion = simulate_seroreversion, sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
+                           simulate_seroreversion = simulate_seroreversion, sero_rev_rate = sero_rev_rate,
                            smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
 
@@ -201,12 +199,12 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   death_line_list <- dplyr::left_join(infxn_line_list, fatalitydata, by = "Strata")
   # draw deaths among infected
   death_line_list <- death_line_list %>%
-    dplyr::mutate(dies = purrr::map_int(IFR, function(x){rbinom(n = 1, size = 1, prob = x)})) %>%
+    dplyr::mutate(dies = purrr::map_int(IFR, function(x){stats::rbinom(n = 1, size = 1, prob = x)})) %>%
     dplyr::filter(dies == 1) %>%
     dplyr::select(-c("dies"))
 
   # simulate onset of infection to death
-  death_line_list$otd <- rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
+  death_line_list$otd <- stats::rgamma(nrow(death_line_list), shape = 1/s_od^2, scale = m_od*s_od^2)
   # simulate time of death -- note, we have a discrete day + a continuous time -- but allow it to happen on the day it was observed
   death_line_list$tod <- (as.numeric(death_line_list$doi)-1) + death_line_list$otd
 

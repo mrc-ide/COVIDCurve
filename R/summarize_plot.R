@@ -143,14 +143,14 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
     dplyr::group_by_at(groupingvar) %>%
     dplyr::summarise(
       min = min(est),
-      LCI = quantile(est, 0.025),
-      median = median(est),
+      LCI = stats::quantile(est, 0.025),
+      median = stats::median(est),
       mean = mean(est),
-      UCI = quantile(est, 0.975),
+      UCI = stats::quantile(est, 0.975),
       max = max(est),
       ESS = coda::effectiveSize(coda::as.mcmc(est)),
       GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
-      GewekeP = dnorm(GewekeZ)
+      GewekeP = stats::dnorm(GewekeZ)
     )
 }
 
@@ -218,28 +218,28 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
       dplyr::group_by(chain) %>%
       dplyr::summarise(
         min = min(est),
-        LCI = quantile(est, 0.025),
-        median = median(est),
+        LCI = stats::quantile(est, 0.025),
+        median = stats::median(est),
         mean = mean(est),
-        UCI = quantile(est, 0.975),
+        UCI = stats::quantile(est, 0.975),
         max = max(est),
         ESS = coda::effectiveSize(coda::as.mcmc(est)),
         GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
-        GewekeP = dnorm(GewekeZ)
+        GewekeP = stats::dnorm(GewekeZ)
       )
   } else {
     ret %>%
       dplyr::ungroup(.) %>%
       dplyr::summarise(
         min = min(est),
-        LCI = quantile(est, 0.025),
-        median = median(est),
+        LCI = stats::quantile(est, 0.025),
+        median = stats::median(est),
         mean = mean(est),
-        UCI = quantile(est, 0.975),
+        UCI = stats::quantile(est, 0.975),
         max = max(est),
         ESS = coda::effectiveSize(coda::as.mcmc(est)),
         GewekeZ = coda::geweke.diag(coda::as.mcmc(est))[[1]],
-        GewekeP = dnorm(GewekeZ)
+        GewekeP = stats::dnorm(GewekeZ)
       )
   }
 
