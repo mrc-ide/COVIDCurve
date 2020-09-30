@@ -30,13 +30,12 @@ test_that("likelihood accurate", {
   dat <- COVIDCurve::Agesim_infxn_2_death(
     fatalitydata = fatalitydata,
     demog = demog,
-    m_od = 19.24,
-    s_od = 0.79,
+    m_od = 19.8,
+    s_od = 0.85,
     curr_day = 200,
     infections = infxns$infxns,
     simulate_seroreversion = TRUE,
-    sero_rev_shape = 4.75,
-    sero_rev_scale = 272,
+    sero_rev_rate = 145,
     sens = 0.85,
     spec = 0.95,
     sero_delay_rate = 18.3
@@ -108,7 +107,7 @@ test_that("likelihood accurate", {
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
                            "sens" = 0.85, "spec" = 0.95, "sero_con_rate" = 10,
-                           "sero_rev_scale" = 272, "sero_rev_shape" = 4.75)
+                           "sero_rev_rate" = 145)
 
   #......................
   # binomial
@@ -127,7 +126,7 @@ test_that("likelihood accurate", {
                             "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
                             "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
                             "sens" = 0.85, "spec" = 0.99, "sero_con_rate" = 10,
-                            "sero_rev_scale" = 272, "sero_rev_shape" = 4.75)
+                            "sero_rev_rate" = 160)
 
   lesslikely <- COVIDCurve:::natcubspline_loglike_binomial(params = lesslikely.paramsin,
                                                            param_i = 1,

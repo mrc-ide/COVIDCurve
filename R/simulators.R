@@ -136,8 +136,7 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_bounded(smplfrac, left = 0, right = 1, inclusive_left = FALSE)
   assert_logical(simulate_seroreversion)
   if (simulate_seroreversion) {
-    assert_numeric(sero_rev_shape)
-    assert_numeric(sero_rev_scale)
+    assert_numeric(sero_rev_rate)
   }
 
 
@@ -188,7 +187,8 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   #..................
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
                            sero_delay_rate = sero_delay_rate,
-                           simulate_seroreversion = simulate_seroreversion, sero_rev_rate = sero_rev_rate,
+                           simulate_seroreversion = simulate_seroreversion,
+                           sero_rev_rate = sero_rev_rate,
                            smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
 
