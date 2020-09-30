@@ -33,7 +33,7 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
   #......................
   if (!account_serorev) {
     Serotestparams <- Serotestparams %>%
-      dplyr::filter(!name %in% c("sero_rev_shape", "sero_rev_scale"))
+      dplyr::filter(!name %in% c("sero_rev_rate"))
   }
 
   if (reparamKnots) {
@@ -121,8 +121,7 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
       paste0("R::dnorm(sero_con_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_con_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_con_rate"], ", true) +"),
       paste0("R::dbeta(sens,", Serotestparams$dsc1[Serotestparams$name == "sens"], ",", Serotestparams$dsc2[Serotestparams$name == "sens"], ", true) +"),
       paste0("R::dbeta(spec,", Serotestparams$dsc1[Serotestparams$name == "spec"], ",", Serotestparams$dsc2[Serotestparams$name == "spec"], ", true) +"),
-      paste0("R::dnorm(sero_rev_shape,", Serotestparams$dsc1[Serotestparams$name == "sero_rev_shape"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rev_shape"], ", true) +"),
-      paste0("R::dnorm(sero_rev_scale,", Serotestparams$dsc1[Serotestparams$name == "sero_rev_scale"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rev_scale"], ", true) +")
+      paste0("R::dnorm(sero_rev_rate,", Serotestparams$dsc1[Serotestparams$name == "sero_rev_rate"], ",", Serotestparams$dsc2[Serotestparams$name == "sero_rev_rate"], ", true) +")
     )
   } else {
     makeSerotestpriors <- c(
@@ -263,10 +262,10 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   # extract potential seroreversion parameters
   #......................
   if (account_serorev) {
-    serorevparams <- "double sero_rev_shape = params[\"sero_rev_shape\"]; double sero_rev_scale = params[\"sero_rev_scale\"];"
+    serorevparams <- "double sero_rev_rate = params[\"sero_rev_rate\"];"
   } else {
     # -1 here simply so Cpp see that this parameter is declared. It is not considered due to the if/else loop (and negative shapes are NaN anyways)
-    serorevparams <- "double sero_rev_shape = -1.0; double sero_rev_scale = -1.0;"
+    serorevparams <- "double sero_rev_rate = -1.0;"
   }
 
   #..................
@@ -375,6 +374,7 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   } else {
     loglike <- readLines(system.file("covidcurve", "natcubicspline_loglike_logit.cpp", package = "COVIDCurve", mustWork = TRUE))
   }
+  # NB, this grep is very internal to our package. If you fork and change src cpp file, behavior will change
   loglike_start <- grep("// Assume a uniform attack rate but then allow Ne to rescale", loglike)
   loglike_end <- grep("// return as Rcpp list", loglike)
   loglike <- loglike[loglike_start:loglike_end]

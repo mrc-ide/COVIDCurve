@@ -94,7 +94,7 @@ make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                        assert_unique(Knotparams)
                                        assert_string(Serotestparams)
                                        assert_unique(Serotestparams)
-                                       assert_in(Serotestparams, c("sens", "spec", "sero_con_rate", "sero_rev_shape", "sero_rev_scale"))
+                                       assert_in(Serotestparams, c("sens", "spec", "sero_con_rate", "sero_rev_rate"))
 
                                        # consider Ne if multiple strata
                                        if (length(IFRparams) > 1) {
@@ -270,12 +270,12 @@ make_IFRmodel_age <- R6::R6Class(classname = "IFRmodel",
                                    set_Serotestparams = function(val) {
                                      assert_string(val)
                                      assert_unique(val)
-                                     assert_in(val, c("sens", "spec", "sero_con_rate", "sero_rev_scale", "sero_rev_shape"),
+                                     assert_in(val, c("sens", "spec", "sero_con_rate", "sero_rev_rate"),
                                                message = "Serology test parameters currently limited to specifitiy (spec),
                                                           sensitivity (sens), lambda of the exponentially distributed onset of infection
-                                                          to seroconversion (sero_con_rate), and the scale and shape of a the Weibull
-                                                          distributed rate of serorevetion (sero_rev_scale; sero_rev_shape). Seroreversion
-                                                          parameters can be set to NA if seroreversion should be ignored")
+                                                          to seroconversion (sero_con_rate), and the
+                                                          distributed rate of seroreversion (sero_rev_rate). Seroreversion
+                                                          rate can be excluded if seroreversion should be ignored")
                                      self$Serotestparams <- val
                                    },
 
