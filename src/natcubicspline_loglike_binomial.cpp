@@ -246,32 +246,28 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
       // NB, upstream catches to make sure probability vector is valid
       // X vector is created above and can be safely modified in place below
       for (int a = 0; a < (stratlen - 1); a++) {
-        if (strata_expd[a] > 0) {
-          L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a]/paobsd_sum, true);
-          texpd -= strata_expd[a];
-        }
+        L2deathprop_loglik += R::dbinom(round(strata_expd[a]), round(texpd), paobsd[a]/paobsd_sum, true);
+        texpd -= strata_expd[a];
         paobsd_sum -= paobsd[a];
       }
 
       //........................................................
       // Serology Section
       //........................................................
-      // get cumulative hazard for each day up to the latest serology observation date
-      // i.e. cumulative hazard of seroconversion on given day look up table
+      // Look up tables for cumulative hazard on each day ; vector length is up to the latest serology observation date
       std::vector<double> cum_serocon_hazard(max_seroday_obsd);
-      for (int d = 0; d < max_seroday_obsd; d++) {
-        cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
-      }
-
-      // get cumulative hazard sero-reversion on given day via a lookup table
-      std::vector<double> cum_serorev_hazard(max_seroday_obsd);
+      // flag determines if we considered seroreversion or not
+      // get cumulative hazard seroconversion-followed-by-reversion on given day
       if (account_serorev) {
         for (int d = 0; d < max_seroday_obsd; d++) {
-          cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+          cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate + sero_con_rate)) *
+                                  (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
         }
       } else {
-        // if not account for serorev, fill with zeroes
-        std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
+        // i.e. cumulative hazard of seroconversion on given day -- no seroreversion considered
+        for (int d = 0; d < max_seroday_obsd; d++) {
+          cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+        }
       }
 
 
