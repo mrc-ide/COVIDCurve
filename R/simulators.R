@@ -10,8 +10,7 @@ sim_seroprev <- function(sero_line_list,
                          smplfrac,
                          sero_delay_rate,
                          simulate_seroreversion,
-                         sero_rev_shape,
-                         sero_rev_scale,
+                         sero_rev_rate,
                          demog,
                          fatalitydata,
                          curr_day) {
@@ -24,7 +23,7 @@ sim_seroprev <- function(sero_line_list,
 
   if (simulate_seroreversion) {
     # draw time from seroconversion to seroreversion
-    sero_line_list$otsr <- stats::rweibull(n = nrow(sero_line_list), shape = sero_rev_shape, scale = sero_rev_scale)
+    sero_line_list$otsr <- stats::rexp(n = nrow(sero_line_list), rate = 1/sero_rev_rate)
     # observed time of seroreversion
     sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + sero_line_list$otsr
   } else {
@@ -103,8 +102,7 @@ sim_seroprev <- function(sero_line_list,
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @param simulate_seroreversion logical; Whether seroreversion (due to waning of antibodies) should be simulated or not
-#' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
-#' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution
+#' @param sero_rev_rate double; The rate parameter of the exponential seroreversion distribution
 #' @param smplfrac numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)
 #' @param return_linelist logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.
 #' @importFrom magrittr %>%

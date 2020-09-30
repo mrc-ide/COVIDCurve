@@ -23,8 +23,7 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
   // sero conversion rate
   double sero_con_rate = params["sero_con_rate"];
   // sero reversion
-  double sero_rev_shape = params["sero_rev_shape"];
-  double sero_rev_scale = params["sero_rev_scale"];
+  double sero_rev_rate = params["sero_rev_rate"];
 
   // death delay params
   double mod = params["mod"];
@@ -234,7 +233,6 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
         }
       }
 
-
       // extract observed data
       std::vector<double> paobsd = Rcpp::as< std::vector<double> >(data["prop_strata_obs_deaths"]);
       double paobsd_sum = 0.0;
@@ -280,7 +278,6 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
           for (int j = i+1; j < (max_seroday_obsd + 1); j++) {
             int time_elapsed = j - i - 1;
             sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
-            sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
           }
         }
       }
