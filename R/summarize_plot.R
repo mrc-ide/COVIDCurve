@@ -350,7 +350,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
     # paramsin
     if (misc_list$account_serorev) {
-      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_rate")
     } else {
       serotestparams <- c("spec", "sens", "sero_con_rate")
     }
@@ -714,24 +714,22 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
                            "std::vector<double> cum_serocon_hazard(days_obsd);
-                           for (int d = 0; d < days_obsd; d++) {
-                             cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
-                           }
-                            std::vector<double> cum_serorev_hazard(days_obsd);
-                           if (account_serorev) {
-                             for (int d = 0; d < days_obsd; d++) {
-                               cum_serorev_hazard[d] = 1 - R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
-                             }
-                           } else {
-                             std::fill(cum_serorev_hazard.begin(), cum_serorev_hazard.end(), 0);
-                           }
+                            if (account_serorev) {
+                              for (int d = 0; d < max_seroday_obsd; d++) {
+                                cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate + sero_con_rate)) *
+                                                        (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
+                              }
+                            } else {
+                              for (int d = 0; d < max_seroday_obsd; d++) {
+                                cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
+                              }
+                            }
                            std::vector<std::vector<double>> sero_con_num_full(days_obsd, std::vector<double>(stratlen));
                             for (int a = 0; a < stratlen; a++) {
                               for (int i = 0; i < days_obsd; i++) {
                                 for (int j = i+1; j < (days_obsd + 1); j++) {
                                   int time_elapsed = j - i - 1;
                                   sero_con_num_full[j-1][a] += infxn_spline[i] * ne[a] * cum_serocon_hazard[time_elapsed];
-                                   sero_con_num_full[j-1][a] -= infxn_spline[i] * ne[a] * cum_serorev_hazard[time_elapsed];
                                 }
                               }
                             }
@@ -784,7 +782,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   cpp_function_wrapper <- function(params, datin, misc) {
     # params in
     if (misc_list$account_serorev) {
-      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_rate")
     } else {
       serotestparams <- c("spec", "sens", "sero_con_rate")
     }
