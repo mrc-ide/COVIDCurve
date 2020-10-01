@@ -264,7 +264,7 @@ make_user_Age_loglike <- function(IFRmodel, binomial_likelihood, account_serorev
   if (account_serorev) {
     serorevparams <- "double sero_rev_rate = params[\"sero_rev_rate\"];"
   } else {
-    # -1 here simply so Cpp see that this parameter is declared. It is not considered due to the if/else loop (and negative shapes are NaN anyways)
+    # -1 here simply so Cpp see that this parameter is declared. It is not considered due to the if/else loop
     serorevparams <- "double sero_rev_rate = -1.0;"
   }
 

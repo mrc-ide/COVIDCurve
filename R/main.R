@@ -90,7 +90,7 @@ run_IFRmodel_age <- function(IFRmodel,
   }
 
   # catch seroreversion
-  if( all(c("sero_rev_scale", "sero_rev_shape") %in% IFRmodel$Serotestparams) ) {
+  if( "sero_rev_rate" %in% IFRmodel$Serotestparams ) {
     account_serorev <- TRUE
   } else {
     account_serorev <- FALSE
