@@ -82,7 +82,7 @@ run_IFRmodel_age <- function(IFRmodel,
   if (reparamKnots) {
     assert_non_null(IFRmodel$relKnot, message = "If performing reparameterization, must set a relative knot point in the R6 class object")
   }
-  if (length(IFRmodel$IFRparams != 1)) {
+  if (length(IFRmodel$IFRparams) != 1) {
     if (length(IFRmodel$IFRparams) != length(IFRmodel$Noiseparams)) {
       stop("You must specificy the same number of IFR params and Noise params to estimate. Having
            a mix of no noise params and noise params among IFR params is not currently supported")
