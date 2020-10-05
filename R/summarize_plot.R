@@ -155,20 +155,24 @@ get_cred_intervals <- function(IFRmodel_inf, what, whichrung = "rung1", by_chain
 }
 
 
-
-#' @title Get the Global IFR Credible Intervals, or IFR Weighted by Demography
+#' @title Get the overall IFR Weighted by Demography
 #' @inheritParams get_cred_intervals
+#' @param whichstandard character; Whether the population demography weighted (pop) or the attack-rate weighted population (arpop) standardization should be applied
 #' @importFrom magrittr %>%
 #' @export
 
-get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_chain = TRUE) {
+get_overall_IFR_cred_intervals <- function(IFRmodel_inf,
+                                           whichstandard = "pop",
+                                           whichrung = "rung1", by_chain = TRUE) {
+
   assert_custom_class(IFRmodel_inf$inputs$IFRmodel, "IFRmodel")
   assert_custom_class(IFRmodel_inf$mcmcout, "drjacoby_output")
   assert_custom_class(IFRmodel_inf, "IFRmodel_inf")
   assert_string(whichrung)
+  assert_string(whichstandard)
   assert_logical(by_chain)
-
-
+  assert_in(whichstandard, c("pop", "arpop"),
+            message = "Standardization must either be by populatin (pop) or by population and attack rate (arpop)")
 
   # ifr data
   ifrdat <- IFRmodel_inf$mcmcout$output %>%
@@ -178,36 +182,56 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
     dplyr::rename(ifr = est) %>%
     dplyr::select(c("iteration", "chain", "rung", "Strata", "ifr"))
 
-  # df to match Ne params to ifr params
-  dfmatch <- tibble::tibble(Strata_tomatch = IFRmodel_inf$inputs$IFRmodel$Noiseparams,
-                            Strata = IFRmodel_inf$inputs$IFRmodel$IFRparams)
-  # attrack rate data
-  ardat <- IFRmodel_inf$mcmcout$output %>%
-    dplyr::filter(stage == "sampling" & rung == whichrung) %>%
-    tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$Noiseparams, # if chain isn't included in vector, grepl won't do anything
-                        names_to = "Strata_tomatch", values_to = "est") %>%
-    dplyr::rename(attackrate = est) %>%
-    dplyr::select(c("iteration", "chain", "rung", "Strata_tomatch", "attackrate")) %>%
-    dplyr::left_join(., dfmatch, by = "Strata_tomatch") %>%
-    dplyr::select(-c("Strata_tomatch")) %>%
-    dplyr::left_join(., IFRmodel_inf$inputs$IFRmodel$demog, by = "Strata")
+  if (whichstandard == "arpop") {
+    # df to match Ne params to ifr params
+    dfmatch <- tibble::tibble(Strata_tomatch = IFRmodel_inf$inputs$IFRmodel$Noiseparams,
+                              Strata = IFRmodel_inf$inputs$IFRmodel$IFRparams)
+    # attrack rate data
+    ardat <- IFRmodel_inf$mcmcout$output %>%
+      dplyr::filter(stage == "sampling" & rung == whichrung) %>%
+      tidyr::pivot_longer(., cols = IFRmodel_inf$inputs$IFRmodel$Noiseparams, # if chain isn't included in vector, grepl won't do anything
+                          names_to = "Strata_tomatch", values_to = "est") %>%
+      dplyr::rename(attackrate = est) %>%
+      dplyr::select(c("iteration", "chain", "rung", "Strata_tomatch", "attackrate")) %>%
+      dplyr::left_join(., dfmatch, by = "Strata_tomatch") %>%
+      dplyr::select(-c("Strata_tomatch")) %>%
+      dplyr::left_join(., IFRmodel_inf$inputs$IFRmodel$demog, by = "Strata")
 
-  # get weighted denom
-  denom <- ardat %>%
-    dplyr::group_by_at(c("iteration", "chain", "rung")) %>%
-    dplyr::mutate(wi = attackrate * popN) %>%
-    dplyr::summarise(denom = sum(wi))
-  # get weight
-  ardat <- ardat %>%
-    dplyr::left_join(., denom, by = c("iteration", "chain", "rung")) %>%
-    dplyr::mutate(wi = (attackrate * popN) / denom)
+    # get weighted denom
+    denom <- ardat %>%
+      dplyr::group_by_at(c("iteration", "chain", "rung")) %>%
+      dplyr::mutate(wi = attackrate * popN) %>%
+      dplyr::summarise(denom = sum(wi))
+    # get weight
+    ardat <- ardat %>%
+      dplyr::left_join(., denom, by = c("iteration", "chain", "rung")) %>%
+      dplyr::mutate(wi = (attackrate * popN) / denom)
 
 
-  # bring together data
-  ret <- dplyr::left_join(ifrdat, ardat, by = c("iteration", "chain", "rung", "Strata")) %>%
-    dplyr::mutate(est = ifr * wi) %>%
-    dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
-    dplyr::summarise(est = sum(est))
+    # bring together data
+    ret <- dplyr::left_join(ifrdat, ardat, by = c("iteration", "chain", "rung", "Strata")) %>%
+      dplyr::mutate(est = ifr * wi) %>%
+      dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
+      dplyr::summarise(est = sum(est))
+
+  } else if (whichstand == "pop") {
+
+    # get weighted denom
+    denom <- IFRmodel_inf$inputs$IFRmodel$demog %>%
+      dplyr::summarise(denom = sum(popN)) %>%
+      dplyr::pull(denom)
+
+    # get weight
+    widat <- IFRmodel_inf$inputs$IFRmodel$demog %>%
+      dplyr::mutate(wi = popN / denom)
+
+    # bring together data
+    ret <- dplyr::left_join(ifrdat, widat, by = c("Strata")) %>%
+      dplyr::mutate(est = ifr * wi) %>%
+      dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
+      dplyr::summarise(est = sum(est))
+  }
+
 
   # out
   if (by_chain) {
@@ -239,9 +263,7 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
         GewekeP = stats::dnorm(GewekeZ)
       )
   }
-
 }
-
 
 
 

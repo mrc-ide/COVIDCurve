@@ -46,8 +46,9 @@ parallel, otherwise they are run in serial.}
 \item{rungs}{the number of temperature rungs used in Metropolis coupling (see
 \code{coupling_on}).}
 
-\item{GTI_pow}{the power used in the generalised thermodynamic integration 
-method. Must either be a single positive integer or a vector of integers with length equal to the number of rungs.}
+\item{GTI_pow}{the power used in the generalised thermodynamic integration
+method. Must either be a single positive integer or a vector of integers
+with length equal to the number of rungs.}
 
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}
