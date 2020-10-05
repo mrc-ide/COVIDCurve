@@ -66,6 +66,10 @@ run_IFRmodel_age <- function(IFRmodel,
   if (any(is.na(IFRmodel$data$obs_deaths$Deaths))) {
     warning("Missing daily deaths -- will skip over in likelihood")
   }
+  # catch only one age group
+  if (length(IFRmodel$inputs$IFRmodel$IFRparams) == 1) {
+    stop("One strata currently not supported. Must specify more than strate to be estimated.")
+  }
 
   #..............................................................
   # catches

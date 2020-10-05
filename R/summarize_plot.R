@@ -168,9 +168,6 @@ get_globalIFR_cred_intervals <- function(IFRmodel_inf, whichrung = "rung1", by_c
   assert_string(whichrung)
   assert_logical(by_chain)
 
-  if (length(IFRmodel_inf$inputs$IFRmodel$IFRparams) == 1) {
-    stop("Only one IFR estimated. Overall IFR is equivalent")
-  }
 
 
   # ifr data
