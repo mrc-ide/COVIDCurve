@@ -734,12 +734,12 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
                            "std::vector<double> cum_serocon_hazard(days_obsd);
                             if (account_serorev) {
-                              for (int d = 0; d < max_seroday_obsd; d++) {
+                              for (int d = 0; d < days_obsd; d++) {
                                 cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate + sero_con_rate)) *
                                                         (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
                               }
                             } else {
-                              for (int d = 0; d < max_seroday_obsd; d++) {
+                              for (int d = 0; d < days_obsd; d++) {
                                 cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
                               }
                             }
