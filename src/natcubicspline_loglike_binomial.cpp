@@ -258,7 +258,7 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
       // get cumulative hazard seroconversion-followed-by-reversion on given day
       if (account_serorev) {
         for (int d = 0; d < max_seroday_obsd; d++) {
-          cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate + sero_con_rate)) *
+          cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate - sero_con_rate)) *
                                   (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
         }
       } else {
