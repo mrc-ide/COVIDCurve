@@ -214,7 +214,7 @@ get_overall_IFR_cred_intervals <- function(IFRmodel_inf,
       dplyr::group_by(iteration, chain, rung) %>% # need to make sure we capture only the strata levels
       dplyr::summarise(est = sum(est))
 
-  } else if (whichstand == "pop") {
+  } else if (whichstandard == "pop") {
 
     # get weighted denom
     denom <- IFRmodel_inf$inputs$IFRmodel$demog %>%
