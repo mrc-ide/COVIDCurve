@@ -369,7 +369,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
 
     # paramsin
     if (misc_list$account_serorev) {
-      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_rate")
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
     } else {
       serotestparams <- c("spec", "sens", "sero_con_rate")
     }
@@ -733,10 +733,20 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   # rewriting the sero_con_num_full vector here to be all days observed, not just serology days
   fitcurve_string <- paste(fitcurve_start, fitcurve_curve,
                            "std::vector<double> cum_serocon_hazard(days_obsd);
-                            if (account_serorev) {
+                           if (account_serorev) {
+                              std::vector<double> serocon_lookup(days_obsd);
                               for (int d = 0; d < days_obsd; d++) {
-                                cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate - sero_con_rate)) *
-                                                        (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
+                                serocon_lookup[d] = (1/sero_con_rate) * exp((-(d+1)/sero_con_rate));
+                              }
+                              std::vector<double> serorev_lookup(days_obsd);
+                              for (int d = 0; d < days_obsd; d++) {
+                                serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+                              }
+                              for (int d = 0; d < days_obsd; d++) {
+                                for (int j = 0; j < (d+1); j++ ){
+                                  int delta = d - j;
+                                  cum_serocon_hazard[d] += serocon_lookup[j] * (1-serorev_lookup[delta]);
+                                }
                               }
                             } else {
                               for (int d = 0; d < days_obsd; d++) {
@@ -801,7 +811,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
   cpp_function_wrapper <- function(params, datin, misc) {
     # params in
     if (misc_list$account_serorev) {
-      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_rate")
+      serotestparams <- c("spec", "sens", "sero_con_rate", "sero_rev_shape", "sero_rev_scale")
     } else {
       serotestparams <- c("spec", "sens", "sero_con_rate")
     }
@@ -860,7 +870,6 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
       dplyr::mutate(sim = 1:dplyr::n()) %>%
       dplyr::ungroup(chain) %>%
       tidyr::unnest(cols = "seroprev")
-
 
   } else {
     # keep params around for convenience

@@ -94,8 +94,10 @@ run_IFRmodel_age <- function(IFRmodel,
   }
 
   # catch seroreversion
-  if( "sero_rev_rate" %in% IFRmodel$Serotestparams ) {
+  if( all( c("sero_rev_shape", "sero_rev_scale") %in% IFRmodel$Serotestparams) )  {
     account_serorev <- TRUE
+  } else if (sum( c("sero_rev_shape", "sero_rev_scale") %in% IFRmodel$Serotestparams)  == 1) {
+    stop("Must specify both the Weibull Shape and Scale paramter for seroreversion to be considered. Specifying only one parameter is not an option")
   } else {
     account_serorev <- FALSE
   }
@@ -178,8 +180,7 @@ run_IFRmodel_age <- function(IFRmodel,
                                 GTI_pow = GTI_pow,
                                 pb_markdown = pb_markdown,
                                 silent = silent,
-                                cluster = cluster
-  )
+                                cluster = cluster)
 
   # apply thinning
   if (thinning > 0) {
