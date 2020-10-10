@@ -266,7 +266,7 @@ Rcpp::List natcubspline_loglike_binomial(Rcpp::NumericVector params, int param_i
         // and seroREVersion to loop through
         std::vector<double> serorev_lookup(max_seroday_obsd);
         for (int d = 0; d < max_seroday_obsd; d++) {
-          serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+          serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, true, false);
         }
 
         for (int d = 0; d < max_seroday_obsd; d++) {
