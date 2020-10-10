@@ -98,13 +98,6 @@ infxn_paramsdf <- tibble::tibble(name = paste0("y", 1:5),
                                  dsc1 = rep(0, 5),
                                  dsc2 = c(rep(1, 4), 10))
 
-# knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
-#                                 min  = c(0,    0.33, 0.66, 175),
-#                                 init = c(0.05, 0.40, 0.75, 185),
-#                                 max =  c(0.33, 0.66, 0.99, 200),
-#                                 dsc1 = c(0,    0.33, 0.66, 175),
-#                                 dsc2 = c(0.33, 0.66, 0.99, 200))
-
 knot_paramsdf <- tibble::tibble(name = paste0("x", 1:4),
                                 min  = c(rep(0,3), 175),
                                 init = c(rep(0.2,3), 185),
