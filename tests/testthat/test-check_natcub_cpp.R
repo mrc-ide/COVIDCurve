@@ -107,7 +107,7 @@ test_that("likelihood accurate", {
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
                            "sens" = 0.85, "spec" = 0.95, "sero_con_rate" = 10,
-                           "sero_rev_rate" = 145)
+                           "sero_rev_scale" = 141, sero_rev_shape = 3)
 
   #......................
   # binomial
