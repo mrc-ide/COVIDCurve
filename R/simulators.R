@@ -10,7 +10,8 @@ sim_seroprev <- function(sero_line_list,
                          smplfrac,
                          sero_delay_rate,
                          simulate_seroreversion,
-                         sero_rev_rate,
+                         sero_rev_shape,
+                         sero_rev_scale,
                          demog,
                          fatalitydata,
                          curr_day) {
@@ -23,7 +24,8 @@ sim_seroprev <- function(sero_line_list,
 
   if (simulate_seroreversion) {
     # draw time from seroconversion to seroreversion
-    sero_line_list$otsr <- stats::rexp(n = nrow(sero_line_list), rate = 1/sero_rev_rate)
+    sero_line_list$otsr <- stats::rweibull(n = nrow(sero_line_list),
+                                           shape = sero_rev_shape, scale = sero_rev_scale)
     # observed time of seroreversion
     sero_line_list$tosr <- as.numeric(sero_line_list$tosc) + sero_line_list$otsr
   } else {
@@ -102,7 +104,8 @@ sim_seroprev <- function(sero_line_list,
 #' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
 #' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
 #' @param simulate_seroreversion logical; Whether seroreversion (due to waning of antibodies) should be simulated or not
-#' @param sero_rev_rate double; The rate parameter of the exponential seroreversion distribution
+#' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
+#' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution
 #' @param smplfrac numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)
 #' @param return_linelist logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.
 #' @importFrom magrittr %>%
@@ -111,7 +114,7 @@ sim_seroprev <- function(sero_line_list,
 Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 0.79,
                                  curr_day,
                                  spec, sens, demog, sero_delay_rate,
-                                 simulate_seroreversion, sero_rev_rate = NULL,
+                                 simulate_seroreversion, sero_rev_shape = NULL, sero_rev_scale = NULL,
                                  smplfrac = 1, return_linelist = FALSE){
 
   #..................
@@ -136,7 +139,8 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   assert_bounded(smplfrac, left = 0, right = 1, inclusive_left = FALSE)
   assert_logical(simulate_seroreversion)
   if (simulate_seroreversion) {
-    assert_numeric(sero_rev_rate)
+    assert_numeric(sero_rev_shape)
+    assert_numeric(sero_rev_scale)
   }
 
 
@@ -188,7 +192,7 @@ Agesim_infxn_2_death <- function(fatalitydata, infections, m_od = 14.26, s_od = 
   seroprev <- sim_seroprev(sero_line_list = infxn_line_list, spec = spec, sens = sens,
                            sero_delay_rate = sero_delay_rate,
                            simulate_seroreversion = simulate_seroreversion,
-                           sero_rev_rate = sero_rev_rate,
+                           sero_rev_shape = sero_rev_shape, sero_rev_scale = sero_rev_scale,
                            smplfrac = smplfrac,
                            demog = demog, fatalitydata = fatalitydata, curr_day = curr_day)
 

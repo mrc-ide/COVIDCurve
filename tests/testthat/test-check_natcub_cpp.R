@@ -126,7 +126,7 @@ test_that("likelihood accurate", {
                             "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
                             "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
                             "sens" = 0.85, "spec" = 0.99, "sero_con_rate" = 10,
-                            "sero_rev_rate" = 160)
+                            "sero_rev_scale" = 159, sero_rev_shape = 6)
 
   lesslikely <- COVIDCurve:::natcubspline_loglike_binomial(params = lesslikely.paramsin,
                                                            param_i = 1,
