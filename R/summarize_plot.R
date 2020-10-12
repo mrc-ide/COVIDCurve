@@ -1,5 +1,3 @@
-
-
 #' Simple Logit Function
 #' @details No tolerance considered, so x cannot be zero
 #' @noRd
@@ -740,7 +738,7 @@ draw_posterior_sero_curves <- function(IFRmodel_inf, whichrung = "rung1", dwnsmp
                               }
                               std::vector<double> serorev_lookup(days_obsd);
                               for (int d = 0; d < days_obsd; d++) {
-                                serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, false, false);
+                                serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, true, false);
                               }
                               for (int d = 0; d < days_obsd; d++) {
                                 for (int j = 0; j < (d+1); j++ ){
