@@ -23,7 +23,8 @@ Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, R
   // sero conversion rate
   double sero_con_rate = params["sero_con_rate"];
   // sero reversion
-  double sero_rev_rate = params["sero_rev_rate"];
+  double sero_rev_shape = params["sero_rev_shape"];
+  double sero_rev_scale = params["sero_rev_scale"];
 
   // death delay params
   double mod = params["mod"];
@@ -254,14 +255,28 @@ Rcpp::List natcubspline_loglike_logit(Rcpp::NumericVector params, int param_i, R
       // Look up tables for cumulative hazard on each day ; vector length is up to the latest serology observation date
       std::vector<double> cum_serocon_hazard(max_seroday_obsd);
       // flag determines if we considered seroreversion or not
-      // get cumulative hazard seroconversion-followed-by-reversion on given day
+      // get cumulative hazard seroconversion-followed-by-reversion given a duration since infection
       if (account_serorev) {
+        // make look up tables for seroCONversion
+        std::vector<double> serocon_lookup(max_seroday_obsd);
         for (int d = 0; d < max_seroday_obsd; d++) {
-          cum_serocon_hazard[d] = (sero_rev_rate/(sero_rev_rate - sero_con_rate)) *
-            (exp((-(d+1)/sero_rev_rate)) - exp((-(d+1)/sero_con_rate)));
+          serocon_lookup[d] = (1/sero_con_rate) * exp((-(d+1)/sero_con_rate));
+        }
+        // and seroREVersion to loop through
+        std::vector<double> serorev_lookup(max_seroday_obsd);
+        for (int d = 0; d < max_seroday_obsd; d++) {
+          serorev_lookup[d] = R::pweibull(d, sero_rev_shape, sero_rev_scale, true, false);
+        }
+
+        for (int d = 0; d < max_seroday_obsd; d++) {
+          // +1 here so we have day 0 considered, i.e. if you could revert in same day you convert
+          for (int j = 0; j < (d+1); j++ ){
+            int delta = d - j;
+            cum_serocon_hazard[d] += serocon_lookup[j] * (1-serorev_lookup[delta]);
+          }
         }
       } else {
-        // i.e. cumulative hazard of seroconversion on given day -- no seroreversion considered
+        // i.e. cumulative hazard of seroconversion a duration since infection -- no seroreversion considered
         for (int d = 0; d < max_seroday_obsd; d++) {
           cum_serocon_hazard[d] = 1-exp((-(d+1)/sero_con_rate));
         }
