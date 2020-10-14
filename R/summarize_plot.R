@@ -442,7 +442,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                 lwd = 0.5, color = "#d9d9d9") +
              ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
              ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-             ggplot2::facet_wrap(stratavar ~ chain) +
+             ggplot2::facet_wrap(stratavar ~ chain, scales = "free_y") +
              ggplot2::theme_minimal() +
              ggplot2::theme(
                plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
@@ -474,7 +474,7 @@ draw_posterior_infxn_cubic_splines <- function(IFRmodel_inf, whichrung = "rung1"
                                 lwd = 0.5, color = "#d9d9d9") +
              ggplot2::xlab("Time") +  ggplot2::ylab("Num. Infxns")  +
              ggplot2::labs(title = "Posterior Draws of the Infection Curve") +
-             ggplot2::facet_wrap(. ~ chain) +
+             ggplot2::facet_wrap(. ~ chain, scales = "free_y") +
              ggplot2::theme_minimal() +
              ggplot2::theme(
                plot.title =  ggplot2::element_text(family = "Helvetica", face = "bold", vjust = 0.5,  hjust = 0.5, size = 18),
