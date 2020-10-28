@@ -105,7 +105,8 @@ test_that("likelihood accurate", {
                            "x1" = 30, "x2" = 60, "x3" = 90, "x4" = 120,
                            "y1" = 2.8, "y2" = 5.7, "y3" = 7.7, "y4" = 8.4, "y5" = 8.5,
                            "ne1" = 0.33, "ne2" = 0.33, "ne3" = 0.33,
-                           "sens" = 0.85, "spec" = 0.95, "sero_con_rate" = 18)
+                           "sens" = 0.85, "spec" = 0.95, "sero_con_rate" = 18,
+                           "sero_rev_shape" = NA, "sero_rev_scale" = NA) # just to make visible to cpp
 
   #......................
   # binomial
@@ -123,7 +124,9 @@ test_that("likelihood accurate", {
                             "x1" = 22.25, "x2" = 54.47, "x3" = 109.9, "x4" = 145.58,
                             "y1" = 2.98, "y2" = 4.52, "y3" = 6.74, "y4" = 7.82, "y5" = 7.88,
                             "ne1" = 0.1, "ne2" = 0.4, "ne3" = 0.5,
-                            "sens" = 0.85, "spec" = 0.99, "sero_con_rate" = 10)
+                            "sens" = 0.85, "spec" = 0.99, "sero_con_rate" = 10,
+                            "sero_rev_shape" = NA, "sero_rev_scale" = NA) # just to make visible to cpp
+
 
   lesslikely <- COVIDCurve:::natcubspline_loglike_binomial(params = lesslikely.paramsin,
                                                            param_i = 1,
