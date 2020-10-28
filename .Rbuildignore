@@ -3,3 +3,4 @@
 ^\.travis\.yml$
 R_ignore/
 sandbox/
+^codecov\.yml$
