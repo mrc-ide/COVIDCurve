@@ -40,7 +40,7 @@ remotes::install_github("mrc-ide/COVIDCurve")
 
 In addition, `COVIDCurve` uses the [`drjacoby`](https://github.com/mrc-ide/drjacoby) package for MCMC framework. Please see the `drjacoby` site for further details.
 
-If you have any problems installing then please [raise an issue](https://github.com/nickbrazeau/COVIDCurve/issues) on github.
+If you have any problems installing then please [raise an issue](https://github.com/mrc-ide/COVIDCurve/issues) on github.
 
 Assuming everything installed correctly, you can now load the package:
 

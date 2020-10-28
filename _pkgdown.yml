@@ -14,4 +14,4 @@ navbar:
       href: reference/index.html
   right:
    - icon: fa-github
-     href: https://github.com/nickbrazeau/COVIDCurve
+     href: https://github.com/mrc-ide/COVIDCurve
