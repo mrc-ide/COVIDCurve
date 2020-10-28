@@ -12,6 +12,5 @@
 :warning: This model is in active development and so parameter name and
 behaviours, and output file formats will change without notice.
 
-## Installation
-<WIP>
-
+## Installation & Use
+Please see the vignettes for installation and use instructions. Thank you for your interest in our package! 

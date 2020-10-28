@@ -1,15 +1,16 @@
 Package: COVIDCurve
 Type: Package
-Title: Inferring the Infection Fatality Ratio and Initial Number Infected from COVID Aggregate Death Data
-Version: 0.0.5
+Title: Inferring the Infection Fatality Ratio from COVID-19 Aggregated Death and Seroprevalence Data
+Version: 0.5.0
 Authors@R: as.person(c(
     "Nick Brazeau <nbrazeau@imperial.ac.uk> [aut, cre]", 
-    "Bob Verity <r.verity@imperial.ac.uk> [aut]"
+    "Bob Verity <r.verity@imperial.ac.uk> [aut]",
+    "Lucy Okell <l.okell@imperial.ac.uk> [aut]"
   ))
-Description: In many settings, individual-based (i.e. "line-list") data are often unavailable or unreliable. Here we use 
-             aggregated death counts to infer the infection fatality ratio or the number of individuals infected at
-            "time zero" in the epidemic and the current day of the epidemic. Models are fit within a Bayesian framework
-            and account for the epidemic growth rate. 
+Description: In many settings, individual-based (i.e. "line-list") data are often unavailable or unreliable. Here we 
+            provide a model framework that relies on aggregated death counts and seroprevalence data to infer the 
+            infection fatality ratio, or the probability of death givin infection. Models are fit within a Bayesian 
+            framework and account for onset-outcome delays and serologic test characteristics. 
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
