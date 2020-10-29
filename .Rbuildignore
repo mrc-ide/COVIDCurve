@@ -4,3 +4,4 @@
 R_ignore/
 sandbox/
 ^codecov\.yml$
+^\.covrignore$
