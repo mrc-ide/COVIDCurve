@@ -1,6 +1,6 @@
 #' Simulate Seroprevalence Study
 #' @inheritParams Agesim_infxn_2_death
-#' @param serolin numeric vector; the expected number of infections from the infection curve from the poisson draw
+#' @param sero_line_list dataframe; small line list generated from simulator
 #' @importFrom magrittr %>%
 #' @noRd
 

@@ -2,17 +2,6 @@
 #' @description A simple R6 class with only public features. Purpose is to provide a model framework
 #' for inference of IFRs from Age-Specific Death Data.
 #' @name make_IFRmodel_age
-#' @section Public Variables:
-#'  \tabular{ll}{
-#'   \strong{Variable} \tab \strong{Return} \cr
-#'   \code{data} \tab  Input data for inference \cr
-#'   }
-#' @section Constructor Arguments:
-#' \tabular{lll}{
-#' \strong{Argument} \tab \strong{Type} \tab \strong{Details} \cr
-#' \code{data} \tab dataframe \tab Dataframe with .... \cr
-#' }
-#'
 #' @export
 NULL
 
