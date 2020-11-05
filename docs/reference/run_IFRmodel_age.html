@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Articles • COVIDCurve</title>
+<title>Run Aggregate Model — run_IFRmodel_age • COVIDCurve</title>
 
 
 <!-- jquery -->
@@ -39,7 +39,8 @@
 
 
 
-<meta property="og:title" content="Articles" />
+<meta property="og:title" content="Run Aggregate Model — run_IFRmodel_age" />
+<meta property="og:description" content="Run Aggregate Model" />
 
 
 
@@ -58,7 +59,7 @@
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    <div class="container template-article-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -116,20 +117,115 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>Articles</h1>
+    <h1>Run Aggregate Model</h1>
+    
+    <div class="hidden name"><code>run_IFRmodel_age.Rd</code></div>
     </div>
 
-    <div class="section ">
-      <h3>All vignettes</h3>
-      <p class="section-desc"></p>
-
-      <dl>
-        <dt><a href="installation.html">Installing COVIDCurve</a></dt>
-        <dd></dt>
-        <dt><a href="quickstart.html">Quick Start</a></dt>
-        <dd></dt>
-      </dl>
+    <div class="ref-description">
+    <p>Run Aggregate Model</p>
     </div>
+
+    <pre class="usage"><span class='fu'>run_IFRmodel_age</span><span class='op'>(</span>
+  <span class='va'>IFRmodel</span>,
+  binomial_likelihood <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  reparamIFR <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  reparamInfxn <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  reparamKnots <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  burnin <span class='op'>=</span> <span class='fl'>1000</span>,
+  samples <span class='op'>=</span> <span class='fl'>1000</span>,
+  chains <span class='op'>=</span> <span class='fl'>3</span>,
+  thinning <span class='op'>=</span> <span class='fl'>0</span>,
+  rungs <span class='op'>=</span> <span class='fl'>1</span>,
+  GTI_pow <span class='op'>=</span> <span class='fl'>3</span>,
+  coupling_on <span class='op'>=</span> <span class='cn'>TRUE</span>,
+  cluster <span class='op'>=</span> <span class='cn'>NULL</span>,
+  pb_markdown <span class='op'>=</span> <span class='cn'>FALSE</span>,
+  silent <span class='op'>=</span> <span class='cn'>TRUE</span>
+<span class='op'>)</span></pre>
+
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>IFRmodel</th>
+      <td><p>R6 class; Internal model object for COVIDCurve</p></td>
+    </tr>
+    <tr>
+      <th>binomial_likelihood</th>
+      <td><p>logical; Whether the binomial or the logit likelihood should be used</p></td>
+    </tr>
+    <tr>
+      <th>reparamIFR</th>
+      <td><p>logical; Whether IFRs should be reparameterized or inferred separately</p></td>
+    </tr>
+    <tr>
+      <th>reparamInfxn</th>
+      <td><p>logical; Whether infection curve (i.e. the  y-coordinates infection spline) should be reparameterized or inferred separately</p></td>
+    </tr>
+    <tr>
+      <th>reparamKnots</th>
+      <td><p>logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately</p></td>
+    </tr>
+    <tr>
+      <th>burnin</th>
+      <td><p>the number of burn-in iterations.</p></td>
+    </tr>
+    <tr>
+      <th>samples</th>
+      <td><p>the number of sampling iterations.</p></td>
+    </tr>
+    <tr>
+      <th>chains</th>
+      <td><p>the number of independent replicates of the MCMC chain to run.
+If a <code>cluster</code> object is defined then these chains are run in
+parallel, otherwise they are run in serial.</p></td>
+    </tr>
+    <tr>
+      <th>thinning</th>
+      <td><p>integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: <code><a href='https://rdrr.io/r/base/seq.html'>seq(from = thinning, to = (burnin+samples), by = thinning)</a></code>).</p></td>
+    </tr>
+    <tr>
+      <th>rungs</th>
+      <td><p>the number of temperature rungs used in Metropolis coupling (see
+<code>coupling_on</code>).</p></td>
+    </tr>
+    <tr>
+      <th>GTI_pow</th>
+      <td><p>the power used in the generalised thermodynamic integration 
+method. Must either be a single positive integer or a vector of integers with length equal to the number of rungs.</p></td>
+    </tr>
+    <tr>
+      <th>coupling_on</th>
+      <td><p>whether to implement Metropolis-coupling over temperature 
+rungs.</p></td>
+    </tr>
+    <tr>
+      <th>cluster</th>
+      <td><p>option to pass in a cluster environment, allowing chains to be
+run in parallel (see package "parallel").</p></td>
+    </tr>
+    <tr>
+      <th>pb_markdown</th>
+      <td><p>whether to run progress bars in markdown mode, meaning
+they are only updated when they reach 100<!-- % to avoid large amounts of output -->
+being printed to markdown files.</p></td>
+    </tr>
+    <tr>
+      <th>silent</th>
+      <td><p>whether to suppress all console output.</p></td>
+    </tr>
+    </table>
+
+    <h2 class="hasAnchor" id="details"><a class="anchor" href="#details"></a>Details</h2>
+
+    <p>Wraps the Metropolic-Coupled MCMC Framework from Dr. Jacoby</p>
+
+  </div>
+  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
+    <nav id="toc" data-toggle="toc" class="sticky-top">
+      <h2 data-toc-skip>Contents</h2>
+    </nav>
   </div>
 </div>
 

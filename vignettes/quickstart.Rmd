@@ -2,7 +2,7 @@
 title: "Quick Start"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{quickstart}
+  %\VignetteIndexEntry{Quick Start}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,3 +20,5 @@ The purpose of this "package" is to provide a framework to fit age-specific infe
 ```{r setup}
 library(COVIDCurve)
 ```
+  
+More coming soon!

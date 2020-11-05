@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Articles • COVIDCurve</title>
+<title>Simulate Aggregate Expected Deaths — Agesim_infxn_2_death • COVIDCurve</title>
 
 
 <!-- jquery -->
@@ -39,7 +39,8 @@
 
 
 
-<meta property="og:title" content="Articles" />
+<meta property="og:title" content="Simulate Aggregate Expected Deaths — Agesim_infxn_2_death" />
+<meta property="og:description" content="Simulate Aggregate Expected Deaths" />
 
 
 
@@ -58,7 +59,7 @@
   </head>
 
   <body data-spy="scroll" data-target="#toc">
-    <div class="container template-article-index">
+    <div class="container template-reference-topic">
       <header>
       <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
@@ -116,20 +117,99 @@
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-      <h1>Articles</h1>
+    <h1>Simulate Aggregate Expected Deaths</h1>
+    
+    <div class="hidden name"><code>Agesim_infxn_2_death.Rd</code></div>
     </div>
 
-    <div class="section ">
-      <h3>All vignettes</h3>
-      <p class="section-desc"></p>
-
-      <dl>
-        <dt><a href="installation.html">Installing COVIDCurve</a></dt>
-        <dd></dt>
-        <dt><a href="quickstart.html">Quick Start</a></dt>
-        <dd></dt>
-      </dl>
+    <div class="ref-description">
+    <p>Simulate Aggregate Expected Deaths</p>
     </div>
+
+    <pre class="usage"><span class='fu'>Agesim_infxn_2_death</span><span class='op'>(</span>
+  <span class='va'>fatalitydata</span>,
+  <span class='va'>infections</span>,
+  m_od <span class='op'>=</span> <span class='fl'>14.26</span>,
+  s_od <span class='op'>=</span> <span class='fl'>0.79</span>,
+  <span class='va'>curr_day</span>,
+  <span class='va'>spec</span>,
+  <span class='va'>sens</span>,
+  <span class='va'>demog</span>,
+  <span class='va'>sero_delay_rate</span>,
+  <span class='va'>simulate_seroreversion</span>,
+  sero_rev_shape <span class='op'>=</span> <span class='cn'>NULL</span>,
+  sero_rev_scale <span class='op'>=</span> <span class='cn'>NULL</span>,
+  smplfrac <span class='op'>=</span> <span class='fl'>1</span>,
+  return_linelist <span class='op'>=</span> <span class='cn'>FALSE</span>
+<span class='op'>)</span></pre>
+
+    <h2 class="hasAnchor" id="arguments"><a class="anchor" href="#arguments"></a>Arguments</h2>
+    <table class="ref-arguments">
+    <colgroup><col class="name" /><col class="desc" /></colgroup>
+    <tr>
+      <th>fatalitydata</th>
+      <td><p>dataframe; The strata-specific fatalities to simulate given a probability of infection and a noise effect. The column names: strata, ifr, rho, and Ne correspond to (patient) strata, infection-fatality ratio, the probability of infection (i.e. a probalistic attack rate), and a noise effect, respectively.</p></td>
+    </tr>
+    <tr>
+      <th>infections</th>
+      <td><p>integer vector; The infections for each day up to the current day.</p></td>
+    </tr>
+    <tr>
+      <th>m_od</th>
+      <td><p>double; The mean of the onset of infection to death (gamma distribution).</p></td>
+    </tr>
+    <tr>
+      <th>s_od</th>
+      <td><p>double; The coefficient of variation of the onset of infection to death (gamma distribution).</p></td>
+    </tr>
+    <tr>
+      <th>curr_day</th>
+      <td><p>numeric; Current day of epidemic (considered up to but not including this day).</p></td>
+    </tr>
+    <tr>
+      <th>spec</th>
+      <td><p>double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)</p></td>
+    </tr>
+    <tr>
+      <th>sens</th>
+      <td><p>double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)</p></td>
+    </tr>
+    <tr>
+      <th>demog</th>
+      <td><p>dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if <code>simulate_seroprevalence = TRUE</code></p></td>
+    </tr>
+    <tr>
+      <th>sero_delay_rate</th>
+      <td><p>double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)</p></td>
+    </tr>
+    <tr>
+      <th>simulate_seroreversion</th>
+      <td><p>logical; Whether seroreversion (due to waning of antibodies) should be simulated or not</p></td>
+    </tr>
+    <tr>
+      <th>sero_rev_shape</th>
+      <td><p>double; The shape parameter of the Weibull seroreversion distribution</p></td>
+    </tr>
+    <tr>
+      <th>sero_rev_scale</th>
+      <td><p>double; The scale parameter of the Weibull seroreversion distribution</p></td>
+    </tr>
+    <tr>
+      <th>smplfrac</th>
+      <td><p>numeric; Sampling fraction for the observed seroprevalence study (assumed to be a simple random sample of all infected)</p></td>
+    </tr>
+    <tr>
+      <th>return_linelist</th>
+      <td><p>logical; Whether or not the linelist that was used to create the observed marginal data should be returned. N.B. the linelist can be quite large/burdensome for memory depending on population size and number of days considered.</p></td>
+    </tr>
+    </table>
+
+
+  </div>
+  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
+    <nav id="toc" data-toggle="toc" class="sticky-top">
+      <h2 data-toc-skip>Contents</h2>
+    </nav>
   </div>
 </div>
 
