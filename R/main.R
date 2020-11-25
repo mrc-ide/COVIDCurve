@@ -12,9 +12,17 @@
 run_IFRmodel_age <- function(IFRmodel,
                              binomial_likelihood = TRUE,
                              reparamIFR = TRUE, reparamInfxn = TRUE, reparamKnots = TRUE,
-                             burnin = 1e3, samples = 1e3, chains = 3, thinning = 0,
-                             rungs = 1, GTI_pow = 3, coupling_on = TRUE,
-                             cluster = NULL, pb_markdown = FALSE, silent = TRUE) {
+                             thinning = 0,
+                             burnin = 1e3,
+                             samples = 1e4,
+                             rungs = 1,
+                             chains = 5,
+                             coupling_on = TRUE,
+                             GTI_pow = 1.0,
+                             beta_manual = NULL,
+                             cluster = NULL,
+                             pb_markdown = FALSE,
+                             silent = FALSE) {
   #..................
   # assertions
   #..................
