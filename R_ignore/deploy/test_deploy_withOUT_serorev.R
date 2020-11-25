@@ -42,6 +42,7 @@ dat <- COVIDCurve::Agesim_infxn_2_death(
   smplfrac = 1e-3
 )
 
+
 # liftover proprtion deaths
 totdeaths <- sum(dat$StrataAgg_TimeSeries_Death$Deaths)
 prop_strata_obs_deaths <- dat$StrataAgg_TimeSeries_Death %>%

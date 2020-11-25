@@ -100,9 +100,9 @@ sim_seroprev <- function(sero_line_list,
 #' @param fatalitydata dataframe; The strata-specific fatalities to simulate given a probability of infection and a noise effect. The column names: strata, ifr, rho, and Ne correspond to (patient) strata, infection-fatality ratio, the probability of infection (i.e. a probalistic attack rate), and a noise effect, respectively.
 #' @param demog dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}
 #' @param curr_day numeric; Current day of epidemic (considered up to but not including this day).
-#' @param spec double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param sens double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)
-#' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)
+#' @param spec double; Specificity of the Seroprevalence Study
+#' @param sens double; Sensitivity of the Seroprevalence Study
+#' @param sero_delay_rate double; Rate of time from infection to seroconversion, assumed to be exponentially distributed
 #' @param simulate_seroreversion logical; Whether seroreversion (due to waning of antibodies) should be simulated or not
 #' @param sero_rev_shape double; The shape parameter of the Weibull seroreversion distribution
 #' @param sero_rev_scale double; The scale parameter of the Weibull seroreversion distribution

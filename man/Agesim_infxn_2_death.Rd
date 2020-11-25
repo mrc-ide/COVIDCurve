@@ -32,13 +32,13 @@ Agesim_infxn_2_death(
 
 \item{curr_day}{numeric; Current day of epidemic (considered up to but not including this day).}
 
-\item{spec}{double; Specificity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{spec}{double; Specificity of the Seroprevalence Study}
 
-\item{sens}{double; Sensitivity of the Seroprevalence Study (only considered if simulate_seroprevalence is set to TRUE)}
+\item{sens}{double; Sensitivity of the Seroprevalence Study}
 
 \item{demog}{dataframe; Strata-specific population (demographic) counts. The columns names strata and popN correspond to (patient) strata and the number of individuals within that strata. The demography strata must match the fatalitydata strata. Only considered if \code{simulate_seroprevalence = TRUE}}
 
-\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed (only considered if simulate_seroprevalence is set to TRUE)}
+\item{sero_delay_rate}{double; Rate of time from infection to seroconversion, assumed to be exponentially distributed}
 
 \item{simulate_seroreversion}{logical; Whether seroreversion (due to waning of antibodies) should be simulated or not}
 
