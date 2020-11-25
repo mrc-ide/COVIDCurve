@@ -10,16 +10,17 @@ run_IFRmodel_age(
   reparamIFR = TRUE,
   reparamInfxn = TRUE,
   reparamKnots = TRUE,
-  burnin = 1000,
-  samples = 1000,
-  chains = 3,
   thinning = 0,
+  burnin = 1000,
+  samples = 10000,
   rungs = 1,
-  GTI_pow = 3,
+  chains = 5,
   coupling_on = TRUE,
+  GTI_pow = 1,
+  beta_manual = NULL,
   cluster = NULL,
   pb_markdown = FALSE,
-  silent = TRUE
+  silent = FALSE
 )
 }
 \arguments{
@@ -33,24 +34,28 @@ run_IFRmodel_age(
 
 \item{reparamKnots}{logical; Whether infection knots (i.e. the x-coordinates of the infection spline) should be reparameterized or inferred separately}
 
+\item{thinning}{integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).}
+
 \item{burnin}{the number of burn-in iterations.}
 
 \item{samples}{the number of sampling iterations.}
+
+\item{rungs}{the number of temperature rungs used in Metropolis coupling (see
+\code{coupling_on}).}
 
 \item{chains}{the number of independent replicates of the MCMC chain to run.
 If a \code{cluster} object is defined then these chains are run in
 parallel, otherwise they are run in serial.}
 
-\item{thinning}{integer; The regular sequence to count by to thin MCMC posterior chain (iterations are kept as: \code{seq(from = thinning, to = (burnin+samples), by = thinning)}).}
-
-\item{rungs}{the number of temperature rungs used in Metropolis coupling (see
-\code{coupling_on}).}
-
-\item{GTI_pow}{the power used in the generalised thermodynamic integration 
-method. Must either be a single positive integer or a vector of integers with length equal to the number of rungs.}
-
 \item{coupling_on}{whether to implement Metropolis-coupling over temperature 
 rungs.}
+
+\item{GTI_pow}{values in the temperature ladder are raised to this power.}
+
+\item{beta_manual}{option to manually define temperature ladder. These values
+are raised to the power \code{GTI_pow}, hence you should use \code{GTI_code
+= 1} to fix powers exactly. If \code{NULL} then an equal spacing of length
+\code{rungs} is used between 0 and 1.}
 
 \item{cluster}{option to pass in a cluster environment, allowing chains to be
 run in parallel (see package "parallel").}

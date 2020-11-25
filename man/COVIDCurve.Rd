@@ -3,8 +3,10 @@
 \docType{package}
 \name{COVIDCurve}
 \alias{COVIDCurve}
-\title{COVIDCurve: Simple Inference of IFRs and I0 for Aggregate COVID Death Counts}
+\title{COVIDCurve: Simple Inference of Age-Specific IFRs}
 \description{
-Assumes an incidence curve can be mapped on to a onset-to-death curve in order to infer
-the IFR or I0 of an epidemic.
+In many settings, individual-based (i.e. "line-list") data are often unavailable or
+unreliable. Here we provide a model framework that relies on aggregated death counts and seroprevalence
+data to infer the infection fatality ratio, or the probability of death givin infection. Models are
+fit within a Bayesian framework and account for onset-outcome delays and serologic test characteristics.
 }
