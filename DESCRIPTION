@@ -31,7 +31,7 @@ Imports:
     stats,
     utils
 Remotes:
-    mrc-ide/drjacoby,
+    mrc-ide/drjacoby@e83884e0b2c48309ebd7eccdcbfc4495f0f80cac,
 Suggests: 
     knitr,
     rmarkdown,
