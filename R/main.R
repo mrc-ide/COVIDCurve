@@ -186,6 +186,7 @@ run_IFRmodel_age <- function(IFRmodel,
                                 rungs = rungs,
                                 coupling_on = coupling_on,
                                 GTI_pow = GTI_pow,
+                                beta_manual = beta_manual,
                                 pb_markdown = pb_markdown,
                                 silent = silent,
                                 cluster = cluster)
