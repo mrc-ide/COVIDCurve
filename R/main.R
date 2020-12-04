@@ -255,6 +255,7 @@ run_IFRmodel_age <- function(IFRmodel,
   if (rungs > 1) {
     inputs <- append(inputs, list(rungs = rungs,
                                   GTI_pow = GTI_pow,
+                                  beta_manual = beta_manual,
                                   coupling_on = coupling_on))
   }
 
