@@ -35,6 +35,7 @@ run_IFRmodel_age <- function(IFRmodel,
   assert_numeric(chains)
   assert_numeric(rungs)
   assert_numeric(GTI_pow)
+  assert_numeric_or_NULL(beta_manual)
   assert_logical(coupling_on)
   assert_logical(pb_markdown)
   assert_logical(silent)

@@ -129,6 +129,16 @@ assert_numeric_or_NA <- function(x, message = "%s must be numeric or NA", name =
 }
 
 #------------------------------------------------
+# x is numeric
+#' @noRd
+assert_numeric_or_NULL <- function(x, message = "%s must be numeric or NULL", name = deparse(substitute(x))) {
+  if (!is.numeric(x) & !is.null(x)) {
+    stop(sprintf(message, name), call. = FALSE)
+  }
+  return(TRUE)
+}
+
+#------------------------------------------------
 # x is positive integer or missing
 #' @noRd
 assert_pos_int_or_NA <- function(x, message = "%s must be a positive integer or NA", name = deparse(substitute(x))) {
