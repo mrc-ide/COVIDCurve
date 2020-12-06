@@ -86,10 +86,9 @@ test_that("likelihood accurate", {
   # inputs
   #..................
   # misc list
-  days_obsd <- 150
   knots <- c(30, 60, 90, 120)
   misc_list = list(rcensor_day = .Machine$integer.max,
-                   days_obsd = days_obsd,
+                   days_obsd = max(dat$Agg_TimeSeries_Death$ObsDay),
                    n_sero_obs = 2,
                    max_seroday_obsd = 140,
                    sero_survey_start = c(105, 130),
