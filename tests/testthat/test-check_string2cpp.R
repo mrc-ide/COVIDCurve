@@ -29,8 +29,8 @@ test_that("R writes Cpp function correctly", {
   dat <- COVIDCurve::Agesim_infxn_2_death(
     fatalitydata = fatalitydata,
     demog = demog,
-    m_od = 19.24,
-    s_od = 0.79,
+    m_od = 19.8,
+    s_od = 0.85,
     curr_day = 200,
     infections = infxns$infxns,
     simulate_seroreversion = FALSE,
@@ -110,10 +110,10 @@ test_that("R writes Cpp function correctly", {
   # onset to deaths
   tod_paramsdf <- tibble::tibble(name = c("mod", "sod", "sero_con_rate"),
                                  min  = c(18,     0,     16),
-                                 init = c(19,     0.79,  18),
+                                 init = c(19,     0.8,   18),
                                  max =  c(20,     1,     21),
-                                 dsc1 = c(19.26,  2370,  18.3),
-                                 dsc2 = c(0.1,    630,   0.1))
+                                 dsc1 = c(19.8,  2550,  18.3),
+                                 dsc2 = c(0.1,    450,   0.1))
 
 
 
