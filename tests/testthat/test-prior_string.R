@@ -147,7 +147,7 @@ test_that("Prior produces correct calls", {
                                                   reparamInfxn = T,
                                                   reparamKnots = T)
 
-  expect_match(logprior, "+|;|ret")
+  expect_match(logprior, "+"); expect_match(logprior, ";"); expect_match(logprior, "ret")
 
   # TFF
   logprior <- COVIDCurve:::make_user_Age_logprior(IFRmodel = mod1,
@@ -155,7 +155,7 @@ test_that("Prior produces correct calls", {
                                                   reparamIFR = T,
                                                   reparamInfxn = F,
                                                   reparamKnots = F)
-  expect_match(logprior, "+|;|ret")
+  expect_match(logprior, "+"); expect_match(logprior, ";"); expect_match(logprior, "ret")
 
   # FTF
   logprior <- COVIDCurve:::make_user_Age_logprior(IFRmodel = mod1,
@@ -163,7 +163,7 @@ test_that("Prior produces correct calls", {
                                                   reparamIFR = F,
                                                   reparamInfxn = T,
                                                   reparamKnots = F)
-  expect_match(logprior, "+|;|ret")
+  expect_match(logprior, "+"); expect_match(logprior, ";"); expect_match(logprior, "ret")
 
   # FFT
   logprior <- COVIDCurve:::make_user_Age_logprior(IFRmodel = mod1,
@@ -171,7 +171,7 @@ test_that("Prior produces correct calls", {
                                                   reparamIFR = F,
                                                   reparamInfxn = F,
                                                   reparamKnots = T)
-  expect_match(logprior, "+|;|ret")
+  expect_match(logprior, "+"); expect_match(logprior, ";"); expect_match(logprior, "ret")
 
   # FFF
   logprior <- COVIDCurve:::make_user_Age_logprior(IFRmodel = mod1,
@@ -179,7 +179,7 @@ test_that("Prior produces correct calls", {
                                                   reparamIFR = F,
                                                   reparamInfxn = F,
                                                   reparamKnots = F)
-  expect_match(logprior, "+|;|ret")
+  expect_match(logprior, "+"); expect_match(logprior, ";"); expect_match(logprior, "ret")
 
 
 
