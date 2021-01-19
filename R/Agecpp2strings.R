@@ -199,6 +199,7 @@ make_user_Age_logprior <- function(IFRmodel, account_serorev,
          },
 
          "FALSE-FALSE-FALSE" = {
+           maketodpriors <- sub("(\\s\\+)$", ";", maketodpriors)
            priors <- c("double ret =", makeifrpriors, makeknotpriors, makeinfxnpriors, makeSerotestpriors, makenoisepriors, maketodpriors)
          },
 
