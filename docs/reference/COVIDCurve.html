@@ -6,7 +6,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>COVIDCurve: Simple Inference of IFRs and I0 for Aggregate COVID Death Counts — COVIDCurve • COVIDCurve</title>
+<title>COVIDCurve: Simple Inference of Age-Specific IFRs — COVIDCurve • COVIDCurve</title>
 
 
 <!-- jquery -->
@@ -39,9 +39,11 @@
 
 
 
-<meta property="og:title" content="COVIDCurve: Simple Inference of IFRs and I0 for Aggregate COVID Death Counts — COVIDCurve" />
-<meta property="og:description" content="Assumes an incidence curve can be mapped on to a onset-to-death curve in order to infer
-the IFR or I0 of an epidemic." />
+<meta property="og:title" content="COVIDCurve: Simple Inference of Age-Specific IFRs — COVIDCurve" />
+<meta property="og:description" content="In many settings, individual-based (i.e. &quot;line-list&quot;) data are often unavailable or
+unreliable. Here we provide a model framework that relies on aggregated death counts and seroprevalence
+data to infer the infection fatality ratio, or the probability of death givin infection. Models are
+fit within a Bayesian framework and account for onset-outcome delays and serologic test characteristics." />
 
 
 
@@ -90,7 +92,7 @@ the IFR or I0 of an epidemic." />
       <a href="../articles/installation.html">Installation</a>
     </li>
     <li>
-      <a href="../articles/quickstart.html">Quick Start</a>
+      <a href="../articles/runningmodel.html">Running the Model</a>
     </li>
   </ul>
 </li>
@@ -101,7 +103,7 @@ the IFR or I0 of an epidemic." />
       <ul class="nav navbar-nav navbar-right">
         <li>
   <a href="https://github.com/mrc-ide/COVIDCurve">
-    <span class="fa fa-github"></span>
+    <span class="fas fa-github"></span>
      
   </a>
 </li>
@@ -118,14 +120,16 @@ the IFR or I0 of an epidemic." />
 <div class="row">
   <div class="col-md-9 contents">
     <div class="page-header">
-    <h1>COVIDCurve: Simple Inference of IFRs and I0 for Aggregate COVID Death Counts</h1>
+    <h1>COVIDCurve: Simple Inference of Age-Specific IFRs</h1>
     
     <div class="hidden name"><code>COVIDCurve.Rd</code></div>
     </div>
 
     <div class="ref-description">
-    <p>Assumes an incidence curve can be mapped on to a onset-to-death curve in order to infer
-the IFR or I0 of an epidemic.</p>
+    <p>In many settings, individual-based (i.e. "line-list") data are often unavailable or
+unreliable. Here we provide a model framework that relies on aggregated death counts and seroprevalence
+data to infer the infection fatality ratio, or the probability of death givin infection. Models are
+fit within a Bayesian framework and account for onset-outcome delays and serologic test characteristics.</p>
     </div>
 
 

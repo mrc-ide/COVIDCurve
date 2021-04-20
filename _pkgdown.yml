@@ -10,8 +10,8 @@ navbar:
       menu:
         - text: "Installation"
           href: articles/installation.html
-        - text: "Quick Start"
-          href: articles/quickstart.html
+        - text: "Running the Model"
+          href: articles/runningmodel.html
     - text: "Functions"
       href: reference/index.html
   right:

@@ -1,8 +1,8 @@
 ---
-title: "Quick Start"
+title: "Running the Model"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Quick Start}
+  %\VignetteIndexEntry{Running the Model}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -21,4 +21,3 @@ The purpose of this "package" is to provide a framework to fit age-specific infe
 library(COVIDCurve)
 ```
   
-More coming soon!
