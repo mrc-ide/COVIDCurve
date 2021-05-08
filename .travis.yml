@@ -9,6 +9,3 @@ os:
   - linux
   - osx
 
-compiler:
-  - gcc
-  - clang
