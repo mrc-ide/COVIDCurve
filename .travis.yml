@@ -4,3 +4,11 @@ language: R
 cache: packages
 after_success:
   - Rscript -e 'covr::codecov()'
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - gcc
+  - clang
