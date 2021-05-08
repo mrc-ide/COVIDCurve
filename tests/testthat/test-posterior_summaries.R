@@ -3,6 +3,7 @@ context("posterior summaries working as expected")
 test_that("check get cred intervals function as dataframes", {
   library(COVIDCurve)
   data("covidcurve_modfit")
+  covidcurve_modfit
   ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = covidcurve_modfit, whichrung = paste0("rung", 1),
                                         what = "IFRparams", by_chain = F)
   sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = covidcurve_modfit, whichrung = paste0("rung", 1),
