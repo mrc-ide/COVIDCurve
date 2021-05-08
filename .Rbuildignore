@@ -3,5 +3,7 @@
 ^\.travis\.yml$
 R_ignore/
 sandbox/
+data.R
+data/
 ^codecov\.yml$
 ^\.covrignore$
