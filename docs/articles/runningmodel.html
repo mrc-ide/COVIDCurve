@@ -89,9 +89,345 @@
 <div id="covidcurve-purpose" class="section level2">
 <h2 class="hasAnchor">
 <a href="#covidcurve-purpose" class="anchor"></a><code>COVIDCurve</code> Purpose</h2>
-<p>The purpose of this “package” is to provide a framework to fit age-specific infection fatality ratios (IFRs) in an epidemic under several key assumptions. The model was originally designed in response to the COVID-19 pandemic (hence the name).</p>
+<p>The purpose of this package is to provide a framework to fit age-specific infection fatality ratios (IFRs) during an epidemic using seroprevalence data to track cumulative infections. The model was originally designed in response to the COVID-19 pandemic (hence the name) but is broadly applicable.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">COVIDCurve</span><span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://magrittr.tidyverse.org">magrittr</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/">tibble</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org">ggplot2</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://wilkelab.org/cowplot/">cowplot</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va">COVIDCurve</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="simulating-data" class="section level2">
+<h2 class="hasAnchor">
+<a href="#simulating-data" class="anchor"></a>Simulating Data</h2>
+<p>Here, we will use the model’s “back-end” simulator to create some data. The simulator was built “under the model” and reflects the forward process, or generative process, that underlies the model’s inferential framework.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/base/Random.html">set.seed</a></span><span class="op">(</span><span class="fl">1234</span><span class="op">)</span>
+<span class="co">#............................................................</span>
+<span class="co"># Pieces for the Simulation</span>
+<span class="co">#...........................................................</span>
+<span class="co"># users are required to input their own "infection" curve, </span>
+<span class="co"># here we will use a simple sigmoidal function with some noise</span>
+<span class="va">infxns</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">200</span><span class="op">)</span>
+<span class="va">sig</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">}</span>
+<span class="va">timevec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="op">-</span><span class="fl">5</span>, to <span class="op">=</span> <span class="fl">7</span>, length.out <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">infxns</span><span class="op">)</span><span class="op">)</span>
+<span class="va">infxns</span><span class="op">$</span><span class="va">infxns</span> <span class="op">&lt;-</span> <span class="fu">sig</span><span class="op">(</span><span class="va">timevec</span><span class="op">)</span> <span class="op">*</span> <span class="fl">5e3</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html">runif</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html">nrow</a></span><span class="op">(</span><span class="va">infxns</span><span class="op">)</span>, 
+                                            min <span class="op">=</span> <span class="op">-</span><span class="fl">25</span>,
+                                            max <span class="op">=</span> <span class="fl">50</span><span class="op">)</span>
+
+<span class="co"># make up IFR values and attack rates within the three "ma" age groups </span>
+<span class="va">fatalitydata</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>Strata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ma1"</span>, <span class="st">"ma2"</span>, <span class="st">"ma3"</span><span class="op">)</span>,
+                               IFR <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="fl">0.1</span><span class="op">)</span>,
+                               Rho <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="co"># assuming uniform attack rate wrt demographic size</span>
+<span class="co"># population sizes</span>
+<span class="va">demog</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>Strata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ma1"</span>, <span class="st">"ma2"</span>, <span class="st">"ma3"</span><span class="op">)</span>,
+                        popN <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1500000</span>, <span class="fl">2250000</span>, <span class="fl">1250000</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co">#............................................................</span>
+<span class="co"># Running the Simulation Function </span>
+<span class="co">#...........................................................</span>
+<span class="va">simdat</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/Agesim_infxn_2_death.html">Agesim_infxn_2_death</a></span><span class="op">(</span>
+  fatalitydata <span class="op">=</span> <span class="va">fatalitydata</span>,
+  demog <span class="op">=</span> <span class="va">demog</span>,
+  m_od <span class="op">=</span> <span class="fl">19.8</span>,
+  s_od <span class="op">=</span> <span class="fl">0.85</span>,
+  curr_day <span class="op">=</span> <span class="fl">200</span>,
+  infections <span class="op">=</span> <span class="va">infxns</span><span class="op">$</span><span class="va">infxns</span>,
+  simulate_seroreversion <span class="op">=</span> <span class="cn">FALSE</span>,
+  sens <span class="op">=</span> <span class="fl">0.85</span>,
+  spec <span class="op">=</span> <span class="fl">0.95</span>,
+  sero_delay_rate <span class="op">=</span> <span class="fl">18.3</span>
+<span class="op">)</span></code></pre></div>
+<p>Our simulated data is now a list with three dataframes: (1) StrataAgg_TimeSeries_Death: stratified daily deaths by age group; (2) Agg_TimeSeries_Death: summed daily deaths (summed across age groups); (3) StrataAgg_Seroprev: daily seroprevalences by age group.</p>
+<p>We will now tidy up these simulated data items for the model fitting steps.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># here we are calculating the total proportion of deaths</span>
+<span class="co"># within each age group </span>
+<span class="co"># proportion deaths</span>
+<span class="va">prop_deaths</span> <span class="op">&lt;-</span> <span class="va">simdat</span><span class="op">$</span><span class="va">StrataAgg_TimeSeries_Death</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">Strata</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span>deaths <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">Deaths</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">ungroup</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>PropDeaths <span class="op">=</span> <span class="va">deaths</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">simdat</span><span class="op">$</span><span class="va">Agg_TimeSeries_Death</span><span class="op">$</span><span class="va">Deaths</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"deaths"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## `summarise()` ungrouping output (override with `.groups` argument)</code></pre>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Serologic studies are typically conducted over a few days</span>
+<span class="co"># here we have assumed that two time points with 5 days on</span>
+<span class="co"># either side of our "midpoint".</span>
+<span class="co"># For each study and we will take the average over that time </span>
+
+<span class="va">sero_days</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">135</span>, <span class="fl">160</span><span class="op">)</span>
+<span class="va">sero_days</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">lapply</a></span><span class="op">(</span><span class="va">sero_days</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">{</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html">seq</a></span><span class="op">(</span>from <span class="op">=</span> <span class="op">(</span><span class="va">x</span><span class="op">-</span><span class="fl">5</span><span class="op">)</span>, to <span class="op">=</span> <span class="op">(</span><span class="va">x</span><span class="op">+</span><span class="fl">5</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">}</span><span class="op">)</span>
+<span class="va">obs_serology</span> <span class="op">&lt;-</span> <span class="va">simdat</span><span class="op">$</span><span class="va">StrataAgg_Seroprev</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">Strata</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">ObsDay</span> <span class="op">%in%</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html">unlist</a></span><span class="op">(</span><span class="va">sero_days</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>serodaynum <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">sero_days</span><span class="op">)</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    SeroPos <span class="op">=</span> <span class="va">ObsPrev</span> <span class="op">*</span> <span class="va">testedN</span>,
+    SeroN <span class="op">=</span> <span class="va">testedN</span> <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">group_by</a></span><span class="op">(</span><span class="va">Strata</span>, <span class="va">serodaynum</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html">summarise</a></span><span class="op">(</span>SeroPos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="va">SeroPos</span><span class="op">)</span>,
+                   SeroN <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html">mean</a></span><span class="op">(</span><span class="va">SeroN</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> <span class="co"># seroN doesn't change</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>SeroStartSurvey <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">sero_days</span>, <span class="va">median</span><span class="op">)</span> <span class="op">-</span> <span class="fl">5</span>,
+                SeroEndSurvey <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">sero_days</span>, <span class="va">median</span><span class="op">)</span> <span class="op">+</span> <span class="fl">5</span>,
+                SeroPos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html">round</a></span><span class="op">(</span><span class="va">SeroPos</span><span class="op">)</span>,
+                SeroPrev <span class="op">=</span> <span class="va">SeroPos</span><span class="op">/</span><span class="va">SeroN</span>,
+                SeroLCI <span class="op">=</span> <span class="cn">NA</span>,
+                SeroUCI <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"SeroStartSurvey"</span>, <span class="st">"SeroEndSurvey"</span>, <span class="st">"Strata"</span>, <span class="st">"SeroPos"</span>, <span class="st">"SeroN"</span>, <span class="st">"SeroPrev"</span>, <span class="st">"SeroLCI"</span>, <span class="st">"SeroUCI"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html">ungroup</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html">arrange</a></span><span class="op">(</span><span class="va">SeroStartSurvey</span>, <span class="va">Strata</span><span class="op">)</span></code></pre></div>
+<pre><code>## `summarise()` regrouping output by 'Strata' (override with `.groups` argument)</code></pre>
+</div>
+<div id="building-model-object" class="section level2">
+<h2 class="hasAnchor">
+<a href="#building-model-object" class="anchor"></a>Building Model Object</h2>
+<p>We will now make our model fitting object.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co">#......................</span>
+<span class="co"># put binomial data in correct format </span>
+<span class="co">#......................</span>
+<span class="va">inputdata</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>obs_deaths <span class="op">=</span> <span class="va">simdat</span><span class="op">$</span><span class="va">Agg_TimeSeries_Death</span>,
+                  prop_deaths <span class="op">=</span> <span class="va">prop_deaths</span>,
+                  obs_serology <span class="op">=</span> <span class="va">obs_serology</span><span class="op">)</span>
+
+<span class="co">#......................</span>
+<span class="co"># Prior distrubitions and sampling distributions</span>
+<span class="co">#......................</span>
+<span class="co"># sens/spec</span>
+<span class="va">sens_spec_tbl</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sens"</span>,  <span class="st">"spec"</span><span class="op">)</span>,
+                                min <span class="op">=</span>   <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.5</span>,      <span class="fl">0.5</span><span class="op">)</span>,
+                                init <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.85</span>,     <span class="fl">0.95</span><span class="op">)</span>,
+                                max <span class="op">=</span>   <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>,        <span class="fl">1</span><span class="op">)</span>,
+                                dsc1 <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">850.5</span>,    <span class="fl">950.5</span><span class="op">)</span>,
+                                dsc2 <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">150.5</span>,    <span class="fl">50.5</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># delay priors</span>
+<span class="va">tod_paramsdf</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"mod"</span>, <span class="st">"sod"</span>, <span class="st">"sero_con_rate"</span><span class="op">)</span>,
+                               min  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">18</span>,     <span class="fl">0</span>,     <span class="fl">16</span><span class="op">)</span>,
+                               init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">19</span>,     <span class="fl">0.85</span>,  <span class="fl">18</span><span class="op">)</span>,
+                               max <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">20</span>,     <span class="fl">1</span>,     <span class="fl">21</span><span class="op">)</span>,
+                               dsc1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">19.8</span>,   <span class="fl">2550</span>,  <span class="fl">18.3</span><span class="op">)</span>,
+                               dsc2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0.1</span>,    <span class="fl">450</span>,   <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># make param dfs</span>
+<span class="va">ifr_paramsdf</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ma1"</span>, <span class="st">"ma2"</span>,  <span class="st">"ma3"</span><span class="op">)</span>,
+                               min  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>,
+                               init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.2</span>, <span class="fl">3</span><span class="op">)</span>,
+                               max <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">3</span><span class="op">)</span>,
+                               dsc1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>,
+                               dsc2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.4</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
+
+<span class="va">infxn_paramsdf</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"y"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span>,
+                                 min  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span>,
+                                 init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">5</span><span class="op">)</span>,
+                                 max <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">5</span><span class="op">)</span>,
+                                 dsc1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span><span class="op">)</span>,
+                                 dsc2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span>
+
+<span class="va">knot_paramsdf</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span>,
+                                min  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>,  <span class="fl">50</span>, <span class="fl">100</span>, <span class="fl">150</span><span class="op">)</span>,
+                                init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">5</span>,  <span class="fl">75</span>, <span class="fl">125</span>, <span class="fl">175</span><span class="op">)</span>,
+                                max <span class="op">=</span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">49</span>, <span class="fl">99</span>, <span class="fl">149</span>, <span class="fl">200</span><span class="op">)</span>,
+                                dsc1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>,  <span class="fl">50</span>, <span class="fl">100</span>, <span class="fl">150</span><span class="op">)</span>,
+                                dsc2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">49</span>, <span class="fl">99</span>, <span class="fl">149</span>, <span class="fl">200</span><span class="op">)</span><span class="op">)</span>
+
+
+<span class="va">noise_paramsdf</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ne1"</span>, <span class="st">"ne2"</span>, <span class="st">"ne3"</span><span class="op">)</span>,
+                                 min  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">3</span><span class="op">)</span>,
+                                 init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>,
+                                 max <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">1.5</span>, <span class="fl">3</span><span class="op">)</span>,
+                                 dsc1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span>,
+                                 dsc2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html">rep</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># bring together</span>
+<span class="va">df_params</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html">rbind.data.frame</a></span><span class="op">(</span><span class="va">ifr_paramsdf</span>, <span class="va">infxn_paramsdf</span>, <span class="va">noise_paramsdf</span>, <span class="va">knot_paramsdf</span>, <span class="va">sens_spec_tbl</span>, <span class="va">tod_paramsdf</span><span class="op">)</span>
+
+<span class="co">#......................</span>
+<span class="co"># make model for serorev and regular</span>
+<span class="co">#......................</span>
+<span class="co"># reg</span>
+<span class="va">mod1</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="va"><a href="../reference/make_IFRmodel_age.html">make_IFRmodel_age</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_MeanTODparam</span><span class="op">(</span><span class="st">"mod"</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_CoefVarOnsetTODparam</span><span class="op">(</span><span class="st">"sod"</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_IFRparams</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"ma"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_maxMa</span><span class="op">(</span><span class="st">"ma3"</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_Knotparams</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_Infxnparams</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"y"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_Noiseparams</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"ne"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_Serotestparams</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sens"</span>, <span class="st">"spec"</span>, <span class="st">"sero_con_rate"</span><span class="op">)</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_data</span><span class="op">(</span><span class="va">inputdata</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_demog</span><span class="op">(</span><span class="va">demog</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_paramdf</span><span class="op">(</span><span class="va">df_params</span><span class="op">)</span>
+<span class="va">mod1</span><span class="op">$</span><span class="fu">set_rcensor_day</span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">integer.max</span><span class="op">)</span> <span class="co"># no censoring</span></code></pre></div>
+</div>
+<div id="running-mcmc" class="section level2">
+<h2 class="hasAnchor">
+<a href="#running-mcmc" class="anchor"></a>Running MCMC</h2>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.time</a></span><span class="op">(</span><span class="op">)</span>
+<span class="va">modout</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/run_IFRmodel_age.html">run_IFRmodel_age</a></span><span class="op">(</span>IFRmodel <span class="op">=</span> <span class="va">mod1</span>,
+                                       reparamIFR <span class="op">=</span> <span class="cn">FALSE</span>,
+                                       reparamInfxn <span class="op">=</span> <span class="cn">FALSE</span>,
+                                       reparamKnot <span class="op">=</span> <span class="cn">FALSE</span>,
+                                       burnin <span class="op">=</span> <span class="fl">1e4</span>,
+                                       samples <span class="op">=</span> <span class="fl">1e4</span>,
+                                       chains <span class="op">=</span> <span class="fl">3</span>,
+                                       rungs <span class="op">=</span> <span class="fl">1</span>,
+                                       thinning <span class="op">=</span> <span class="fl">0</span>,
+                                       silent <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+<span class="va">end</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html">Sys.time</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="va">start</span></code></pre></div>
+<p>Here we will run a very fast MCMC that took only 4. However, with much larger models containing 10,000 burn-in and sampling iterations across 50 rungs, run times can exceed 24-36 hours. These large runs will require a cluster.</p>
+</div>
+<div id="examining-the-various-outputs" class="section level2">
+<h2 class="hasAnchor">
+<a href="#examining-the-various-outputs" class="anchor"></a>Examining the various outputs</h2>
+<div id="posterior-summaries" class="section level3">
+<h3 class="hasAnchor">
+<a href="#posterior-summaries" class="anchor"></a>Posterior Summaries</h3>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="op">(</span><span class="va">ifr</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>, whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                       what <span class="op">=</span> <span class="st">"IFRparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## # A tibble: 3 x 10
+##   param     min     LCI median   mean    UCI    max   ESS GewekeZ GewekeP
+##   &lt;chr&gt;   &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+## 1 ma1   0.00883 0.00943 0.0100 0.0100 0.0107 0.0114  437.   1.05    0.231
+## 2 ma2   0.0478  0.0496  0.0516 0.0516 0.0538 0.0557  106.   0.565   0.340
+## 3 ma3   0.0934  0.0965  0.100  0.100  0.105  0.108   116.   0.712   0.310</code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="op">(</span><span class="va">sero</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>, whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                        what <span class="op">=</span> <span class="st">"Serotestparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## # A tibble: 3 x 10
+##   param            min    LCI median   mean    UCI    max    ESS GewekeZ GewekeP
+##   &lt;chr&gt;          &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+## 1 sens           0.816  0.831  0.849  0.850  0.871  0.885  121.   -0.281   0.383
+## 2 sero_con_rate 17.9   18.1   18.3   18.3   18.5   18.7   3116.    0.538   0.345
+## 3 spec           0.947  0.948  0.949  0.949  0.951  0.952   65.2  -1.29    0.173</code></pre>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># the below posteriors are usually only needed for infetion curves</span>
+<span class="co"># and posterior checks</span>
+<span class="op">(</span><span class="va">knotspost</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,  whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                             what <span class="op">=</span> <span class="st">"Knotparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span>
+<span class="op">(</span><span class="va">infxn</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,  whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                         what <span class="op">=</span> <span class="st">"Infxnparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span>
+
+<span class="op">(</span><span class="va">ddelays</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,  whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                         what <span class="op">=</span> <span class="st">"DeathDelayparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span>
+<span class="op">(</span><span class="va">neparams</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/get_cred_intervals.html">get_cred_intervals</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,  whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                            what <span class="op">=</span> <span class="st">"Noiseparams"</span>, by_chain <span class="op">=</span> <span class="cn">F</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="visualizing-output" class="section level3">
+<h3 class="hasAnchor">
+<a href="#visualizing-output" class="anchor"></a>Visualizing Output</h3>
+<div id="infection-curve" class="section level4">
+<h4 class="hasAnchor">
+<a href="#infection-curve" class="anchor"></a>Infection Curve</h4>
+<p>Here we can downsample from the posterior to get a sense of our inferred infection curve.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">curve</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/draw_posterior_infxn_cubic_splines.html">draw_posterior_infxn_cubic_splines</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,
+                                                        whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                                        by_chain <span class="op">=</span> <span class="cn">F</span>,
+                                                        by_strata <span class="op">=</span> <span class="cn">F</span>,
+                                                        dwnsmpl <span class="op">=</span> <span class="fl">1e3</span><span class="op">)</span>
+<span class="co">#......................</span>
+<span class="co"># some extra plot items</span>
+<span class="co">#......................</span>
+<span class="co"># tidy up and make plots</span>
+<span class="va">liftover</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span>param <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ma1"</span>, <span class="st">"ma2"</span>, <span class="st">"ma3"</span><span class="op">)</span>,
+                       Strata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"ma1"</span>, <span class="st">"ma2"</span>, <span class="st">"ma3"</span><span class="op">)</span><span class="op">)</span>
+
+<span class="va">fatalitydataplot</span> <span class="op">&lt;-</span> <span class="va">fatalitydata</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html">left_join</a></span><span class="op">(</span><span class="va">liftover</span>, <span class="va">.</span>, by <span class="op">=</span> <span class="st">"Strata"</span><span class="op">)</span>
+
+<span class="va">plot1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_pointrange</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">ifr</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">param</span>, ymin <span class="op">=</span> <span class="va">LCI</span>, ymax <span class="op">=</span> <span class="va">UCI</span>, y <span class="op">=</span> <span class="va">median</span>, color <span class="op">=</span> <span class="va">param</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html">geom_hline</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">fatalitydataplot</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>yintercept  <span class="op">=</span> <span class="va">IFR</span>, group <span class="op">=</span> <span class="va">param</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"#3182bd"</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span>, size <span class="op">=</span> <span class="fl">1.1</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="va">.</span><span class="op">~</span><span class="va">param</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html">scale_color_viridis_d</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">plot2</span> <span class="op">&lt;-</span> <span class="va">curve</span><span class="op">$</span><span class="va">plotObj</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">infxns</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">time</span>, y <span class="op">=</span> <span class="va">infxns</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"#3182bd"</span><span class="op">)</span>
+
+<span class="fu">cowplot</span><span class="fu">::</span><span class="fu"><a href="https://wilkelab.org/cowplot/reference/plot_grid.html">plot_grid</a></span><span class="op">(</span><span class="va">plot1</span>, <span class="va">plot2</span>, ncol <span class="op">=</span> <span class="fl">1</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
+<p><img src="runningmodel_files/figure-html/unnamed-chunk-4-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+<div id="seroprevalence-curve" class="section level4">
+<h4 class="hasAnchor">
+<a href="#seroprevalence-curve" class="anchor"></a>Seroprevalence Curve</h4>
+<p>Similarly, we can downsample from the posterior to get a sense of our inferred serology across age groups.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">serocurve</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/draw_posterior_sero_curves.html">draw_posterior_sero_curves</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,
+                                                    whichrung <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"rung"</span>, <span class="fl">1</span><span class="op">)</span>,
+                                                    by_chain <span class="op">=</span> <span class="cn">F</span>,
+                                                    dwnsmpl <span class="op">=</span> <span class="fl">1e3</span><span class="op">)</span>
+<span class="co">#......................</span>
+<span class="co"># tidy up posterior draw </span>
+<span class="co">#......................</span>
+<span class="va">serocurvedat</span> <span class="op">&lt;-</span> <span class="va">serocurve</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sim"</span>, <span class="st">"ObsDay"</span>, <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"RG_pd_"</span><span class="op">)</span>,
+                  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"crude_pd_"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html">pivot_longer</a></span><span class="op">(</span><span class="va">.</span>, cols <span class="op">=</span> <span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"sim"</span>, <span class="st">"ObsDay"</span><span class="op">)</span>,
+                      names_to <span class="op">=</span> <span class="st">"seroprev_strata_lvl"</span>, values_to <span class="op">=</span> <span class="st">"seroprev"</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>seroprevlvl <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_detect.html">str_detect</a></span><span class="op">(</span><span class="va">seroprev_strata_lvl</span>, <span class="st">"RG_"</span><span class="op">)</span>, <span class="st">"RG Corr."</span>, <span class="st">"Crude"</span><span class="op">)</span>,
+                param <span class="op">=</span> <span class="fu">stringr</span><span class="fu">::</span><span class="fu"><a href="https://stringr.tidyverse.org/reference/str_extract.html">str_extract</a></span><span class="op">(</span><span class="va">seroprev_strata_lvl</span>, <span class="st">"ma[0-9]+"</span><span class="op">)</span><span class="op">)</span>
+
+<span class="va">SeroPrevObs</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html">tibble</a></span><span class="op">(</span>obsdaymin <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">sero_days</span>, <span class="va">median</span><span class="op">)</span> <span class="op">-</span> <span class="fl">5</span>,
+                              obsdaymax <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html">sapply</a></span><span class="op">(</span><span class="va">sero_days</span>, <span class="va">median</span><span class="op">)</span> <span class="op">+</span> <span class="fl">5</span><span class="op">)</span>
+
+<span class="co">#......................</span>
+<span class="co"># observed</span>
+<span class="co">#......................</span>
+<span class="co"># quickly add in binomial confidence intervals</span>
+<span class="va">inputdata</span><span class="op">$</span><span class="va">obs_serology</span> <span class="op">&lt;-</span> <span class="va">inputdata</span><span class="op">$</span><span class="va">obs_serology</span> <span class="op">%&gt;%</span> 
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>SeroLCI <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map2.html">map2_dbl</a></span><span class="op">(</span>.x <span class="op">=</span> <span class="va">SeroPos</span>, .y <span class="op">=</span>  <span class="va">SeroN</span>,
+                                      .f <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>,<span class="va">y</span><span class="op">)</span><span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/stats/binom.test.html">binom.test</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">y</span><span class="op">)</span><span class="op">$</span><span class="va">conf.int</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">}</span><span class="op">)</span>,
+                SeroUCI <span class="op">=</span> <span class="fu">purrr</span><span class="fu">::</span><span class="fu"><a href="https://purrr.tidyverse.org/reference/map2.html">map2_dbl</a></span><span class="op">(</span>.x <span class="op">=</span> <span class="va">SeroPos</span>, .y <span class="op">=</span>  <span class="va">SeroN</span>,
+                                      .f <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>,<span class="va">y</span><span class="op">)</span><span class="op">{</span> <span class="fu"><a href="https://rdrr.io/r/stats/binom.test.html">binom.test</a></span><span class="op">(</span><span class="va">x</span>,<span class="va">y</span><span class="op">)</span><span class="op">$</span><span class="va">conf.int</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">}</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>midpoint <span class="op">=</span> <span class="op">(</span><span class="va">SeroStartSurvey</span> <span class="op">+</span> <span class="va">SeroEndSurvey</span><span class="op">)</span><span class="op">/</span><span class="fl">2</span><span class="op">)</span>
+
+<span class="co"># curve data</span>
+<span class="va">serocurvedat</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">ObsDay</span>, y <span class="op">=</span> <span class="va">seroprev</span>, color <span class="op">=</span> <span class="va">seroprevlvl</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_tile.html">geom_rect</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">SeroPrevObs</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>xmin <span class="op">=</span> <span class="va">obsdaymin</span>, xmax <span class="op">=</span> <span class="va">obsdaymax</span>, ymin <span class="op">=</span> <span class="op">-</span><span class="cn">Inf</span>, ymax <span class="op">=</span> <span class="cn">Inf</span><span class="op">)</span>,
+            fill <span class="op">=</span> <span class="st">"#d9d9d9"</span>, alpha <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_linerange.html">geom_pointrange</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">inputdata</span><span class="op">$</span><span class="va">obs_serology</span>,
+                  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">midpoint</span>, y <span class="op">=</span> <span class="va">SeroPrev</span>, ymin <span class="op">=</span> <span class="va">SeroLCI</span>, ymax <span class="op">=</span> <span class="va">SeroUCI</span><span class="op">)</span>,
+                  color <span class="op">=</span> <span class="st">"#000000"</span>, alpha <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="va">.</span><span class="op">~</span><span class="va">param</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html">scale_color_manual</a></span><span class="op">(</span><span class="st">"Seroprev. \n Adjustment"</span>, values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"#FFD301"</span>, <span class="st">"#246BCF"</span><span class="op">)</span>,
+                     labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"Inferred 'Truth'"</span>, <span class="st">"Inferred 'Observed' - \n Rogan-Gladen Corrected"</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">labs</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Grey box is observed seroprevalence across study period"</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_classic</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html">element_text</a></span><span class="op">(</span>angle <span class="op">=</span> <span class="fl">45</span>, vjust <span class="op">=</span> <span class="fl">0.90</span>, hjust<span class="op">=</span> <span class="fl">1</span>, face <span class="op">=</span> <span class="st">"bold"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p><img src="runningmodel_files/figure-html/unnamed-chunk-5-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+<div id="posterior-death-check" class="section level4">
+<h4 class="hasAnchor">
+<a href="#posterior-death-check" class="anchor"></a>Posterior Death Check</h4>
+<p>Finally, we can see how closely our modelled deaths align with the oberserved deaths as a posterior check.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">postdeaths</span> <span class="op">&lt;-</span> <span class="fu">COVIDCurve</span><span class="fu">::</span><span class="fu"><a href="../reference/posterior_check_infxns_to_death.html">posterior_check_infxns_to_death</a></span><span class="op">(</span>IFRmodel_inf <span class="op">=</span> <span class="va">modout</span>,
+                                                          dwnsmpl <span class="op">=</span> <span class="fl">1e2</span>,
+                                                          by_chain <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
+<span class="va">postdeaths.plotObj</span> <span class="op">&lt;-</span> <span class="va">postdeaths</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"time"</span>, <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"deaths"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/gather.html">gather</a></span><span class="op">(</span><span class="va">.</span>, key <span class="op">=</span> <span class="st">"Strata"</span>, value <span class="op">=</span> <span class="st">"deaths"</span>, <span class="fl">2</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html">ncol</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Strata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/grep.html">gsub</a></span><span class="op">(</span><span class="st">"deaths_"</span>, <span class="st">""</span>, <span class="va">Strata</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span> <span class="va">time</span>, y <span class="op">=</span> <span class="va">deaths</span>, group <span class="op">=</span> <span class="va">Strata</span>, color <span class="op">=</span> <span class="va">Strata</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html">scale_color_viridis_d</a></span><span class="op">(</span><span class="op">)</span>
+
+<span class="va">postdeaths.plotObj</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html">geom_line</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">simdat</span><span class="op">$</span><span class="va">StrataAgg_TimeSeries_Death</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html">aes</a></span><span class="op">(</span>x<span class="op">=</span><span class="va">ObsDay</span>, y <span class="op">=</span> <span class="va">Deaths</span>, group <span class="op">=</span> <span class="va">Strata</span><span class="op">)</span>, color <span class="op">=</span> <span class="st">"#bdbdbd"</span>, size <span class="op">=</span> <span class="fl">0.5</span>, alpha <span class="op">=</span> <span class="fl">0.75</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html">facet_wrap</a></span><span class="op">(</span><span class="va">.</span><span class="op">~</span><span class="va">Strata</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html">ggtitle</a></span><span class="op">(</span><span class="st">"Posterior Predictive Check"</span>, subtitle <span class="op">=</span> <span class="st">"Grey Lines are Simulated Data, Viridis Lines are Draws from Posterior"</span><span class="op">)</span></code></pre></div>
+<p><img src="runningmodel_files/figure-html/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;"></p>
+</div>
+</div>
 </div>
   </div>
 

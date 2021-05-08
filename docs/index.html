@@ -87,17 +87,22 @@
 <div id="important-notes" class="section level2">
 <h2 class="hasAnchor">
 <a href="#important-notes" class="anchor"></a>IMPORTANT NOTES</h2>
-<p><span class="emoji" data-emoji="warning">⚠️</span> This model has planned development and is not guaranteed to be 100% backwards compatible (e.g. parameter names may be extended, changed, <em>etc</em>). Version updates that are not backwards compatible will be noted in the <code>NEWS.md</code> file and signaled with major version changes.</p>
 <p><span class="emoji" data-emoji="warning">⚠️</span> This package depends on the R-package <a href="https://github.com/mrc-ide/drjacoby">DrJacoby</a> version 1.2.0.</p>
 </div>
 <div id="installation--use" class="section level2">
 <h2 class="hasAnchor">
 <a href="#installation--use" class="anchor"></a>Installation &amp; Use</h2>
-<p>The purpose of this package is to provide a framework to fit age-specific infection fatality ratios (IFRs) in an epidemic that is using serologic data to estimate prevalence. The model was originally designed in response to the COVID-19 pandemic (hence the name).</p>
+<p>The purpose of this package is to provide a framework to fit age-specific infection fatality ratios (IFRs) in an epidemic that is using serologic data to estimate prevalence. The model was originally designed in response to the COVID-19 pandemic (hence the name) but is broadly applicable.</p>
 <p>Accurate inference of the IFR based on serological data is challenging due to a number of factors that can bias estimates away from the true value, including: (1) the delay between infection and death, (2) the dynamical process of seroconversion and <em>seroreversion</em>, (3) potential differences in age-specific attack rates, and (4) serological test characteristics. These delay-distributions and serologic test characteristics are expected to cause both shifts in when deaths are observed as well as when and how many true infections are observed, which will then affect the IFR. This framework is summarized in the conceptual diagram below.</p>
-<p>Please see the vignettes for installation and use instructions. Thank you for your interest in our package!</p>
+<p>The model can be briefly summarized as having to pieces: (1) an <em>infection curve shape</em> that is informed by the shape the of the observed death curve but “thrown”" backwards in time; (2) a <em>pin</em> or a point on the y-axis that the <em>shape</em> must go through (<em>i.e.</em> a pin to inform the area under the curve, or cumulative infections). This pin is informed by the observed serologic data, accounting for test characteristics (<em>e.g.</em> sensitivity and specificity) as well as the time from infection to seroconversion and <em>seroreversion</em>. Accounting for seroreversion, or the waning of antibodies over time that then produces a false negative test, becomes increasingly important as epidemics progress and/or as daily infections start to contract.</p>
 <p align="center">
 <img src="https://raw.githubusercontent.com/mrc-ide/COVIDCurve/master/R_ignore/images/Fig_concept_diagram.png" width="400" height="500"></p>
+</div>
+<div id="installation-dependencies-and-use" class="section level2">
+<h2 class="hasAnchor">
+<a href="#installation-dependencies-and-use" class="anchor"></a>Installation, Dependencies, and Use</h2>
+<p>Please see the vignettes for installation (and dependencies) as well as use instructions. Thank you for your interest in our package!</p>
+<p>R package dependencies are listed in the <code>DESCRIPTION</code> file and tested operating systems are indicated in the <code>travis.yml</code> file.</p>
 </div>
 </div>
   </div>
