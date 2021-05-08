@@ -1,6 +1,7 @@
 context("plotting works as expected")
 
 test_that("infection plot works", {
+  library(COVIDCurve)
   data(covidcurve_modfit)
   curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = covidcurve_modfit,
                                                           whichrung = paste0("rung", 1),
@@ -14,6 +15,7 @@ test_that("infection plot works", {
 
 
 test_that("seroprevalence dataframe for plot works", {
+  library(COVIDCurve)
   data(covidcurve_modfit)
   serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = covidcurve_modfit,
                                                       whichrung = paste0("rung", 1),
@@ -24,6 +26,7 @@ test_that("seroprevalence dataframe for plot works", {
 
 
 test_that("posterior deaths dataframe for plot works", {
+  library(COVIDCurve)
   data(covidcurve_modfit)
   postdeaths <- COVIDCurve::posterior_check_infxns_to_death(IFRmodel_inf = covidcurve_modfit,
                                                             dwnsmpl = 1e2,
