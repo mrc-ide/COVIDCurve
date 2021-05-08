@@ -7,3 +7,4 @@ data.R
 data/
 ^codecov\.yml$
 ^\.covrignore$
+^\.github$
