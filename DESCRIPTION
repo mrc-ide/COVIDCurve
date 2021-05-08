@@ -15,27 +15,27 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
-    dplyr,
-    magrittr,
-    tidyr,
-    stringr,
-    ggplot2,
-    cowplot,
     drjacoby,
-    coda,
-    purrr,
-    Rcpp,
-    R6,
-    tibble,
-    crayon,
+    dplyr (>= 1.0.2),
+    magrittr (>= 2.0.1),
+    tidyr (>= 1.1.2),
+    stringr (>= 1.4.0),
+    ggplot2 (>= 3.3.3),
+    cowplot (>= 1.1.1),
+    coda (>= 0.19),
+    purrr (>= 0.3.4),
+    Rcpp (>= 1.0.5),
+    R6 (>= 2.5.0),
+    tibble (>= 3.0.4),
+    crayon (>= 1.3.4),
     stats,
     utils
 Remotes:
     mrc-ide/drjacoby@e83884e0b2c48309ebd7eccdcbfc4495f0f80cac,
 Suggests: 
-    knitr,
-    rmarkdown,
-    covr,
+    knitr (>= 1.30),
+    rmarkdown (>= 2.6),
+    covr (>= 3.5.1),
     testthat (>= 2.1.0)
 VignetteBuilder: knitr
 Roxygen: list(markdown = TRUE)
@@ -43,3 +43,5 @@ RoxygenNote: 7.1.1
 LinkingTo: 
     Rcpp
 SystemRequirements: C++11
+Depends: 
+    R (>= 2.10)
