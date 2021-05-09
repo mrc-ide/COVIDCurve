@@ -194,25 +194,25 @@ mod1$set_paramdf(df_params)
 mod1$set_rcensor_day(.Machine$integer.max) # no censoring
 ```
 
-## Running MCMC
+<!-- ## Running MCMC  -->
 
-```{r, echo=F, eval=T}
-# "Warm-Up" MCMC
-warmdf_params <- rbind.data.frame(list("x", 1, 1, 1))
-names(warmdf_params) <- c("name", "min", "max", "init")
-warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}"
-warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)),
-                             df_params = warmdf_params,
-                             misc = list(),
-                             loglike = warmloglike,
-                             logprior = warmlogprior,
-                             burnin = 1,
-                             samples = 1,
-                             chains = 1,
-                             rungs = 1,
-                             silent = T)
-```
+<!-- ```{r, echo=F, eval=T} -->
+<!-- # "Warm-Up" MCMC -->
+<!-- warmdf_params <- rbind.data.frame(list("x", 1, 1, 1)) -->
+<!-- names(warmdf_params) <- c("name", "min", "max", "init") -->
+<!-- warmloglike <- "SEXP loglike(Rcpp::NumericVector params, int param_i, Rcpp::List data, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}" -->
+<!-- warmlogprior <- "SEXP logprior(Rcpp::NumericVector params, int param_i, Rcpp::List misc) { double ret = -1.0; return Rcpp::wrap(ret);}" -->
+<!-- warmup <- drjacoby::run_mcmc(data = list("dat" = c(1)), -->
+<!--                              df_params = warmdf_params, -->
+<!--                              misc = list(), -->
+<!--                              loglike = warmloglike, -->
+<!--                              logprior = warmlogprior, -->
+<!--                              burnin = 1, -->
+<!--                              samples = 1, -->
+<!--                              chains = 1, -->
+<!--                              rungs = 1, -->
+<!--                              silent = T) -->
+<!-- ``` -->
 
 ```{r run MCMC}
 start <- Sys.time()
