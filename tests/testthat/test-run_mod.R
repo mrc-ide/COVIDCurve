@@ -1,5 +1,5 @@
-context("IFR model runs")
-test_that("R wrapper works", {
+context("IFR model and plots runs")
+test_that("R wrapper model fit and subsequent analysis functions work", {
   set.seed(1234)
   # sigmoidal function
   infxns <- data.frame(time = 1:200)
@@ -154,5 +154,56 @@ test_that("R wrapper works", {
 
   testthat::expect_is(modout, "IFRmodel_inf")
   testthat::expect_is(modout$mcmcout, "drjacoby_output")
+
+
+  #......................
+  # posterior summaries
+  #......................
+  ifr <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
+                                        what = "IFRparams", by_chain = F)
+  sero <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout, whichrung = paste0("rung", 1),
+                                         what = "Serotestparams", by_chain = F)
+  knotspost <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                              what = "Knotparams", by_chain = F)
+  infxn <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                          what = "Infxnparams", by_chain = F)
+  ddelays <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                            what = "DeathDelayparams", by_chain = F)
+  neparams <- COVIDCurve::get_cred_intervals(IFRmodel_inf = modout,  whichrung = paste0("rung", 1),
+                                             what = "Noiseparams", by_chain = F)
+
+  # tests for summary fit
+  testthat::expect_is(ifr, "data.frame")
+  testthat::expect_is(sero, "data.frame")
+  testthat::expect_is(knotspost, "data.frame")
+  testthat::expect_is(infxn, "data.frame")
+  testthat::expect_is(ddelays, "data.frame")
+  testthat::expect_is(neparams, "data.frame")
+
+  #......................
+  # check plots
+  #......................
+  # infection curve
+  curve <- COVIDCurve::draw_posterior_infxn_cubic_splines(IFRmodel_inf = modout,
+                                                          whichrung = paste0("rung", 1),
+                                                          by_chain = F,
+                                                          by_strata = F,
+                                                          dwnsmpl = 1e2)
+
+  testthat::expect_is(curve$plotObj, "ggplot")
+  testthat::expect_is(curve$curvedata, "data.frame")
+
+  # seroprev
+  serocurve <- COVIDCurve::draw_posterior_sero_curves(IFRmodel_inf = modout,
+                                                      whichrung = paste0("rung", 1),
+                                                      by_chain = F,
+                                                      dwnsmpl = 1e2)
+  testthat::expect_is(serocurve, "data.frame")
+
+  # posterior deaths
+  postdeaths <- COVIDCurve::posterior_check_infxns_to_death(IFRmodel_inf = covidcurve_modfit,
+                                                            dwnsmpl = 1e2,
+                                                            by_chain = FALSE)
+  testthat::expect_is(postdeaths, "data.frame")
 
 })
