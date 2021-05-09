@@ -201,7 +201,7 @@ test_that("R wrapper model fit and subsequent analysis functions work", {
   testthat::expect_is(serocurve, "data.frame")
 
   # posterior deaths
-  postdeaths <- COVIDCurve::posterior_check_infxns_to_death(IFRmodel_inf = covidcurve_modfit,
+  postdeaths <- COVIDCurve::posterior_check_infxns_to_death(IFRmodel_inf = modout,
                                                             dwnsmpl = 1e2,
                                                             by_chain = FALSE)
   testthat::expect_is(postdeaths, "data.frame")
